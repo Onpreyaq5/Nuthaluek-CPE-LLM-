@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ผู้เชี่ยวชาญความรู้รอบตัวเรื่องรถ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- แถบบนซ้าย -->
+  <header class="topbar">
+    <div class="brand">🚗 ผู้เชี่ยวชาญความรู้รอบตัวเรื่องรถ <span class="caret">▾</span></div>
+  </header>
+
+  <!-- หน้าจอหลัก -->
+  <main class="stage" id="stage">
+    <!-- มุมมองต้อนรับ (ตอนยังไม่มีข้อความ) -->
+    <section class="welcome" id="welcome">
+      <h1 class="headline">วันนี้อยากรู้เรื่องรถอะไรดี?</h1>
+
+      <div class="composer" id="composerTop">
+        <button class="plus" title="เพิ่ม">+</button>
+        <input
+          type="text"
+          id="inputTop"
+          class="ask"
+          placeholder="ถามอะไรก็ได้เกี่ยวกับรถ"
+          autocomplete="off"
+        />
+        <button class="mic" title="พูด" id="micTop">🎤</button>
+        <button class="voice" id="voiceTop"><span class="wave">▮▮▮</span> Voice</button>
+      </div>
+
+      <!-- ตัวอย่างคำถาม -->
+      <div class="chips">
+        <button class="chip">ควรเปลี่ยนน้ำมันเครื่องบ่อยแค่ไหน</button>
+        <button class="chip">รถแบตหมดต้องทำอย่างไร</button>
+        <button class="chip">เกียร์ P R N D คืออะไร</button>
+        <button class="chip">รถยนต์ไฟฟ้า EV คืออะไร</button>
+      </div>
+    </section>
+
+    <!-- มุมมองแชท (โผล่เมื่อเริ่มคุย) -->
+    <section class="chat hidden" id="chat">
+      <div class="messages" id="messages"></div>
+    </section>
+  </main>
+
+  <!-- กล่องพิมพ์ด้านล่าง (โผล่ตอนอยู่ในโหมดแชท) -->
+  <footer class="dock hidden" id="dock">
+    <div class="composer">
+      <button class="plus" title="เพิ่ม">+</button>
+      <input
+        type="text"
+        id="inputBottom"
+        class="ask"
+        placeholder="ถามอะไรก็ได้เกี่ยวกับรถ"
+        autocomplete="off"
+      />
+      <button class="mic" title="พูด" id="micBottom">🎤</button>
+      <button class="voice" id="voiceBottom"><span class="wave">▮▮▮</span> Voice</button>
+    </div>
+    <p class="disclaimer">ตอบจากฐานความรู้เรื่องรถยนต์ (retrieval-based) • เพื่อการศึกษา</p>
+  </footer>
+
+  <!-- โหลดฐานความรู้ -> ตัวค้นหา -> ตัวควบคุมหน้าจอ -->
+  <script src="data.js"></script>
+  <script src="retriever.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
