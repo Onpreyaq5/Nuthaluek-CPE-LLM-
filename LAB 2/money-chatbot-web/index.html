@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemini · ผู้เชี่ยวชาญการบริหารเงิน</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- แถบบนซ้าย -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="spark">✦</span>
+      <span class="brand-name">Gemini</span>
+      <span class="brand-sub">ผู้เชี่ยวชาญการบริหารเงิน</span>
+    </div>
+    <div class="avatar-me">ค</div>
+  </header>
+
+  <!-- หน้าจอหลัก -->
+  <main class="stage" id="stage">
+    <!-- มุมมองต้อนรับ (ตอนยังไม่มีข้อความ) -->
+    <section class="welcome" id="welcome">
+      <h1 class="greeting">สวัสดีครับ</h1>
+      <p class="subgreeting">วันนี้อยากวางแผนหรือปรึกษาเรื่องการเงินอะไรดี?</p>
+
+      <!-- ตัวอย่างการ์ดคำถาม (สไตล์ Gemini) -->
+      <div class="cards">
+        <button class="card">
+          <span class="card-text">กฎ 50/30/20 บริหารเงินอย่างไร</span>
+          <span class="card-icon">💰</span>
+        </button>
+        <button class="card">
+          <span class="card-text">เงินสำรองฉุกเฉินควรมีเท่าไหร่</span>
+          <span class="card-icon">🛟</span>
+        </button>
+        <button class="card">
+          <span class="card-text">ดอกเบี้ยทบต้นคืออะไร</span>
+          <span class="card-icon">📈</span>
+        </button>
+        <button class="card">
+          <span class="card-text">มีเงินน้อยเริ่มลงทุนยังไง</span>
+          <span class="card-icon">🌱</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- มุมมองแชท (โผล่เมื่อเริ่มคุย) -->
+    <section class="chat hidden" id="chat">
+      <div class="messages" id="messages"></div>
+    </section>
+  </main>
+
+  <!-- กล่องพิมพ์ด้านล่าง (สไตล์ Gemini) -->
+  <footer class="dock" id="dock">
+    <div class="composer">
+      <button class="plus" title="เพิ่ม">+</button>
+      <input
+        type="text"
+        id="inputBox"
+        class="ask"
+        placeholder="ถาม Gemini เรื่องการเงิน"
+        autocomplete="off"
+      />
+      <button class="mic" title="พูด" id="micBtn">🎤</button>
+      <button class="send" id="sendBtn" title="ส่ง">➤</button>
+    </div>
+    <p class="disclaimer">
+      ขับเคลื่อนด้วย Gemini · ตอบจากฐานความรู้การบริหารเงิน (retrieval-based) · เพื่อการศึกษา ไม่ใช่คำแนะนำการลงทุนรายบุคคล
+    </p>
+  </footer>
+
+  <!-- โหลดฐานความรู้ -> ตัวค้นหา -> ตัวควบคุมหน้าจอ -->
+  <script src="data.js"></script>
+  <script src="retriever.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
