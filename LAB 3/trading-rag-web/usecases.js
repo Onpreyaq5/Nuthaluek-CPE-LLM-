@@ -304,7 +304,11 @@ window.RagUseCases = (function () {
   }
 
   function line(x1, y1, x2, y2, dashed, label) {
-    var s = '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" ' +
+    // เส้นทึบใช้ class uc-line เพื่อให้วาดแบบเคลื่อนไหวได้
+    // ส่วนเส้นประ (ความสัมพันธ์ extend) ไม่ใส่ เพราะ stroke-dasharray ถูกใช้ทำลายประอยู่แล้ว
+    // ถ้าเอาไปทำแอนิเมชันด้วยจะทับกันจนลายประหายไป
+    var s = '<line class="' + (dashed ? 'uc-dash' : 'uc-line') + '" ' +
+            'x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" ' +
             'stroke="' + (dashed ? "#f0b429" : "#3a4d70") + '" stroke-width="1.4"' +
             (dashed ? ' stroke-dasharray="6 4" marker-end="url(#arrow)"' : '') + '/>';
     if (label) {

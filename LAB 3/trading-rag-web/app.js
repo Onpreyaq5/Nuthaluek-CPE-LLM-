@@ -14,16 +14,80 @@
   function pct(x) { return (x * 100).toFixed(1) + "%"; }
 
   /* =========================================================
+   *  ตัวช่วยด้านการเคลื่อนไหว (Motion helpers)
+   *
+   *  ทั้งหมดเช็ค REDUCED ก่อนเสมอ ถ้าผู้ใช้ตั้งค่าลดการเคลื่อนไหวไว้
+   *  จะข้ามไปแสดงผลลัพธ์สุดท้ายทันที ไม่ใช่แค่เล่นให้เร็วขึ้น
+   * ========================================================= */
+  var REDUCED = !!(window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  /* นับเลขไต่ขึ้นจนถึงค่าจริง ใช้กับสถิติและตัวชี้วัด
+   * ประโยชน์ไม่ใช่แค่สวย แต่ทำให้สายตาจับได้ว่าตัวเลขไหนเพิ่งเปลี่ยน */
+  function countUp(el, to, fmt, dur) {
+    if (!el) return;
+    if (REDUCED) { el.textContent = fmt(to); return; }
+    dur = dur || 850;
+    var start = null;
+    el.classList.add("counting");
+    function step(ts) {
+      if (start === null) start = ts;
+      var p = Math.min(1, (ts - start) / dur);
+      var eased = 1 - Math.pow(1 - p, 3);     // easeOutCubic: เร็วตอนต้น ช้าตอนจบ
+      el.textContent = fmt(to * eased);
+      if (p < 1) requestAnimationFrame(step);
+      else { el.textContent = fmt(to); el.classList.remove("counting"); }
+    }
+    requestAnimationFrame(step);
+  }
+
+  var fmtInt = function (v) { return Math.round(v).toLocaleString(); };
+  function fmtFixed(d, suffix) {
+    return function (v) { return v.toFixed(d) + (suffix || ""); };
+  }
+
+  /* ใส่ลำดับให้แต่ละชิ้น เพื่อให้ CSS หน่วงเวลาไล่เข้าทีละชิ้นได้ */
+  function setStagger(nodes) {
+    for (var i = 0; i < nodes.length; i++) nodes[i].style.setProperty("--i", i);
+  }
+
+  /* เตรียมแผนภาพ SVG ให้พร้อมทำแอนิเมชัน
+   * ต้องวัดความยาวเส้นจริงด้วย getTotalLength() เพราะ stroke-dasharray
+   * ต้องรู้ความยาวที่แน่นอน ถึงจะซ่อนเส้นได้สนิทก่อนเริ่มวาด
+   * ค่าที่เดาไว้ตายตัวจะทำให้เส้นสั้นโผล่มาก่อน หรือเส้นยาววาดไม่จบ */
+  function prepareSvg(host, edgeSel, nodeSel) {
+    if (!host) return;
+    var edges = host.querySelectorAll(edgeSel);
+    for (var i = 0; i < edges.length; i++) {
+      var len = 300;
+      try { len = Math.ceil(edges[i].getTotalLength()) || 300; } catch (e) { /* เบราว์เซอร์เก่า */ }
+      edges[i].style.setProperty("--len", len);
+      edges[i].style.setProperty("--i", i);
+    }
+    setStagger(host.querySelectorAll(nodeSel));
+  }
+
+  /* เล่นแอนิเมชันเข้าใหม่อีกครั้ง ใช้ตอนสลับแท็บ
+   * ต้องสั่ง animation:none แล้วอ่าน offsetHeight เพื่อบังคับให้เบราว์เซอร์
+   * คำนวณผังใหม่ ไม่งั้นการลบแล้วใส่คลาสกลับในเฟรมเดียวกันจะไม่มีผล */
+  function replayIn(scope) {
+    if (REDUCED || !scope) return;
+    var els = scope.querySelectorAll(".stagger-in, .stage-card, .mm-node, .mm-edge, .uc-oval, .uc-actor, .uc-line, .uc-dash");
+    for (var i = 0; i < els.length; i++) {
+      els[i].style.animation = "none";
+      void els[i].offsetHeight;
+      els[i].style.animation = "";
+    }
+  }
+
+  /* =========================================================
    *  เริ่มต้นระบบ
    * ========================================================= */
   function init() {
     loadSavedConfig();
 
     var build = window.RagPipeline.buildIndex();
-    $("statDocs").textContent = build.docs;
-    $("statChunks").textContent = build.chunkStats.count;
-    $("statVocab").textContent = build.indexStats.vocabulary.toLocaleString();
-    $("statTime").textContent = build.timing.total + " ms";
+    showStats(build);
 
     bindTabs();
     bindChat();
@@ -52,8 +116,12 @@
         this.classList.add("active");
         var panels = document.querySelectorAll(".panel");
         for (var k = 0; k < panels.length; k++) panels[k].classList.remove("active");
-        $("panel-" + name).classList.add("active");
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        var panel = $("panel-" + name);
+        panel.classList.add("active");
+        // เล่นแอนิเมชันเข้าใหม่ทุกครั้งที่สลับมา เพื่อให้รู้สึกว่าเป็นการ "เปลี่ยนหน้า"
+        // ไม่ใช่แค่เนื้อหาเปลี่ยนไปเฉย ๆ
+        replayIn(panel);
+        window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" });
       });
     }
   }
@@ -175,7 +243,8 @@
       if (seen[c.docId]) continue;
       seen[c.docId] = true; n++;
       var used = n <= window.RAG_CONFIG.TOP_K_CONTEXT && !res.info.refused;
-      html += '<div class="source-item" style="border-left-color:' + (used ? "var(--up)" : "var(--line)") + '">' +
+      html += '<div class="source-item stagger-in" style="--i:' + (n - 1) +
+        ';border-left-color:' + (used ? "var(--up)" : "var(--line)") + '">' +
         '<div class="sid">[' + esc(c.docId) + ']' + (used ? " · ใช้ตอบ" : "") + '</div>' +
         '<div class="sq">' + esc(c.q) + '</div>' +
         '<div class="smeta"><span>' + esc(c.cat) + '</span><span>·</span><span>' + esc(c.level) + '</span>' +
@@ -246,7 +315,7 @@
 
     for (var i = 0; i < res.trace.stages.length; i++) {
       var st = res.trace.stages[i];
-      html += '<div class="stage-card">' +
+      html += '<div class="stage-card" style="--i:' + i + '">' +
         '<div class="stage-head"><div class="stage-title">' +
         '<span class="stage-no">' + st.no + '</span>' + esc(st.name) + '</div>' +
         '<span class="stage-ms">' + st.ms + ' ms</span></div>' +
@@ -261,7 +330,7 @@
 
     // ตารางผลลัพธ์
     if (res.results.length) {
-      html += '<div class="stage-card"><div class="stage-head"><div class="stage-title">' +
+      html += '<div class="stage-card" style="--i:4"><div class="stage-head"><div class="stage-title">' +
         '<span class="stage-no">5</span>ผลการค้นหาหลังจัดอันดับ</div></div><div class="table-wrap"><table class="data">' +
         '<tr><th>อันดับ</th><th>รหัส</th><th>คำถามในเอกสาร</th><th>หมวด</th>' +
         '<th class="num">ก่อน</th><th class="num">หลัง</th><th class="num">คะแนน</th></tr>';
@@ -296,14 +365,17 @@
 
     for (var i = 0; i < ps.length; i++) {
       var p = ps[i];
-      html += '<div class="problem-card" data-idx="' + i + '">' +
+      html += '<div class="problem-card stagger-in" data-idx="' + i + '" style="--i:' + i + '">' +
         '<div class="problem-head">' +
           '<div class="problem-no">' + p.no + '</div>' +
           '<div class="problem-titlebox"><h3>' + esc(p.title) + '</h3>' +
           '<span class="problem-stage">' + esc(p.stage) + '</span></div>' +
           '<div class="problem-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>' +
         '</div>' +
-        '<div class="problem-body">' +
+        // pb-inner / pb-pad คือโครงที่ทำให้ accordion ยืด-หดได้นุ่มนวล
+        // pb-inner ทำหน้าที่ตัดส่วนเกิน ส่วน pb-pad เก็บ padding ไว้
+        // ถ้าใส่ padding ที่ problem-body โดยตรง จะเห็นขอบโผล่ตอนหุบ
+        '<div class="problem-body"><div class="pb-inner"><div class="pb-pad">' +
           block("l-symptom", "อาการที่พบ", p.symptom) +
           block("l-cause", "สาเหตุของปัญหา", p.cause) +
           block("l-detect", "วิธีตรวจสอบ", p.detect) +
@@ -321,7 +393,7 @@
             '</div>' +
             '<div class="demo-out" id="demoOut' + i + '"></div>' +
           '</div>' +
-        '</div>' +
+        '</div></div></div>' +
       '</div>';
     }
     host.innerHTML = html;
@@ -372,7 +444,7 @@
     var html = "";
     for (var i = 0; i < list.length; i++) {
       var it = list[i];
-      html += '<div class="rank-row' + (i === 0 ? " hit" : "") + '">' +
+      html += '<div class="rank-row' + (i === 0 ? " hit" : "") + '" style="--i:' + i + '">' +
         '<span class="rank-n">' + (i + 1) + '</span>' +
         '<span class="rank-id">' + esc(it.docId) + '</span>' +
         '<span class="rank-q">' + esc(it.q) + '</span>' +
@@ -384,7 +456,7 @@
   function kvRows(list) {
     var html = "";
     for (var i = 0; i < list.length; i++) {
-      html += '<div class="rank-row"><span class="rank-q" style="flex:0 0 auto;color:var(--text-faint)">' +
+      html += '<div class="rank-row" style="--i:' + i + '"><span class="rank-q" style="flex:0 0 auto;color:var(--text-faint)">' +
         esc(list[i].name) + '</span><span class="rank-q" style="text-align:right">' +
         esc(list[i].value) + '</span></div>';
     }
@@ -485,11 +557,11 @@
     var baseline = rows[0].result;
 
     var html = '<div class="metric-cards">' +
-      metricCard(pct(best.k[1].hit), "Hit@1", "คำถามที่เอกสารถูกต้องมาเป็นอันดับหนึ่ง") +
-      metricCard(pct(best.k[3].hit), "Hit@3", "ติดใน 3 อันดับแรกที่ใช้สร้างคำตอบ") +
-      metricCard(best.mrr.toFixed(3), "MRR", "ค่าเฉลี่ยของส่วนกลับของอันดับที่เจอ") +
-      metricCard(best.k[5].ndcg.toFixed(3), "nDCG@5", "ให้น้ำหนักอันดับต้นมากกว่า") +
-      metricCard(total, "คำถามทดสอบ", "จากคำถามสำรองของทุกเอกสาร") +
+      metricCard(pct(best.k[1].hit), "Hit@1", "คำถามที่เอกสารถูกต้องมาเป็นอันดับหนึ่ง", best.k[1].hit * 100, 1, "%") +
+      metricCard(pct(best.k[3].hit), "Hit@3", "ติดใน 3 อันดับแรกที่ใช้สร้างคำตอบ", best.k[3].hit * 100, 1, "%") +
+      metricCard(best.mrr.toFixed(3), "MRR", "ค่าเฉลี่ยของส่วนกลับของอันดับที่เจอ", best.mrr, 3, "") +
+      metricCard(best.k[5].ndcg.toFixed(3), "nDCG@5", "ให้น้ำหนักอันดับต้นมากกว่า", best.k[5].ndcg, 3, "") +
+      metricCard(total, "คำถามทดสอบ", "จากคำถามสำรองชุดที่กันไว้ ไม่เคยเข้าดัชนี", total, 0, "") +
       '</div>';
 
     html += '<div class="stage-card"><div class="stage-head"><div class="stage-title">' +
@@ -518,7 +590,7 @@
       '<span class="stage-no">2</span>กราฟเปรียบเทียบ Hit@3</div></div><div class="bar-chart">';
     for (var j = 0; j < rows.length; j++) {
       var v = rows[j].result.k[3].hit;
-      html += '<div class="bar-item"><span class="bname">' + esc(rows[j].name) + '</span>' +
+      html += '<div class="bar-item stagger-in" style="--i:' + j + '"><span class="bname">' + esc(rows[j].name) + '</span>' +
         '<div class="bar-track"><div class="bar-fill" style="width:' + (v * 100).toFixed(1) + '%"></div></div>' +
         '<span class="bval">' + pct(v) + '</span></div>';
     }
@@ -550,11 +622,31 @@
     }
 
     $("evalResult").innerHTML = html;
+    runCounters($("evalResult"));
+    setStagger($("evalResult").querySelectorAll(".bar-item"));
   }
 
-  function metricCard(v, l, h) {
-    return '<div class="metric-card"><div class="mv">' + esc(v) + '</div>' +
+  /* การ์ดตัวชี้วัด
+   * num / dec / suffix เป็นค่าสำหรับนับไต่ขึ้น ส่วน v คือข้อความสำเร็จรูป
+   * ที่จะแสดงทันทีถ้าผู้ใช้ปิดแอนิเมชันไว้ จึงต้องใส่ทั้งสองอย่างเสมอ */
+  function metricCard(v, l, h, num, dec, suffix) {
+    var attrs = (num != null)
+      ? ' data-to="' + num + '" data-dec="' + dec + '" data-suffix="' + esc(suffix || "") + '"'
+      : "";
+    return '<div class="metric-card stagger-in"><div class="mv"' + attrs + '>' + esc(v) + '</div>' +
            '<div class="ml">' + esc(l) + '</div><div class="mh">' + esc(h) + '</div></div>';
+  }
+
+  /* สั่งให้ทุกตัวเลขในขอบเขตที่กำหนดนับไต่ขึ้น */
+  function runCounters(scope) {
+    var els = scope.querySelectorAll(".mv[data-to]");
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var to = parseFloat(el.getAttribute("data-to"));
+      var dec = parseInt(el.getAttribute("data-dec"), 10) || 0;
+      var suffix = el.getAttribute("data-suffix") || "";
+      countUp(el, to, fmtFixed(dec, suffix), 900);
+    }
   }
 
   function runChunkStudy() {
@@ -608,6 +700,9 @@
   function renderMindmap(key) {
     var m = window.RagMindmap.build(key);
     $("mindmapHost").innerHTML = m.svg;
+    // ต้องเรียกหลังใส่ SVG ลง DOM แล้วเท่านั้น
+    // เพราะ getTotalLength() จะทำงานได้ก็ต่อเมื่อ element ถูก render จริง
+    prepareSvg($("mindmapHost"), ".mm-edge", ".mm-node");
     var legend = '<span style="color:var(--text)"><b>' + esc(m.title) + '</b></span>';
     for (var i = 0; i < m.branches.length; i++) {
       legend += '<span><i style="background:' + window.RagMindmap.COLORS[i % window.RagMindmap.COLORS.length] +
@@ -633,6 +728,7 @@
    * ========================================================= */
   function renderUseCases() {
     $("usecaseDiagram").innerHTML = window.RagUseCases.buildDiagram();
+    prepareSvg($("usecaseDiagram"), ".uc-line", ".uc-oval, .uc-actor");
 
     var host = $("usecaseList");
     var ucs = window.RagUseCases.USECASES;
@@ -640,11 +736,11 @@
 
     for (var i = 0; i < ucs.length; i++) {
       var u = ucs[i];
-      html += '<div class="uc-card">' +
+      html += '<div class="uc-card stagger-in" style="--i:' + i + '">' +
         '<div class="uc-head"><span class="uc-id">' + esc(u.id) + '</span>' +
         '<h3>' + esc(u.name) + '</h3>' +
         '<div class="problem-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>' +
-        '<div class="uc-body"><div class="uc-meta">' +
+        '<div class="uc-body"><div class="uc-inner"><div class="pb-pad"><div class="uc-meta">' +
           kvBox("ผู้กระทำ (Actor)", u.actor) +
           kvBox("เป้าหมาย", u.goal) +
           kvBox("ความสำคัญ", u.priority) +
@@ -660,7 +756,8 @@
 
       html += '<div class="pblock"><div class="plabel l-code"><i></i>ตำแหน่งใน Source Code</div>' +
               '<code class="code-ref">' + esc(u.code) + '</code></div>';
-      html += '</div></div>';
+      html += '</div></div></div>';   // ปิด pb-pad, uc-inner, uc-body
+      html += '</div>';               // ปิด uc-card
     }
     host.innerHTML = html;
 
@@ -818,11 +915,17 @@
   }
 
   function rebuild() {
-    var b = window.RagPipeline.buildIndex();
-    $("statDocs").textContent = b.docs;
-    $("statChunks").textContent = b.chunkStats.count;
-    $("statVocab").textContent = b.indexStats.vocabulary.toLocaleString();
-    $("statTime").textContent = b.timing.total + " ms";
+    showStats(window.RagPipeline.buildIndex());
+  }
+
+  /* แสดงสถิติที่แถบบนแบบนับไต่ขึ้น
+   * ใช้ที่เดียวทั้งตอนเปิดเว็บและตอนสร้างดัชนีใหม่
+   * ทำให้เห็นชัดว่าการเปลี่ยนค่าคอนฟิกส่งผลต่อจำนวน chunk และคลังคำจริง */
+  function showStats(b) {
+    countUp($("statDocs"), b.docs, fmtInt, 700);
+    countUp($("statChunks"), b.chunkStats.count, fmtInt, 850);
+    countUp($("statVocab"), b.indexStats.vocabulary, fmtInt, 1000);
+    countUp($("statTime"), b.timing.total, fmtFixed(1, " ms"), 700);
   }
 
   function syncFilterUI() {

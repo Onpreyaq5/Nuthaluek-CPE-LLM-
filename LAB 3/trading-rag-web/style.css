@@ -29,6 +29,16 @@
   --radius-sm:10px;
   --shadow:0 10px 34px rgba(0,0,0,.44);
   --mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+
+  /* ---- จังหวะการเคลื่อนไหว (Motion) ----
+   * รวมค่าไว้ที่เดียว เพื่อให้ทุกส่วนของระบบเคลื่อนไหวด้วยจังหวะเดียวกัน
+   * ถ้าไม่รวมไว้ แต่ละที่จะใช้ค่าต่างกันจนหน้าเว็บดูไม่เป็นชุดเดียวกัน */
+  --ease-out:cubic-bezier(.22,.61,.36,1);    /* ออกตัวเร็ว จบนุ่ม ใช้กับของที่เข้ามาในจอ */
+  --ease-spring:cubic-bezier(.34,1.3,.64,1); /* เด้งเล็กน้อยตอนจบ ใช้กับปุ่มและไอคอน */
+  --t-fast:.16s;
+  --t-base:.28s;
+  --t-slow:.45s;
+  --stagger:38ms;                            /* ระยะห่างของการไล่เข้าทีละชิ้น */
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -89,19 +99,34 @@ body::before{
 }
 .tabs::-webkit-scrollbar{height:0}
 .tab{
+  position:relative;
   display:flex;align-items:center;gap:7px;white-space:nowrap;
-  background:none;border:none;border-bottom:2px solid transparent;
+  background:none;border:none;
   color:var(--text-dim);font-family:inherit;font-size:14px;font-weight:500;
-  padding:14px 15px;cursor:pointer;transition:.18s;
+  padding:14px 15px;cursor:pointer;
+  transition:color var(--t-fast) ease,background var(--t-fast) ease;
 }
-.tab svg{width:16px;height:16px;flex-shrink:0}
+/* ขีดใต้แท็บที่ยืดออกจากกึ่งกลาง แทนการเปลี่ยนสี border แบบทันที */
+.tab::after{
+  content:"";position:absolute;left:12px;right:12px;bottom:0;height:2px;
+  background:var(--up);border-radius:2px;
+  transform:scaleX(0);transform-origin:center;
+  transition:transform var(--t-base) var(--ease-out);
+}
+.tab svg{width:16px;height:16px;flex-shrink:0;transition:transform var(--t-base) var(--ease-spring)}
 .tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
-.tab.active{color:var(--up);border-bottom-color:var(--up)}
+.tab:hover svg{transform:translateY(-1px) scale(1.08)}
+.tab.active{color:var(--up)}
+.tab.active::after{transform:scaleX(1)}
 
 /* ---------------- LAYOUT ---------------- */
 .app-main{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:26px 26px 60px}
-.panel{display:none;animation:fade .3s ease}
-.panel.active{display:block}
+.panel{display:none}
+.panel.active{display:block;animation:panelIn .42s var(--ease-out) both}
+@keyframes panelIn{
+  from{opacity:0;transform:translateY(14px) scale(.995)}
+  to{opacity:1;transform:none}
+}
 @keyframes fade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 
 .section-head{margin-bottom:20px}
@@ -122,7 +147,21 @@ body::before{
 .chat-box::-webkit-scrollbar{width:8px}
 .chat-box::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
 
-.msg{display:flex;gap:12px;animation:fade .26s ease}
+/* ข้อความแชทเลื่อนเข้ามาจากฝั่งของผู้พูด
+ * ของผู้ใช้มาจากขวา ของบอทมาจากซ้าย ทำให้อ่านออกทันทีว่าใครพูด
+ * โดยไม่ต้องรอดูสีหรือชื่อ */
+.msg{display:flex;gap:12px;animation:msgInLeft .4s var(--ease-out) backwards}
+.msg.user{animation-name:msgInRight}
+@keyframes msgInLeft{
+  from{opacity:0;transform:translate3d(-16px,8px,0)}
+  to{opacity:1;transform:none}
+}
+@keyframes msgInRight{
+  from{opacity:0;transform:translate3d(16px,8px,0)}
+  to{opacity:1;transform:none}
+}
+.msg-avatar{transition:transform var(--t-base) var(--ease-spring)}
+.msg:hover .msg-avatar{transform:scale(1.08) rotate(-4deg)}
 .msg-avatar{
   width:34px;height:34px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;
   background:linear-gradient(140deg,var(--up),#12a4b8);color:#04120c;
@@ -286,8 +325,22 @@ body::before{
 .problem-caret svg{width:18px;height:18px;display:block}
 .problem-card.open .problem-caret{transform:rotate(180deg);color:var(--up)}
 
-.problem-body{display:none;padding:0 18px 18px;border-top:1px solid var(--line-soft)}
-.problem-card.open .problem-body{display:block}
+/* Accordion ที่ยืด-หดได้จริง
+ * ใช้เทคนิค grid-template-rows 0fr -> 1fr ซึ่งเป็นวิธีเดียวที่ทำให้
+ * เนื้อหา "ความสูงไม่แน่นอน" ยืดได้อย่างนุ่มนวลโดยไม่ต้องวัดความสูงด้วย JS
+ * (max-height ต้องเดาค่าไว้ล่วงหน้า ถ้าเดาน้อยไปเนื้อหาจะโดนตัด ถ้าเดามากไปจังหวะจะเพี้ยน)
+ * ลูกชั้นในต้องมี overflow:hidden และ min-height:0 ไม่งั้นเนื้อหาจะล้นออกมาตอนหุบ */
+.problem-body{
+  display:grid;grid-template-rows:0fr;
+  transition:grid-template-rows var(--t-slow) var(--ease-out);
+}
+.problem-card.open .problem-body{grid-template-rows:1fr}
+.pb-inner{
+  overflow:hidden;min-height:0;
+  opacity:0;transition:opacity var(--t-base) ease .06s;
+}
+.problem-card.open .pb-inner{opacity:1}
+.pb-pad{padding:0 18px 18px;border-top:1px solid var(--line-soft)}
 
 .pblock{margin-top:14px}
 .pblock .plabel{
@@ -415,8 +468,13 @@ table.data tr.best .num{color:var(--up);font-weight:600}
 .uc-id{font-family:var(--mono);font-size:11.5px;background:var(--purple-soft);color:var(--purple);
   border:1px solid rgba(167,139,250,.3);padding:4px 10px;border-radius:7px;flex-shrink:0}
 .uc-head h3{flex:1;font-size:15px;font-weight:600}
-.uc-body{display:none;padding:0 18px 18px;border-top:1px solid var(--line-soft)}
-.uc-card.open .uc-body{display:block}
+.uc-body{
+  display:grid;grid-template-rows:0fr;
+  transition:grid-template-rows var(--t-slow) var(--ease-out);
+}
+.uc-card.open .uc-body{grid-template-rows:1fr}
+.uc-inner{overflow:hidden;min-height:0;opacity:0;transition:opacity var(--t-base) ease .06s}
+.uc-card.open .uc-inner{opacity:1}
 .uc-card.open .problem-caret{transform:rotate(180deg);color:var(--up)}
 .uc-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:9px;margin-top:14px}
 .uc-flow{margin-top:15px}
@@ -461,7 +519,180 @@ table.data tr.best .num{color:var(--up);font-weight:600}
 .dot{margin:0 7px;opacity:.5}
 .footer-warn{color:var(--gold)}
 
-/* ---------------- RESPONSIVE ---------------- */
+/* =============================================================
+ *  TRANSITIONS — การเคลื่อนไหวของทั้งระบบ
+ *
+ *  หลักที่ใช้
+ *   1. การเคลื่อนไหวต้องสื่อความหมาย ไม่ใช่ตกแต่งเฉย ๆ
+ *      เช่น ข้อความแชทเลื่อนมาจากฝั่งของผู้พูด การ์ดไล่เข้าตามลำดับที่ควรอ่าน
+ *   2. ใช้เฉพาะ transform กับ opacity เพราะสองอย่างนี้เบราว์เซอร์ทำบน GPU ได้
+ *      การขยับ width/height/top จะทำให้เบราว์เซอร์คำนวณผังหน้าใหม่ทุกเฟรมจนกระตุก
+ *   3. ของที่เข้ามาในจอเคลื่อนไหวไม่เกิน .45s ถ้านานกว่านี้จะรู้สึกว่าเว็บช้า
+ * ============================================================= */
+
+/* ---------- การไล่เข้าทีละชิ้น (Stagger) ---------- *
+ * JS จะใส่ค่า --i ให้แต่ละชิ้นตามลำดับ แล้วคูณกับ --stagger เป็นเวลาหน่วง
+ * ผลคือสายตาถูกนำไปตามลำดับที่ควรอ่าน แทนที่ทุกอย่างจะโผล่พร้อมกัน
+ * จำกัดการหน่วงสูงสุดไว้ ไม่ให้รายการยาว ๆ ต้องรอนานเกินไป */
+.stagger-in{
+  /* backwards ไม่ใช่ both : ให้สถานะเริ่มต้นถูกใช้ระหว่างรอ delay
+   * แต่พอเล่นจบแล้วปล่อยคืนให้ CSS ปกติคุม ไม่งั้น transform จากคีย์เฟรม
+   * จะล็อกทับจนเอฟเฟกต์ hover ของการ์ดใช้ไม่ได้เลย */
+  animation:staggerIn .48s var(--ease-out) backwards;
+  animation-delay:calc(min(var(--i,0), 14) * var(--stagger));
+}
+@keyframes staggerIn{
+  from{opacity:0;transform:translate3d(0,16px,0)}
+  to{opacity:1;transform:none}
+}
+
+/* ---------- การ์ดต่าง ๆ ---------- */
+.problem-card,.uc-card,.metric-card,.stage-card,.side-card,.set-group{
+  transition:border-color var(--t-base) ease,
+             transform var(--t-base) var(--ease-out),
+             box-shadow var(--t-base) ease;
+}
+.metric-card:hover,.stage-card:hover{
+  transform:translateY(-3px);
+  border-color:rgba(34,201,138,.3);
+  box-shadow:0 10px 26px rgba(0,0,0,.3);
+}
+.problem-card:hover:not(.open),.uc-card:hover:not(.open){transform:translateY(-2px)}
+.problem-head,.uc-head{transition:background var(--t-fast) ease}
+.problem-head:hover,.uc-head:hover{background:rgba(255,255,255,.025)}
+.problem-no{transition:background var(--t-base) ease,color var(--t-base) ease,
+            border-color var(--t-base) ease,transform var(--t-base) var(--ease-spring)}
+.problem-card.open .problem-no{transform:scale(1.06)}
+
+/* ---------- แถบคะแนนในรายการเอกสาร ---------- *
+ * ยืดจาก 0 ไปหาค่าจริง ทำให้เห็นว่าเอกสารไหนคะแนนนำห่างแค่ไหน */
+.source-item{transition:border-color var(--t-base) ease,transform var(--t-fast) ease}
+.source-item:hover{transform:translateX(3px)}
+.source-item .bar i{
+  transform-origin:left center;
+  animation:barGrow .7s var(--ease-out) backwards;
+  animation-delay:calc(min(var(--i,0), 14) * var(--stagger) + .1s);
+}
+@keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* ---------- ปุ่ม ---------- */
+.btn,.suggest,.composer button,.seg{
+  transition:background var(--t-fast) ease,border-color var(--t-fast) ease,
+             color var(--t-fast) ease,transform var(--t-fast) var(--ease-spring),
+             box-shadow var(--t-fast) ease;
+}
+.btn:active:not(:disabled),
+.suggest:active,
+.seg:active{transform:scale(.96)}
+.composer button:active:not(:disabled){transform:scale(.92)}
+.btn.primary:disabled{animation:pulseWait 1.4s ease-in-out infinite}
+@keyframes pulseWait{0%,100%{opacity:.5}50%{opacity:.78}}
+
+/* ---------- แถบเลือกใน Mind Map ---------- */
+.seg{position:relative}
+.seg::before{
+  content:"";position:absolute;inset:0;border-radius:8px;
+  background:var(--up-soft);opacity:0;transform:scale(.9);
+  transition:opacity var(--t-base) ease,transform var(--t-base) var(--ease-out);
+  z-index:-1;
+}
+.seg.active::before{opacity:1;transform:scale(1)}
+
+/* ---------- ผลการทดลองในหน้าปัญหา ---------- *
+ * กล่องซ้ายขวาเลื่อนเข้าหากัน สื่อว่าเป็นการ "เปรียบเทียบ" ไม่ใช่รายการสองชิ้น */
+.cmp-box{animation:cmpIn .5s var(--ease-out) backwards}
+.cmp-box.before{animation-name:cmpInLeft}
+.cmp-box.after{animation-name:cmpInRight;animation-delay:.09s}
+@keyframes cmpIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes cmpInLeft{from{opacity:0;transform:translate3d(-22px,0,0)}to{opacity:1;transform:none}}
+@keyframes cmpInRight{from{opacity:0;transform:translate3d(22px,0,0)}to{opacity:1;transform:none}}
+.verdict{animation:staggerIn .5s var(--ease-out) backwards;animation-delay:.22s}
+
+/* แถวผลลัพธ์ในกล่องเปรียบเทียบ ไล่เข้าทีละแถว */
+.rank-row{animation:rowIn .38s var(--ease-out) backwards;
+          animation-delay:calc(min(var(--i,0), 10) * 45ms + .12s)}
+@keyframes rowIn{from{opacity:0;transform:translate3d(-10px,0,0)}to{opacity:1;transform:none}}
+.rank-row{transition:background var(--t-fast) ease}
+.rank-row:hover{background:rgba(255,255,255,.028)}
+
+/* ---------- ตาราง ---------- */
+table.data tr{transition:background var(--t-fast) ease}
+table.data tbody tr:hover,table.data tr:hover{background:rgba(255,255,255,.03)}
+.table-wrap{animation:staggerIn .45s var(--ease-out) backwards}
+
+/* ---------- หน้าประเมินผล ---------- */
+.bar-fill{transform-origin:left center}
+.metric-card .mv{transition:color var(--t-base) ease}
+
+/* ---------- Mind Map และ Use Case Diagram ---------- *
+ * เส้นเชื่อมถูกวาดทีละเส้นด้วยเทคนิค stroke-dashoffset
+ * ทำให้เห็น "ทิศทางการไหล" ของแผนภาพ ว่าอะไรแตกมาจากอะไร
+ * ค่า --len คือความยาวเส้นจริง ซึ่ง JS วัดด้วย getTotalLength() หลังวาดเสร็จ */
+.mm-edge,.uc-line{
+  stroke-dasharray:var(--len,300);
+  stroke-dashoffset:var(--len,300);
+  animation:drawLine .85s var(--ease-out) both;
+  animation-delay:calc(min(var(--i,0), 18) * 26ms);
+}
+@keyframes drawLine{to{stroke-dashoffset:0}}
+
+/* เส้นประของความสัมพันธ์ extend ใช้ fade แทนการวาดเส้น
+ * เพราะ stroke-dasharray ถูกใช้ทำลายประไปแล้ว ถ้าเอาไปทำแอนิเมชันซ้ำลายจะหาย */
+.uc-dash{animation:dashFade .5s ease backwards;animation-delay:.62s}
+@keyframes dashFade{from{opacity:0}to{opacity:1}}
+
+.mm-node,.uc-oval,.uc-actor{
+  animation:svgIn .5s var(--ease-out) backwards;
+  animation-delay:calc(min(var(--i,0), 22) * 24ms + .18s);
+}
+@keyframes svgIn{
+  from{opacity:0;transform:translateX(-12px)}
+  to{opacity:1;transform:none}
+}
+.uc-oval,.uc-actor{animation-name:svgPop}
+@keyframes svgPop{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:none}
+}
+.mm-node rect{transition:filter var(--t-fast) ease,stroke-width var(--t-fast) ease}
+.mm-node:hover rect{filter:brightness(1.22);stroke-width:2.4}
+.uc-oval ellipse{transition:filter var(--t-fast) ease}
+.uc-oval:hover ellipse{filter:brightness(1.3)}
+
+/* ---------- Pipeline ---------- */
+.stage-card{animation:staggerIn .5s var(--ease-out) backwards;
+            animation-delay:calc(min(var(--i,0), 8) * 70ms)}
+.stage-card::before{
+  transform-origin:top center;
+  animation:barGrowY .55s var(--ease-out) backwards;
+  animation-delay:calc(min(var(--i,0), 8) * 70ms + .1s);
+}
+@keyframes barGrowY{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.kv{transition:border-color var(--t-fast) ease,transform var(--t-fast) ease}
+.kv:hover{border-color:rgba(77,148,255,.3);transform:translateY(-1px)}
+
+/* ---------- สวิตช์ในหน้าตั้งค่า ---------- */
+.slider{transition:background var(--t-base) ease,border-color var(--t-base) ease}
+.slider::before{transition:transform var(--t-base) var(--ease-spring),background var(--t-base) ease}
+
+/* ---------- กล่องพิมพ์และช่องกรอก ---------- */
+.composer input,.inspect-bar input,.field select,.field input,
+.set-row input,.set-row select,.inline-field select{
+  transition:border-color var(--t-fast) ease,box-shadow var(--t-fast) ease,
+             background var(--t-fast) ease;
+}
+
+/* ---------- สถิติที่แถบบน ---------- */
+.stat{transition:transform var(--t-base) var(--ease-out),border-color var(--t-base) ease}
+.stat:hover{transform:translateY(-2px);border-color:rgba(34,201,138,.35)}
+.stat-value{transition:color var(--t-base) ease}
+.stat-value.counting{color:var(--gold)}
+
+/* ---------- โลโก้ ---------- */
+.brand-mark{transition:transform var(--t-base) var(--ease-spring),box-shadow var(--t-base) ease}
+.brand:hover .brand-mark{transform:rotate(-8deg) scale(1.06);box-shadow:0 8px 26px rgba(34,201,138,.5)}
+
+/* ---------- RESPONSIVE ---------- */
 @media (max-width:980px){
   .chat-layout{grid-template-columns:1fr}
   .source-col{position:static}
@@ -477,4 +708,27 @@ table.data tr.best .num{color:var(--up);font-weight:600}
   .stat{min-width:70px;padding:6px 10px}
   .section-head h2{font-size:19px}
   .app-footer{padding:16px}
+}
+
+/* =============================================================
+ *  เคารพการตั้งค่าของผู้ใช้ที่ขอลดการเคลื่อนไหว
+ *
+ *  ผู้ใช้บางกลุ่มตั้งค่า "ลดการเคลื่อนไหว" ไว้ในระบบปฏิบัติการ
+ *  เพราะแอนิเมชันทำให้เวียนหัวหรือคลื่นไส้ (vestibular disorder)
+ *  เว็บที่ไม่เคารพค่านี้จะใช้งานไม่ได้เลยสำหรับคนกลุ่มนั้น
+ *
+ *  เราไม่ได้ปิดทุกอย่างทิ้ง แต่ยุบให้สั้นมากจนแทบไม่รู้สึก
+ *  เพื่อให้สถานะของ accordion และแท็บยังเปลี่ยนได้ถูกต้องอยู่
+ * ============================================================= */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;
+    animation-delay:0ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+  /* accordion ยังต้องเปลี่ยนสถานะได้ แค่ไม่ต้องเห็นการยืด */
+  .problem-body,.uc-body{transition:none}
+  .pb-inner,.uc-inner{transition:none}
 }

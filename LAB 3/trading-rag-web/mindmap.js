@@ -332,7 +332,9 @@ window.RagMindmap = (function () {
           var cg = GEO[Math.min(c.depth, GEO.length - 1)];
           var x1 = x + w, y1 = node.y, x2 = cg.x, y2 = c.y;
           var mx = (x1 + x2) / 2;
-          edges += '<path d="M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 +
+          // class mm-edge ใช้สำหรับแอนิเมชันวาดเส้น (ดู style.css)
+          // app.js จะวัดความยาวจริงของเส้นด้วย getTotalLength() แล้วส่งเข้ามาเป็นตัวแปร --len
+          edges += '<path class="mm-edge" d="M' + x1 + ' ' + y1 + ' C' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 +
                    ', ' + x2 + ' ' + y2 + '" fill="none" stroke="' + (c.color || color) +
                    '" stroke-width="' + (c.depth <= 2 ? 1.8 : 1.2) + '" opacity="' +
                    (c.depth <= 2 ? .65 : .4) + '"/>';
