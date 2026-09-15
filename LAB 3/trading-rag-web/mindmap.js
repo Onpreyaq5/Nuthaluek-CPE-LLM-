@@ -7,7 +7,7 @@
 
 window.RagMindmap = (function () {
 
-  var COLORS = ["#22c98a", "#4d94ff", "#f0b429", "#a78bfa", "#f4576f", "#2dd4bf"];
+  var COLORS = ["#d5ff3f", "#b8c3d1", "#e2c47e", "#c5b8dc", "#e59a9a", "#a9c9b2"];
 
   /* ---------- ข้อมูลแผนที่ ---------- */
   var MAPS = {
@@ -314,14 +314,14 @@ window.RagMindmap = (function () {
         for (var n = 0; n < branchNodes.length; n++) branchNodes[n].color = color;
       }
     }
-    root.color = "#e6edf8";
+    root.color = "#f2f2ef";
 
     var edges = "", nodes = "";
 
     function draw(node) {
       var g = GEO[Math.min(node.depth, GEO.length - 1)];
       var x = g.x, w = g.w, h = node.h, y = node.y - h / 2;
-      var color = node.color || "#22c98a";
+      var color = node.color || "#d5ff3f";
       var isRoot = node.depth === 0;
       var isBranch = node.depth === 1;
 
@@ -342,8 +342,8 @@ window.RagMindmap = (function () {
         }
       }
 
-      var fill = isRoot ? "#1a2740" : (isBranch ? color + "26" : (node.depth === 2 ? color + "18" : "#131d31"));
-      var stroke = isRoot ? "#e6edf8" : color;
+      var fill = isRoot ? "#27292b" : (isBranch ? color + "26" : (node.depth === 2 ? color + "18" : "#1c1d1f"));
+      var stroke = isRoot ? "#f2f2ef" : color;
       var sw = isRoot ? 2 : (isBranch ? 1.7 : 1.1);
       var op = node.depth >= 3 ? .55 : 1;
 
@@ -354,7 +354,7 @@ window.RagMindmap = (function () {
       for (var k = 0; k < node.lines.length; k++) {
         var ty = y + 15 + k * 16;
         nodes += '<text x="' + (x + 11) + '" y="' + ty + '" font-size="' + g.size +
-                 '" fill="' + (isRoot || isBranch ? "#e6edf8" : "#c2cfe4") +
+                 '" fill="' + (isRoot || isBranch ? "#f2f2ef" : "#c8c9c4") +
                  '" font-weight="' + (isRoot || isBranch ? 600 : 400) + '">' +
                  esc(node.lines[k]) + '</text>';
       }

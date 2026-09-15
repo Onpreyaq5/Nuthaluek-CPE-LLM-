@@ -130,24 +130,23 @@
    *  หน้าถาม-ตอบ
    * ========================================================= */
   var SUGGESTIONS = [
-    "RSI ใช้ยังไง", "คำนวณขนาดสถานะอย่างไร", "Order Block คืออะไร",
-    "Ichimoku อ่านยังไง", "Backtesting มีกับดักอะไร", "ดัชนีกำลังสัมพัทธ์",
-    "Drawdown อันตรายยังไง", "Wyckoff คืออะไร", "แนวรับแนวต้านดูยังไง"
+    { title: "อ่านสัญญาณตลาด", text: "RSI ใช้ยังไง", icon: "chart" },
+    { title: "วางแผนความเสี่ยง", text: "คำนวณขนาดสถานะอย่างไร", icon: "shield" },
+    { title: "เรียนรู้เทคนิคขั้นสูง", text: "Order Block คืออะไร", icon: "layers" }
   ];
-
   function renderSuggestions() {
     var host = $("suggestRow");
     host.innerHTML = "";
-    for (var i = 0; i < SUGGESTIONS.length; i++) {
-      var b = document.createElement("button");
-      b.className = "suggest";
-      b.textContent = SUGGESTIONS[i];
-      b.addEventListener("click", function () {
-        $("userInput").value = this.textContent;
+    SUGGESTIONS.forEach(function (item) {
+      var button = document.createElement("button");
+      button.className = "suggest";
+      button.innerHTML = window.TradeIcons.svg(item.icon) + '<span><strong>' + esc(item.title) + '</strong><small>' + esc(item.text) + '</small></span>' + window.TradeIcons.svg("diagonal");
+      button.addEventListener("click", function () {
+        $("userInput").value = item.text;
         handleAsk();
       });
-      host.appendChild(b);
-    }
+      host.appendChild(button);
+    });
   }
 
   function bindChat() {
@@ -161,9 +160,7 @@
     var box = $("chatBox");
     var wrap = document.createElement("div");
     wrap.className = "msg " + who + (cls ? " " + cls : "");
-    var icon = who === "user"
-      ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg>'
-      : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 17l5-6 4 4 5-7 4 5"/></svg>';
+    var icon = window.TradeIcons.svg(who === "user" ? "user" : "brand");
     wrap.innerHTML =
       '<div class="msg-avatar">' + icon + '</div>' +
       '<div class="msg-body"><div class="msg-name">' + (who === "user" ? "คุณ" : "TradeRAG") + '</div>' +
@@ -176,7 +173,8 @@
   function handleAsk() {
     var input = $("userInput");
     var q = input.value.trim();
-    if (!q) return;
+    if (!q || $("sendBtn").disabled) return;
+    $("panel-chat").classList.add("has-conversation");
 
     addMessage("user", '<div class="msg-text">' + esc(q) + '</div>');
     input.value = "";

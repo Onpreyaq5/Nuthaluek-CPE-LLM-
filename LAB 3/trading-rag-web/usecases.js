@@ -277,11 +277,11 @@ window.RagUseCases = (function () {
 
   function actorSvg(x, y, lines) {
     var s = '<g class="uc-actor">';
-    s += '<circle cx="' + x + '" cy="' + (y - 30) + '" r="11" fill="none" stroke="#4d94ff" stroke-width="2"/>';
+    s += '<circle cx="' + x + '" cy="' + (y - 30) + '" r="11" fill="none" stroke="#b8c3d1" stroke-width="2"/>';
     s += '<path d="M' + x + ' ' + (y - 19) + ' V' + (y + 8) + ' M' + (x - 14) + ' ' + (y - 8) +
          ' H' + (x + 14) + ' M' + x + ' ' + (y + 8) + ' L' + (x - 11) + ' ' + (y + 26) +
          ' M' + x + ' ' + (y + 8) + ' L' + (x + 11) + ' ' + (y + 26) + '" ' +
-         'stroke="#4d94ff" stroke-width="2" fill="none" stroke-linecap="round"/>';
+         'stroke="#b8c3d1" stroke-width="2" fill="none" stroke-linecap="round"/>';
     for (var i = 0; i < lines.length; i++) {
       s += '<text x="' + x + '" y="' + (y + 44 + i * 15) + '" text-anchor="middle" ' +
            'font-size="12" fill="#93a3bd">' + esc(lines[i]) + '</text>';
@@ -298,7 +298,7 @@ window.RagUseCases = (function () {
          'font-size="10" font-family="monospace" fill="' + color + '">' + esc(id) + '</text>';
     for (var i = 0; i < lines.length; i++) {
       s += '<text x="' + cx + '" y="' + (cy + 6 + i * 14 - (lines.length - 1) * 5) + '" text-anchor="middle" ' +
-           'font-size="11.5" fill="#e6edf8">' + esc(lines[i]) + '</text>';
+           'font-size="11.5" fill="#f2f2ef">' + esc(lines[i]) + '</text>';
     }
     return s + '</g>';
   }
@@ -309,11 +309,11 @@ window.RagUseCases = (function () {
     // ถ้าเอาไปทำแอนิเมชันด้วยจะทับกันจนลายประหายไป
     var s = '<line class="' + (dashed ? 'uc-dash' : 'uc-line') + '" ' +
             'x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" ' +
-            'stroke="' + (dashed ? "#f0b429" : "#3a4d70") + '" stroke-width="1.4"' +
+            'stroke="' + (dashed ? "#e2c47e" : "#55585c") + '" stroke-width="1.4"' +
             (dashed ? ' stroke-dasharray="6 4" marker-end="url(#arrow)"' : '') + '/>';
     if (label) {
       s += '<text x="' + ((x1 + x2) / 2) + '" y="' + ((y1 + y2) / 2 - 6) + '" text-anchor="middle" ' +
-           'font-size="9.5" font-family="monospace" fill="#f0b429">' + esc(label) + '</text>';
+           'font-size="9.5" font-family="monospace" fill="#e2c47e">' + esc(label) + '</text>';
     }
     return s;
   }
@@ -322,11 +322,11 @@ window.RagUseCases = (function () {
     var W = 1040, H = 660;
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
     s += '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
-         '<path d="M0 0 L10 5 L0 10 z" fill="#f0b429"/></marker></defs>';
+         '<path d="M0 0 L10 5 L0 10 z" fill="#e2c47e"/></marker></defs>';
 
     // กรอบระบบ
-    s += '<rect x="250" y="40" width="560" height="596" rx="16" fill="#111a2c" stroke="#1e2c47" stroke-width="1.6"/>';
-    s += '<text x="530" y="68" text-anchor="middle" font-size="13" font-weight="600" fill="#22c98a">' +
+    s += '<rect x="250" y="40" width="560" height="596" rx="16" fill="#18191b" stroke="#343639" stroke-width="1.6"/>';
+    s += '<text x="530" y="68" text-anchor="middle" font-size="13" font-weight="600" fill="#d5ff3f">' +
          'ระบบ TradeRAG (Trading RAG System)</text>';
 
     var A = 400, B = 672;
@@ -349,15 +349,15 @@ window.RagUseCases = (function () {
     s += line(784, 470, 872, 470, true, "");
 
     // Use case ovals
-    s += ovalSvg(A, ys.uc1, ["ถามคำถามความรู้การเทรด"], "#22c98a", "UC-01");
-    s += ovalSvg(A, ys.uc2, ["ค้นหาโดยกรองตามระดับ", "และหมวดหมู่"], "#22c98a", "UC-02");
-    s += ovalSvg(A, ys.uc3, ["ตรวจสอบ Pipeline ทีละขั้น"], "#4d94ff", "UC-03");
-    s += ovalSvg(A, ys.uc4, ["ทดลองเปิด/ปิด", "การแก้ไขปัญหา"], "#4d94ff", "UC-04");
-    s += ovalSvg(A, ys.uc5, ["ประเมินคุณภาพ", "ด้วย Golden Set"], "#4d94ff", "UC-05");
-    s += ovalSvg(A, ys.uc6, ["ปรับค่าคอนฟิก", "และสร้างดัชนีใหม่"], "#4d94ff", "UC-06");
-    s += ovalSvg(B, 120, ["ปฏิเสธเมื่อหลักฐานไม่พอ"], "#f4576f", "UC-07");
-    s += ovalSvg(B, 212, ["ปฏิเสธคำขอ", "คำแนะนำการลงทุน"], "#f4576f", "UC-08");
-    s += ovalSvg(B, 470, ["ใช้ LLM ภายนอก", "เรียบเรียงคำตอบ"], "#a78bfa", "UC-09");
+    s += ovalSvg(A, ys.uc1, ["ถามคำถามความรู้การเทรด"], "#d5ff3f", "UC-01");
+    s += ovalSvg(A, ys.uc2, ["ค้นหาโดยกรองตามระดับ", "และหมวดหมู่"], "#d5ff3f", "UC-02");
+    s += ovalSvg(A, ys.uc3, ["ตรวจสอบ Pipeline ทีละขั้น"], "#b8c3d1", "UC-03");
+    s += ovalSvg(A, ys.uc4, ["ทดลองเปิด/ปิด", "การแก้ไขปัญหา"], "#b8c3d1", "UC-04");
+    s += ovalSvg(A, ys.uc5, ["ประเมินคุณภาพ", "ด้วย Golden Set"], "#b8c3d1", "UC-05");
+    s += ovalSvg(A, ys.uc6, ["ปรับค่าคอนฟิก", "และสร้างดัชนีใหม่"], "#b8c3d1", "UC-06");
+    s += ovalSvg(B, 120, ["ปฏิเสธเมื่อหลักฐานไม่พอ"], "#e59a9a", "UC-07");
+    s += ovalSvg(B, 212, ["ปฏิเสธคำขอ", "คำแนะนำการลงทุน"], "#e59a9a", "UC-08");
+    s += ovalSvg(B, 470, ["ใช้ LLM ภายนอก", "เรียบเรียงคำตอบ"], "#c5b8dc", "UC-09");
 
     // Actors
     s += actorSvg(150, 200, ["ผู้เรียนการเทรด"]);

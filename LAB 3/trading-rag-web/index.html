@@ -9,7 +9,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+<link rel="stylesheet" href="polish.css?v=20260916-2">
+<link rel="icon" href="favicon.svg?v=20260916-2" type="image/svg+xml">
 </head>
 <body>
 
@@ -23,58 +24,37 @@
     </div>
     <div class="brand-text">
       <h1>TradeRAG</h1>
-      <p>ระบบ RAG ความรู้การเทรด · ตั้งแต่พื้นฐานถึงเทคนิคขั้นสูง</p>
+      <p>KNOWLEDGE STUDIO</p>
     </div>
   </div>
 
-  <div class="header-stats" id="headerStats">
-    <div class="stat"><span class="stat-label">เอกสาร</span><span class="stat-value" id="statDocs">–</span></div>
-    <div class="stat"><span class="stat-label">Chunk</span><span class="stat-value" id="statChunks">–</span></div>
-    <div class="stat"><span class="stat-label">คลังคำ</span><span class="stat-value" id="statVocab">–</span></div>
-    <div class="stat"><span class="stat-label">สร้างดัชนี</span><span class="stat-value" id="statTime">–</span></div>
-  </div>
+  <div class="header-note">พื้นที่เรียนรู้การเทรด <span>LAB 03</span></div>
 </header>
 
 <!-- ============ TABS ============ -->
 <nav class="tabs" id="tabs">
-  <button class="tab active" data-tab="chat">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    ถาม-ตอบ
-  </button>
-  <button class="tab" data-tab="pipeline">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.2 4.2l4.3 4.3m7 7l4.3 4.3M1 12h6m10 0h6M4.2 19.8l4.3-4.3m7-7l4.3-4.3"/></svg>
-    ตรวจสอบ Pipeline
-  </button>
-  <button class="tab" data-tab="problems">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2v7.5L4.2 19A2 2 0 0 0 6 22h12a2 2 0 0 0 1.8-3L14 9.5V2"/><path d="M8.5 2h7M7 15h10"/></svg>
-    ปัญหา &amp; การแก้ไข
-  </button>
-  <button class="tab" data-tab="evaluate">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/></svg>
-    ประเมินผล
-  </button>
-  <button class="tab" data-tab="mindmap">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 11l9-4M7.5 13l9 4"/></svg>
-    ภาพรวมระบบ
-  </button>
-  <button class="tab" data-tab="usecase">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-    Use Case
-  </button>
-  <button class="tab" data-tab="settings">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 7 2.6h.1A1.7 1.7 0 0 0 9 1V1a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 2.6"/></svg>
-    ตั้งค่า
-  </button>
+  <button class="tab active" data-tab="chat"><span data-icon="chat"></span><span>ถามคำถาม</span></button>
+  <button class="tab" data-tab="pipeline"><span data-icon="pipeline"></span><span>ขั้นตอนการตอบ</span></button>
+  <button class="tab" data-tab="problems"><span data-icon="problems"></span><span>ทดลองแก้ปัญหา</span></button>
+  <button class="tab" data-tab="evaluate"><span data-icon="evaluate"></span><span>วัดผล</span></button>
+  <button class="tab" data-tab="mindmap"><span data-icon="mindmap"></span><span>แผนที่ความรู้</span></button>
+  <button class="tab" data-tab="usecase"><span data-icon="usecase"></span><span>วิธีใช้งาน</span></button>
+  <button class="tab" data-tab="settings"><span data-icon="settings"></span><span>ตั้งค่า</span></button>
 </nav>
 
 <main class="app-main">
 
   <!-- ==================== TAB: CHAT ==================== -->
   <section class="panel active" id="panel-chat">
+    <div class="workspace-intro">
+      <div class="eyebrow">LEARN. ASK. UNDERSTAND.</div>
+      <h2>เรื่องเทรดที่สงสัย <span>ถามได้เลย.</span></h2>
+      <p>เรียนรู้จากฐานความรู้ พร้อมแหล่งอ้างอิงให้คุณตรวจสอบทุกคำตอบ</p>
+    </div>
     <div class="chat-layout">
 
       <div class="chat-col">
-        <div class="chat-box" id="chatBox">
+        <div class="chat-box" id="chatBox" role="log" aria-label="บทสนทนากับ TradeRAG" aria-live="polite">
           <div class="msg bot welcome">
             <div class="msg-avatar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 17l5-6 4 4 5-7 4 5"/></svg>
@@ -82,11 +62,7 @@
             <div class="msg-body">
               <div class="msg-name">TradeRAG</div>
               <div class="msg-text">
-สวัสดีครับ ผมคือระบบตอบคำถามเรื่องการเทรดที่ทำงานด้วยสถาปัตยกรรม RAG<br><br>
-ฐานความรู้ครอบคลุม <b>ความรู้เบื้องต้น</b> เช่น คำสั่งซื้อขาย การบริหารความเสี่ยง จิตวิทยาการเทรด
-และ <b>ความรู้เทคนิคขั้นสูง</b> เช่น Ichimoku, Elliott Wave, Wyckoff, Order Block, Volume Profile<br><br>
-ทุกคำตอบมาจากเอกสารในฐานความรู้เท่านั้น และจะแนบรหัสอ้างอิงให้ตรวจสอบได้เสมอ
-ถ้าไม่มีข้อมูลรองรับ ระบบจะบอกว่าไม่รู้ แทนการเดา
+<span class="welcome-kicker">ผู้ช่วยความรู้การเทรด</span><h3>เริ่มจากสิ่งที่คุณอยากรู้</h3><p>ถามได้ตั้งแต่พื้นฐาน อินดิเคเตอร์ ไปจนถึงการบริหารความเสี่ยง</p>
               </div>
               <div class="disclaimer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
@@ -96,32 +72,30 @@
           </div>
         </div>
 
-        <div class="suggest-row" id="suggestRow"></div>
-
         <div class="composer">
-          <input type="text" id="userInput" placeholder="พิมพ์คำถามเรื่องการเทรด เช่น RSI ใช้ยังไง, คำนวณขนาดสถานะอย่างไร" autocomplete="off">
-          <button id="sendBtn" title="ส่งคำถาม">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
-          </button>
+          <span data-icon="sparkles" class="composer-icon"></span>
+          <input type="text" id="userInput" aria-label="คำถามเรื่องการเทรด" placeholder="อยากรู้เรื่องอะไรเกี่ยวกับการเทรด?" autocomplete="off">
+          <button id="sendBtn" aria-label="ส่งคำถาม" title="ส่งคำถาม"><span data-icon="arrow"></span></button>
         </div>
+        <div class="composer-hint">กด Enter เพื่อส่งคำถาม <span>เพื่อการศึกษาเท่านั้น ไม่ใช่คำแนะนำการลงทุน</span></div>
+        <div class="suggest-label">ยังไม่รู้จะเริ่มตรงไหน? ลองเลือกคำถาม</div>
+        <div class="suggest-row" id="suggestRow"></div>
       </div>
 
       <aside class="source-col">
         <div class="side-card">
           <h3>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg>
-            เอกสารที่ระบบใช้ตอบ
+            แหล่งอ้างอิง
           </h3>
           <div id="sourceList" class="source-list">
-            <p class="empty-hint">ยังไม่มีคำถาม — เอกสารอ้างอิงพร้อมคะแนนความเกี่ยวข้องจะแสดงที่นี่</p>
+            <p class="empty-hint">เมื่อคุณถามคำถาม<br>เอกสารที่ใช้ตอบจะแสดงตรงนี้</p>
           </div>
         </div>
 
-        <div class="side-card">
-          <h3>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 3H2l8 9.5V19l4 2v-8.5z"/></svg>
-            ตัวกรองการค้นหา
-          </h3>
+        <details class="side-card filter-card">
+          <summary><span data-icon="settings"></span>ปรับการค้นหา<span class="details-chevron" data-icon="chevron"></span></summary>
+          <div class="filter-fields">
           <label class="field">
             <span>ระดับความยาก</span>
             <select id="filterLevel">
@@ -135,13 +109,14 @@
           <label class="field">
             <span>วิธีค้นหา</span>
             <select id="filterMode">
-              <option value="hybrid">Hybrid (BM25 + Vector + RRF)</option>
-              <option value="bm25">BM25 อย่างเดียว</option>
-              <option value="dense">Vector อย่างเดียว</option>
+              <option value="hybrid">ค้นหาแบบผสม (แนะนำ)</option>
+              <option value="bm25">ค้นหาด้วยคำสำคัญ</option>
+              <option value="dense">ค้นหาด้วยความคล้ายคลึง</option>
             </select>
           </label>
-          <div class="mini-note" id="filterNote">ตัวกรองมีผลกับการค้นหาทันที ดูผลกระทบได้ที่แท็บตรวจสอบ Pipeline</div>
-        </div>
+          <div class="mini-note" id="filterNote">เลือกให้ตรงกับเรื่องที่คุณอยากเรียนรู้</div>
+          </div>
+        </details>
       </aside>
     </div>
   </section>
@@ -149,12 +124,12 @@
   <!-- ==================== TAB: PIPELINE ==================== -->
   <section class="panel" id="panel-pipeline">
     <div class="section-head">
-      <h2>ตรวจสอบการทำงานทีละขั้น</h2>
-      <p>หน้านี้คือเครื่องมือหลักในการ <b>ตรวจสอบปัญหา</b> เพราะแสดงว่าระบบคิดอะไรในแต่ละชั้น ตั้งแต่แปลงคำถามจนถึงการตัดสินใจตอบหรือปฏิเสธ</p>
+      <h2>คำตอบนี้มาได้อย่างไร?</h2>
+      <p>ดูว่าระบบค้นหา เลือกแหล่งอ้างอิง และสร้างคำตอบอย่างไร เพียงพิมพ์คำถามที่อยากตรวจสอบ</p>
     </div>
 
     <div class="inspect-bar">
-      <input type="text" id="inspectInput" placeholder="พิมพ์คำถามที่ต้องการตรวจสอบ" value="RSI ใช้ยังไง">
+      <input type="text" id="inspectInput" aria-label="คำถามที่ต้องการตรวจสอบ" placeholder="พิมพ์คำถามที่ต้องการตรวจสอบ" value="RSI ใช้ยังไง">
       <button class="btn primary" id="inspectBtn">วิเคราะห์</button>
     </div>
 
@@ -166,11 +141,8 @@
   <!-- ==================== TAB: PROBLEMS ==================== -->
   <section class="panel" id="panel-problems">
     <div class="section-head">
-      <h2>ปัญหาและการแก้ไขปัญหาของ RAG System</h2>
-      <p>
-        วิเคราะห์ปัญหาที่เกิดขึ้นจริงในแต่ละขั้นตอนของระบบนี้ พร้อม <b>สาเหตุ · วิธีตรวจสอบ · แนวทางแก้ไข</b>
-        และตำแหน่งใน Source Code ที่แก้จริง — ทุกข้อกด <b>ทดลองรัน</b> เพื่อเทียบผลก่อนแก้กับหลังแก้ได้
-      </p>
+      <h2>ทดลอง เรียนรู้ และแก้ปัญหา</h2>
+      <p>สำรวจปัญหาที่พบในระบบ และทดลองเปรียบเทียบผลก่อนกับหลังแก้ไข เลือกหัวข้อเพื่อดูรายละเอียด</p>
     </div>
     <div id="problemList" class="problem-list"></div>
   </section>
@@ -178,16 +150,13 @@
   <!-- ==================== TAB: EVALUATE ==================== -->
   <section class="panel" id="panel-evaluate">
     <div class="section-head">
-      <h2>ประเมินผลระบบด้วยตัวเลข</h2>
-      <p>
-        ชุดทดสอบ (Golden Set) สร้างจาก <b>คำถามสำรอง</b> ของทุกเอกสาร ซึ่งเขียนคนละสำนวนกับคำถามหลัก
-        จึงวัดความสามารถในการค้นหาได้จริง ไม่ใช่การจับคู่ข้อความตรงตัว
-      </p>
+      <h2>วัดคุณภาพการค้นหา</h2>
+      <p>ทดสอบความแม่นยำของการค้นหาด้วยชุดคำถาม และเปรียบเทียบวิธีค้นหาแต่ละแบบ</p>
     </div>
 
     <div class="eval-controls">
-      <button class="btn primary" id="runEvalBtn">รัน Ablation Study</button>
-      <button class="btn" id="runChunkBtn">ทดสอบผลของขนาด Chunk</button>
+      <button class="btn primary" id="runEvalBtn">เปรียบเทียบวิธีค้นหา</button>
+      <button class="btn" id="runChunkBtn">เปรียบเทียบขนาดเนื้อหา</button>
       <label class="inline-field">
         <span>จำนวนคำถามทดสอบ</span>
         <select id="evalSize">
@@ -206,8 +175,8 @@
   <!-- ==================== TAB: MINDMAP ==================== -->
   <section class="panel" id="panel-mindmap">
     <div class="section-head">
-      <h2>ภาพรวมระบบแบบ Mind Map</h2>
-      <p>เลือกดูได้ 2 มุม คือโครงสร้างของระบบ RAG ที่พัฒนาขึ้น และแผนที่ความรู้การเทรดที่อยู่ในฐานข้อมูล</p>
+      <h2>มองเห็นความรู้ในภาพเดียว</h2>
+      <p>เลือกมุมมองเพื่อสำรวจโครงสร้างระบบ หัวข้อความรู้ หรือปัญหาที่พบ</p>
     </div>
 
     <div class="seg-control" id="mindmapSwitch">
@@ -225,8 +194,8 @@
   <!-- ==================== TAB: USECASE ==================== -->
   <section class="panel" id="panel-usecase">
     <div class="section-head">
-      <h2>Use Case ของระบบ</h2>
-      <p>อธิบายระบบในมุมของผู้ใช้งาน ตั้งแต่แผนภาพภาพรวม ไปจนถึงรายละเอียดการทำงานทีละขั้นของแต่ละกรณีใช้งาน</p>
+      <h2>ใช้งาน TradeRAG อย่างไร</h2>
+      <p>ทำความเข้าใจสิ่งที่ระบบช่วยคุณได้ เลือกหัวข้อด้านล่างเพื่อดูลำดับการใช้งาน</p>
     </div>
 
     <div class="usecase-diagram-wrap">
@@ -241,9 +210,16 @@
   <!-- ==================== TAB: SETTINGS ==================== -->
   <section class="panel" id="panel-settings">
     <div class="section-head">
-      <h2>ตั้งค่าระบบ RAG</h2>
-      <p>ทุกค่าในหน้านี้ตรงกับตัวแปรใน <code>config.js</code> การเปลี่ยนค่าแล้วกลับไปถามใหม่จะเห็นผลทันที</p>
+      <h2>ปรับให้เหมาะกับคุณ</h2>
+      <p>ปรับวิธีค้นหาและรูปแบบคำตอบ ระบบจะบันทึกค่าบนเครื่องนี้โดยอัตโนมัติ</p>
     </div>
+    <div class="system-stats"><h3>ข้อมูลฐานความรู้</h3>  <div class="header-stats" id="headerStats">
+    <div class="stat"><span class="stat-label">เอกสาร</span><span class="stat-value" id="statDocs">–</span></div>
+    <div class="stat"><span class="stat-label">Chunk</span><span class="stat-value" id="statChunks">–</span></div>
+    <div class="stat"><span class="stat-label">คลังคำ</span><span class="stat-value" id="statVocab">–</span></div>
+    <div class="stat"><span class="stat-label">สร้างดัชนี</span><span class="stat-value" id="statTime">–</span></div>
+  </div>
+</div>
     <div id="settingsHost" class="settings-grid"></div>
     <div class="settings-actions">
       <button class="btn" id="resetCfgBtn">คืนค่าเริ่มต้น</button>
@@ -254,13 +230,7 @@
 
 </main>
 
-<footer class="app-footer">
-  <div>
-    <b>LAB 3 — RAG System Development II (DL-05)</b> · ระบบ RAG ความรู้การเทรด
-    <span class="dot">•</span> ทำงานฝั่งเบราว์เซอร์ทั้งหมด ไม่ต้องติดตั้งอะไรเพิ่ม
-  </div>
-  <div class="footer-warn">เนื้อหาเพื่อการศึกษา ไม่ใช่คำแนะนำการลงทุน</div>
-</footer>
+<footer class="app-footer"><span>TradeRAG <span class="footer-divider">/</span> Knowledge Studio</span><span>LAB 03 · RAG System Development</span></footer>
 
 <!-- ============ SCRIPTS ============ -->
 <script src="config.js"></script>
@@ -276,8 +246,10 @@
 <script src="rag-pipeline.js"></script>
 <script src="rag-eval.js"></script>
 <script src="problems.js"></script>
-<script src="usecases.js"></script>
-<script src="mindmap.js"></script>
-<script src="app.js"></script>
+<script src="usecases.js?v=20260916-2"></script>
+<script src="mindmap.js?v=20260916-2"></script>
+<script src="icons.js?v=20260916-2"></script>
+<script src="app.js?v=20260916-2"></script>
+<script src="interactions.js?v=20260916-3"></script>
 </body>
 </html>
