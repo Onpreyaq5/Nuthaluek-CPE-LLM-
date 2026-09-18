@@ -1,0 +1,39 @@
+[04_course_data_services] 01_env.txt  —  แหล่งข้อมูลรายวิชา/ตารางสอน
+Owner: <ใส่ชื่อ>
+==================================================================
+RUNTIME
+  - Python 3.11 + FastAPI + APScheduler (งานตามเวลา)
+  - Port: 8400
+
+PACKAGES
+  fastapi, uvicorn, httpx, beautifulsoup4, lxml, pandas
+  pdfplumber            # อ่านตารางสอน/ทรานสคริปต์ PDF
+  openpyxl              # ไฟล์ Excel จากคณะ
+  playwright (ถ้าเว็บเป็น JS)
+  sqlalchemy, psycopg
+
+ENV VARS
+  REG_PORTAL_URL=https://oreg.rmutt.ac.th/...      # ตรวจสอบก่อนใช้จริง
+  SYNC_CRON=0 3 * * *                              # ดึงทุกตี 3
+  RAW_DATA_DIR=/data/raw
+  ALLOW_SCRAPING=false      # ★ ค่าเริ่มต้นปิด ต้องขออนุญาตก่อนเปิด
+
+SOURCE หลัก: ระบบบริการการศึกษา มทร.ธัญบุรี  https://oreg3.rmutt.ac.th/registrar/  (Vision Net)
+  charset = windows-874 (cp874)   ทุกหน้าต้องล็อกอินด้วยบัญชีนักศึกษา (หมดอายุ 15 นาที)
+  หน้าที่ใช้
+    class_info.asp         ค้นหารายวิชา  (หมวดวิชา / หน่วยงาน / ปีการศึกษา-เทอม / รหัส-ชื่อ)
+    class_info_1.asp       ผลค้นหา: รหัสวิชา | ชื่อ | หน่วยกิต | กลุ่ม | รับ | ลง | เหลือ | สถานะ | ระดับ
+    class_info_2.asp       รายละเอียดวิชา: กลุ่ม/วัน/เวลา/ห้อง/C-L/ที่นั่ง/อาจารย์/สำรอง/สอบกลาง-ปลายภาค/หมายเหตุ
+    graduate_check.asp     ตรวจสอบจบ (ของนักศึกษาคนนั้น) → ใช้ใน 05 graduate_check.py
+  parser: src/adapters/oreg_rmutt.py   (parse_search_results / parse_course_detail)
+  fixture: tests/fixtures/*.html        (สร้างจากภาพหน้าจอ — แทนที่ด้วย HTML จริงเมื่อได้มา)
+
+วิธีได้ HTML มา (ระบบนี้ไม่เก็บ/ไม่กรอกรหัสผ่านของใครทั้งสิ้น)
+  a) นักศึกษาล็อกอินเอง → เปิดหน้าที่ต้องการ → Ctrl+S (Webpage, HTML only)
+     → วางที่ data/raw/oreg/<ชื่อหน้า>_<เทอม>.html → รัน adapter
+  b) (ระยะถัดไป) Browser extension ของโปรเจกต์ ที่ส่ง HTML จาก session ของนักศึกษาเองมาที่ API
+  c) (ถ้า สวท. อนุญาต) ไฟล์ CSV/Excel รายเทอม → csv_adapter / excel_adapter
+
+กติกา
+  - ดึงเฉพาะข้อมูลของตัวเอง + รายวิชาที่เปิดสอน, rate limit ≤ 1 req/2s, ไม่ยิงตอนช่วงลงทะเบียนพีค
+  - ALLOW_SCRAPING เปิดได้เฉพาะ adapter ที่ใช้ session ของนักศึกษาเจ้าของข้อมูล

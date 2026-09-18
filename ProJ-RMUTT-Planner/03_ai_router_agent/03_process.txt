@@ -1,0 +1,26 @@
+[03_ai_router_agent] 03_process.txt  —  Agent Process
+==================================================================
+PIPELINE
+  INPUT {student_id, message, history, plan_draft?}
+    ↓ 1. normalize ข้อความ (ตัดคำไทย, แปลงเลขไทย, จับเทอม/ปีการศึกษา)
+    ↓ 2. classify intent + slot filling (term, course_code, day, time)
+    ↓ 3. ถ้า slot ไม่ครบ → ถามกลับ 1 คำถาม (ห้ามถามรัว)
+    ↓ 4. เลือก plan การเรียก tool ตาม intent
+    ↓ 5. execute tools (ขนานได้ ใช้ asyncio.gather)
+    ↓ 6. ประกอบ context → ส่ง 07 สร้างคำตอบ (stream)
+  OUTPUT SSE: {type: token|tool_start|tool_end|sources|done}
+
+INTENT → TOOL MAP
+  SCHEDULE_CONFLICT  → get_student_context, check_conflicts
+  PLAN_GENERATE      → get_student_context, search_courses, generate_plan
+  COURSE_INFO        → search_courses
+  CURRICULUM_RULE    → get_student_context, search_knowledge
+  REGULATION_QA      → search_knowledge
+  GENERAL_CHAT       → answer_with_llm
+
+ERROR / FALLBACK
+  tool timeout 8s → retry 1 ครั้ง → ถ้ายังพัง ตอบแบบ degrade
+  ("ตอนนี้ดึงข้อมูลตารางไม่ได้ ลองใหม่อีกครั้ง") + log severity=high ไป 08
+
+OBSERVABILITY
+  log ทุก step: intent, confidence, tools, latency, token ใช้, ค่าใช้จ่ายประมาณ

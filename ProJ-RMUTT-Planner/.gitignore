@@ -1,0 +1,34 @@
+# env / secret
+.env
+.env.local
+*.key
+*.pem
+secrets/
+
+# data จริงของนักศึกษา — ห้ามขึ้น repo
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.transcript.pdf
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# node
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# docker / ide
+docker-compose.override.yml
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

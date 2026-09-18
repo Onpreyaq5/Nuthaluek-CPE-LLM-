@@ -1,0 +1,35 @@
+[04_course_data_services] 02_step.txt  —  ขั้นตอนทำงาน
+==================================================================
+STEP 1  กำหนด Source of Truth
+  ติดต่อขอข้อมูลจากสำนักส่งเสริมวิชาการและงานทะเบียน (สวท.) มทร.ธัญบุรี
+  สิ่งที่ขอ: รายวิชาเปิดสอนรายเทอม, หมู่เรียน(sec), วัน-เวลา-ห้อง, อาจารย์,
+            ที่นั่งคงเหลือ, ปฏิทินการศึกษา, โครงสร้างหลักสูตร + prereq
+
+STEP 2  Adapter Pattern
+  adapters/
+    csv_adapter.py        อ่านไฟล์ที่ให้มา
+    excel_adapter.py
+    pdf_adapter.py        ตารางสอน PDF → ตาราง
+    portal_adapter.py     (ปิดไว้ก่อน) ดึงจากเว็บ
+    manual_adapter.py     admin กรอกเอง
+  ทุก adapter ต้อง return schema เดียวกัน → RawCourseRecord
+
+STEP 3  Endpoint
+  GET  /courses?term=&q=&day=&teacher=
+  GET  /courses/{code}/sections?term=
+  GET  /calendar/{term}            ปฏิทินการศึกษา (วันเปิด/ปิด/ถอน/สอบ)
+  GET  /curriculum/{program_id}    โครงสร้างหลักสูตร + prereq
+  POST /sync/{source}              สั่ง sync เอง (admin)
+  GET  /sync/status                ดูว่าอัปเดตล่าสุดเมื่อไหร่
+
+STEP 4  Scheduler
+  APScheduler cron ตาม SYNC_CRON → ดึง → เก็บ raw ลง /data/raw/{date}/
+  → ส่ง event ให้ 05 ทำความสะอาด
+
+STEP 5  Cache
+  redis: courses:{term}:{hash(query)} TTL 30 นาที
+  ช่วงลงทะเบียน (ที่นั่งเปลี่ยนไว) ลด TTL เหลือ 60 วิ
+
+STEP 6  Data Quality Check
+  - วิชาซ้ำ / เวลาทับกันในหมู่เดียวกัน / ห้องชน → ขึ้น flag ให้ admin ดู
+  - เทียบจำนวนวิชากับรอบก่อน ถ้าลดเกิน 20% = เตือนว่าดึงข้อมูลไม่ครบ

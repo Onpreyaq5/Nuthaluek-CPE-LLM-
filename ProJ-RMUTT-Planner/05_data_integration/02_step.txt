@@ -1,0 +1,34 @@
+[05_data_integration] 02_step.txt  —  ขั้นตอนทำงาน
+==================================================================
+STEP 1  Normalize เวลา → Time Slot Model  ★ หัวใจของการเช็คตารางชน
+  แปลง "จ. 09:00-12:00" → {day:0, start_min:540, end_min:720}
+  day: MON=0 ... SUN=6
+  แปลงเป็น bitmask 7 วัน x 26 ช่อง(30 นาที) = 182 bit
+  → เช็คชน = AND bitmask แล้วดูว่า != 0  (เร็วมาก O(1))
+
+STEP 2  Normalize รายวิชา
+  - รหัสวิชา uppercase ตัดช่องว่าง
+  - "3(2-2-5)" → credits=3, lecture=2, lab=2, self=5
+  - ชื่อวิชาไทย/อังกฤษ → ทำ search index (ค้นแบบพิมพ์ผิดได้ด้วย rapidfuzz)
+
+STEP 3  Prereq Graph
+  สร้าง DAG ด้วย networkx: node=วิชา, edge=ต้องผ่านก่อน
+  ตรวจ cycle (ถ้ามี = ข้อมูลผิด)
+  คำนวณ: วิชาที่ "ปลดล็อก" ได้ในเทอมนี้ = prereq ครบทุกตัวแล้ว
+  คำนวณ: critical path → วิชาที่ถ้าไม่ลงเทอมนี้จะจบช้า ★ ใช้ในการแนะนำ
+
+STEP 4  Student Context
+  รวมร่าง: profile + transcript + แผนที่บันทึกไว้ + ความชอบ
+  คำนวณ: หน่วยกิตสะสม, GPA, วิชาที่เหลือ, ปีที่คาดว่าจะจบ
+  หมวดวิชา: ศึกษาทั่วไป / เฉพาะด้าน / เลือกเสรี → เหลือหมวดละกี่หน่วยกิต
+
+STEP 5  Transcript Parser
+  PDF/CSV → {course_code, grade, term}
+  กรอง: เกรด F/W = ยังไม่ผ่าน, ต้องลงใหม่
+
+STEP 6  Endpoint
+  GET  /context/{student_id}            → ก้อน context ให้ 03/06/07 ใช้
+  GET  /prereq/{course_code}
+  GET  /eligible/{student_id}?term=     วิชาที่ลงได้จริงในเทอมนี้
+  POST /transcript/parse
+  POST /normalize/courses               รับ raw จาก 04 → คืน clean

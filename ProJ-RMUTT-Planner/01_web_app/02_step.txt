@@ -1,0 +1,35 @@
+[01_web_app] 02_step.txt  —  ขั้นตอนทำงาน (build order)
+==================================================================
+STEP 1  Scaffold
+  npx create-next-app@latest . --ts --tailwind --app
+  ตั้งค่า path alias @/  + ESLint/Prettier
+
+STEP 2  Design System (minimal)
+  - โทนสี: RMUTT navy/gold + neutral
+  - component พื้นฐาน: Button, Card, Dialog, Toast, Badge(สถานะชน/ว่าง)
+
+STEP 3  หน้า (Pages)
+  /login                 เข้าสู่ระบบด้วยรหัสนักศึกษา
+  /dashboard             สรุปหน่วยกิต, วิชาที่ต้องลง, เตือนตารางชน
+  /planner               ★ หน้าหลัก: ลากวิชาลงตาราง + เช็คชนแบบ real-time
+  /courses               ค้นหาวิชา/หมู่เรียน (sec) + filter อาจารย์/เวลา
+  /plan/[termId]         แผนการเรียนรายเทอม (auto-generate ได้)
+  /curriculum            แผนภาพหลักสูตร 4 ปี + วิชาบังคับก่อน (prereq)
+  /chat                  ถาม-ตอบกับ AI ที่ปรึกษา (สตรีมคำตอบ + แสดงแหล่งอ้างอิง)
+  /history               ประวัติแผน/แชท + เวอร์ชันแผนที่เคยบันทึก
+
+STEP 4  Timetable Component
+  - grid จ.-อา. x คาบ 08:00-21:00 (ช่องละ 30 นาที)
+  - วิชาที่ชนกัน = แดง + เส้นทับซ้อน, hover บอกว่าชนกับตัวไหน
+  - preview mode: ลากค้างไว้ = โชว์ว่าถ้าลงตัวนี้จะชนไหม (เรียก /api/conflicts/preview)
+
+STEP 5  เชื่อม API
+  React Query hooks: useCourses, usePlan, useConflicts, useChat(SSE)
+
+STEP 6  UX เพิ่มเติม
+  - export .ics / PNG ตารางเรียน
+  - responsive มือถือ (นักศึกษาเปิดในมือถือเยอะ)
+  - ปุ่ม "ให้ AI จัดให้" → เรียก 06+07 ผ่าน backend
+
+STEP 7  Dockerize
+  multi-stage build → next build → next start

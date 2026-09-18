@@ -1,0 +1,31 @@
+[07_rag_llm_engine] 01_env.txt  —  RAG (ระเบียบ/หลักสูตร) + LLM Generation
+Owner: <ใส่ชื่อ>
+==================================================================
+RUNTIME
+  - Python 3.11 + FastAPI
+  - Port: 8700
+  - Vector DB: Qdrant (container แยก, port 6333)
+
+PACKAGES
+  fastapi, uvicorn, httpx
+  qdrant-client
+  sentence-transformers          # embedding ภาษาไทย
+  rank-bm25                      # keyword search
+  pythainlp                      # ตัดคำไทยก่อน BM25
+  pypdf, python-docx, unstructured   # อ่านเอกสารระเบียบ
+  tiktoken
+
+ENV VARS
+  QDRANT_URL=http://qdrant:6333
+  COLLECTION=rmutt_knowledge
+  EMBED_MODEL=BAAI/bge-m3            # หรือ intfloat/multilingual-e5-large
+  LLM_PROVIDER / LLM_API_KEY / LLM_MODEL   (เหมือน 03)
+  TOP_K_VECTOR=20  TOP_K_BM25=20  TOP_K_FINAL=6
+  RERANK_MODEL=BAAI/bge-reranker-v2-m3
+
+KNOWLEDGE BASE (เอกสารที่ต้องใส่)
+  - ระเบียบ/ข้อบังคับ มทร.ธัญบุรี ว่าด้วยการศึกษาระดับปริญญาตรี
+  - คู่มือนักศึกษา ปีล่าสุด
+  - โครงสร้างหลักสูตร + คำอธิบายรายวิชา (มคอ.2) ของสาขา
+  - ปฏิทินการศึกษา
+  - ประกาศ/FAQ จากสำนักทะเบียน (ถอน-เพิ่ม, ลาพัก, เทียบโอน)

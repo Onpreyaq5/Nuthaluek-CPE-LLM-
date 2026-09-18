@@ -1,0 +1,7 @@
+# 05_data_integration — ดูรายการเต็มใน 01_env.txt แล้วปักหมุดเวอร์ชันตอนเริ่มเขียนจริง
+fastapi
+uvicorn[standard]
+pydantic
+httpx
+beautifulsoup4
+lxml

@@ -1,0 +1,25 @@
+[06_schedule_conflict_engine] 01_env.txt  —  ★ หัวใจของโปรเจกต์
+ตรวจตารางชน + จัดตารางอัตโนมัติ
+Owner: <ใส่ชื่อ>
+==================================================================
+RUNTIME
+  - Python 3.11 + FastAPI
+  - Port: 8600
+
+PACKAGES
+  fastapi, uvicorn, pydantic v2
+  ortools               # CP-SAT solver สำหรับจัดตารางอัตโนมัติ
+  numpy
+  networkx              # ใช้ prereq graph จาก 05
+  redis                 # cache ผลการจัด
+
+ENV VARS
+  DATA_INTEGRATION_URL=http://data_integration:8500
+  MAX_SOLVER_SECONDS=10
+  MAX_PLAN_CANDIDATES=5        # เสนอกี่ทางเลือก
+  DEFAULT_MIN_CREDITS=9
+  DEFAULT_MAX_CREDITS=22       # ต้องเช็คกับระเบียบจริงของ มทร.ธัญบุรี
+
+NOTE
+  service นี้ "ไม่มี LLM" — เป็นตรรกะล้วน ผลลัพธ์ต้องทำซ้ำได้ (deterministic)
+  LLM ใน 07 มีหน้าที่ "อธิบาย" ผลของ engine นี้เท่านั้น

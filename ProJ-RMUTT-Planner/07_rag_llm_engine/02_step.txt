@@ -1,0 +1,43 @@
+[07_rag_llm_engine] 02_step.txt  —  ขั้นตอนทำงาน
+==================================================================
+STEP 1  Ingest Pipeline
+  PDF/DOCX → extract text (เก็บเลขหน้า/หัวข้อ)
+  → chunk 500-800 token, overlap 100, ตัดตามหัวข้อ/ข้อ (ไม่ตัดกลางประโยค)
+  → metadata {doc_type, title, section, page, effective_year, url}
+  → embed → upsert Qdrant
+  สคริปต์: python -m ingest --path /data/knowledge
+
+STEP 2  Hybrid Retrieval
+  vector search (top 20) + BM25 (top 20)
+  → รวมด้วย Reciprocal Rank Fusion
+  → rerank (cross-encoder) → เอา top 6
+
+STEP 3  Filter ตามบริบทนักศึกษา
+  กรองด้วย effective_year / program_id (หลักสูตรคนละปีกฎไม่เหมือนกัน)
+  ★ จุดพลาดที่พบบ่อย: ตอบด้วยระเบียบของหลักสูตรปีอื่น
+
+STEP 4  Prompt Template
+  System: "คุณคืออาจารย์ที่ปรึกษาของ มทร.ธัญบุรี ตอบภาษาไทย กระชับ สุภาพ
+           ห้ามเดา ถ้าไม่มีข้อมูลให้บอกว่าไม่พบและแนะนำให้ติดต่อ สวท."
+  Context: [เอกสารอ้างอิง] + [ผลจาก 06 conflict/plan] + [โปรไฟล์นักศึกษา]
+  Rules: - ตัวเลขตารางชนต้องใช้ตามที่ engine ส่งมาเท่านั้น
+         - ต้องอ้างอิงแหล่งที่มาทุกครั้งที่อ้างระเบียบ
+         - ปิดท้ายด้วย "โปรดยืนยันกับระบบทะเบียนอีกครั้ง" เมื่อเป็นเรื่องสำคัญ
+
+STEP 5  Explanation Generator (ใช้คู่กับ 06)
+  input: conflicts[] แบบ structured
+  output: อธิบายเป็นภาษาคน เช่น
+    "วิชา ENG101 หมู่ 01 เรียนวันจันทร์ 09:00-12:00 ซึ่งทับกับ MTH102 หมู่ 02
+     (09:00-10:30) ลงพร้อมกันไม่ได้ครับ — แนะนำเปลี่ยนเป็น MTH102 หมู่ 05
+     (พฤหัส 13:00-14:30) ซึ่งไม่ชนกับตัวอื่นในแผนนี้"
+
+STEP 6  Endpoint
+  POST /rag/search       {query, filters} → chunks[] + scores
+  POST /generate         {context, question, stream} → SSE
+  POST /explain/plan     {plan, conflicts} → คำอธิบาย + ข้อเสนอแนะ
+  POST /ingest           (admin)
+
+STEP 7  Local AI Model (งานเบา รันในเครื่อง)
+  - classify intent (ถ้าไม่อยากเปลืองโควตา cloud)
+  - embedding (รันเองได้ ไม่ต้องส่งข้อมูลนักศึกษาออกนอก)
+  - ตัวเลือก: Ollama + llama3.1:8b / qwen2.5:7b  (แยก container ได้ port 8300)

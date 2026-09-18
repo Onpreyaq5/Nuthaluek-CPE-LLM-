@@ -1,0 +1,31 @@
+[01_web_app] 01_env.txt  —  Runtime / Package / Config
+Owner: <ใส่ชื่อคนรับผิดชอบ>
+==================================================================
+
+RUNTIME
+  - Node.js 20 LTS
+  - Next.js 14 (App Router) + TypeScript
+  - Container: node:20-alpine
+  - Port: 3000  (map 3000:3000)
+
+PACKAGES (แผน)
+  next, react, react-dom, typescript
+  tailwindcss, shadcn/ui, lucide-react        # UI/ธีม minimal
+  @tanstack/react-query                        # เรียก API + cache
+  zod                                          # validate form
+  date-fns                                     # จัดการเวลา/คาบเรียน
+  fullcalendar / react-big-calendar            # ตารางเรียนแบบสัปดาห์
+  @dnd-kit/core                                # ลากวางวิชาเข้าตาราง
+  next-auth                                    # login นักศึกษา (JWT จาก backend)
+
+ENV VARS (.env.local)
+  NEXT_PUBLIC_API_BASE_URL=http://api_backend:8000
+  NEXT_PUBLIC_APP_NAME=RMUTT Study Planner
+  NEXTAUTH_SECRET=<gen>
+  NEXTAUTH_URL=http://localhost:3000
+
+DEPENDS ON
+  02_api_backend (HTTP/REST + SSE สำหรับสตรีมคำตอบ AI)
+
+OUT OF SCOPE
+  ไม่คุย LLM ตรง ๆ, ไม่ถือ API key ของโมเดล — ต้องผ่าน backend เท่านั้น

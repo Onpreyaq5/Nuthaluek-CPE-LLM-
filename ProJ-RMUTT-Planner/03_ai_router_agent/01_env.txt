@@ -1,0 +1,22 @@
+[03_ai_router_agent] 01_env.txt  —  Runtime / Package / Config
+Owner: <ใส่ชื่อ>
+==================================================================
+RUNTIME
+  - Python 3.11 + FastAPI
+  - Port: 8100
+
+PACKAGES
+  fastapi, uvicorn, httpx, pydantic v2
+  google-generativeai / openai / anthropic     # General AI (เลือกตามทีม)
+  tenacity                                      # retry
+  redis                                         # เก็บ context ระยะสั้น
+
+ENV VARS
+  LLM_PROVIDER=gemini|openai|anthropic
+  LLM_API_KEY=<secret>            # ห้าม commit
+  LLM_MODEL=<เช่น gemini-2.0-flash / gpt-4.1-mini>
+  LOCAL_MODEL_URL=http://local_ai:8300     # โมเดล classify ในเครื่อง
+  SCHEDULE_ENGINE_URL=http://schedule_engine:8600
+  RAG_LLM_URL=http://rag_llm:8700
+  COURSE_DATA_URL=http://course_data:8400
+  MAX_TOOL_STEPS=5

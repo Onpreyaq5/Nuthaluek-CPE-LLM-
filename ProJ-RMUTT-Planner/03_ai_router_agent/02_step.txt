@@ -1,0 +1,37 @@
+[03_ai_router_agent] 02_step.txt  —  ขั้นตอนทำงาน
+==================================================================
+STEP 1  Intent Classification (เข้าใจว่าถามอะไร)
+  intent:
+    SCHEDULE_CONFLICT   "ลงตัวนี้ชนไหม" "ตารางชนหรือเปล่า"
+    PLAN_GENERATE       "จัดตารางเทอมหน้าให้หน่อย"
+    COURSE_INFO         "วิชานี้เปิดวันไหน sec ไหนว่าง"
+    CURRICULUM_RULE     "ต้องเก็บกี่หน่วยกิตถึงจะจบ" "วิชาบังคับก่อนคืออะไร"
+    REGULATION_QA       "ถอนรายวิชาได้ถึงเมื่อไหร่" (→ RAG ระเบียบ มทร.ธัญบุรี)
+    GENERAL_CHAT        คุยทั่วไป / ให้กำลังใจ / สรุป
+  ทำ 2 ชั้น: rule/keyword ก่อน → ถ้ามั่นใจต่ำ (<0.7) ค่อยถาม LLM
+
+STEP 2  Tool Registry (agent เรียกอะไรได้บ้าง)
+  search_courses(q, term, filters)        → 04
+  get_student_context(student_id)         → 05
+  check_conflicts(sections[])             → 06
+  generate_plan(student_id, term, prefs)  → 06
+  search_knowledge(query, top_k)          → 07 (RAG)
+  answer_with_llm(context, question)      → 07
+
+STEP 3  Planner Loop
+  while step < MAX_TOOL_STEPS:
+      เลือก tool → เรียก → เก็บ observation → ประเมินว่าพอหรือยัง
+  จบแล้วส่ง context ก้อนเดียวให้ 07 สร้างคำตอบ + อ้างอิง
+
+STEP 4  Routing Policy (คุมค่าใช้จ่าย)
+  งานง่าย/ซ้ำ (classify, extract เวลา, ตรวจรูปแบบ) → Local AI Model (8300)
+  งานต้องเหตุผล/เขียนยาว                           → General AI (cloud LLM)
+  งานอิงกฎระเบียบ/หลักสูตร                          → ต้องผ่าน RAG เสมอ (ห้ามเดา)
+
+STEP 5  Context Manager
+  รวม: profile + transcript ย่อ + แผนปัจจุบัน + 10 ข้อความล่าสุด
+  ตัดให้ไม่เกิน token budget (สรุปของเก่าเป็น summary)
+
+STEP 6  Guardrail
+  - ห้ามตอบเรื่องตารางชนโดยไม่เรียก 06 (ตัวเลขต้องมาจาก engine)
+  - ถ้า RAG ไม่เจอหลักฐาน → ตอบว่า "ไม่พบในระเบียบ ให้ติดต่อสำนักส่งเสริมวิชาการฯ"

@@ -1,0 +1,28 @@
+[02_api_backend] 03_process.txt  —  Layering / Contract / Security
+==================================================================
+LAYER
+  api (router)  →  service (business)  →  repository (DB)  →  model
+  ห้าม router เรียก DB ตรง, ห้าม service รู้จัก HTTP
+
+RESPONSE CONTRACT (ทุก endpoint)
+  { "ok": true, "data": {...}, "meta": {"request_id","took_ms"} }
+  { "ok": false, "error": {"code","message","details"} }
+  error code: AUTH_401, VALIDATION_422, CONFLICT_409, UPSTREAM_502, RATE_429
+
+REQUEST FLOW (/plans/validate)
+  1. auth → ดึง student_id จาก JWT
+  2. โหลด sections ที่เลือก จาก 04 (ผ่าน cache redis 10 นาที)
+  3. POST → 06_schedule_conflict_engine {student, sections, rules}
+  4. รับ conflicts[] + warnings[] → normalize → ตอบ frontend
+  5. log ลง 08 (async, ไม่บล็อกคำตอบ)
+
+REQUEST FLOW (/chat)
+  1. โหลด context: profile + แผนปัจจุบัน + 10 ข้อความล่าสุด
+  2. POST → 03_ai_router_agent (stream=true)
+  3. proxy SSE กลับ frontend ทีละ token
+  4. จบแล้วบันทึก transcript + sources ลง DB
+
+SECURITY
+  - API key ของ LLM อยู่ที่ backend/service เท่านั้น (อ่านจาก env, ไม่ commit)
+  - ข้อมูลนักศึกษาเป็น PII → log แบบ mask (รหัส นศ. เก็บ hash ใน log)
+  - ทุก endpoint ต้องระบุ scope ว่าใครเข้าถึงได้ (student เห็นของตัวเองเท่านั้น)

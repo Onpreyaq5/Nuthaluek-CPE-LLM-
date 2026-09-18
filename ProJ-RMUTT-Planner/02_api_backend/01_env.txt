@@ -1,0 +1,29 @@
+[02_api_backend] 01_env.txt  —  Runtime / Package / Config
+Owner: <ใส่ชื่อ>
+==================================================================
+RUNTIME
+  - Python 3.11
+  - FastAPI + Uvicorn
+  - Container: python:3.11-slim
+  - Port: 8000
+
+PACKAGES
+  fastapi, uvicorn[standard], pydantic v2, pydantic-settings
+  sqlalchemy 2.x, alembic, psycopg[binary]      # Postgres
+  redis                                          # cache + rate limit + session
+  python-jose[cryptography], passlib[bcrypt]     # JWT / hash
+  httpx                                          # เรียก service ภายใน
+  python-multipart                               # upload ไฟล์ transcript
+  structlog, prometheus-fastapi-instrumentator
+
+ENV VARS
+  DATABASE_URL=postgresql+psycopg://rmutt:***@postgres:5432/rmutt_planner
+  REDIS_URL=redis://redis:6379/0
+  JWT_SECRET=<gen>  JWT_EXPIRE_MIN=120
+  AI_ROUTER_URL=http://ai_router:8100
+  SCHEDULE_ENGINE_URL=http://schedule_engine:8600
+  RAG_LLM_URL=http://rag_llm:8700
+  COURSE_DATA_URL=http://course_data:8400
+  CORS_ORIGINS=http://localhost:3000
+
+DEPENDS ON  postgres, redis, 03, 04, 06, 07

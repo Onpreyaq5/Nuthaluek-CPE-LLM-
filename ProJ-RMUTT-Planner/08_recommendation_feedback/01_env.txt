@@ -1,0 +1,22 @@
+[08_recommendation_feedback] 01_env.txt  —  คำแนะนำ / แจ้งเตือน / Log / Feedback
+Owner: <ใส่ชื่อ>
+==================================================================
+RUNTIME
+  - Python 3.11 + FastAPI + Celery worker
+  - Port: 8800
+
+PACKAGES
+  fastapi, uvicorn, celery, redis
+  sqlalchemy, psycopg
+  prometheus-client
+  icalendar                 # export .ics เข้า Google Calendar
+  line-bot-sdk (ออปชัน)      # แจ้งเตือนผ่าน LINE — นักศึกษาไทยใช้เยอะ
+
+ENV VARS
+  REDIS_URL / DATABASE_URL
+  NOTIFY_CHANNELS=web,email,line
+  LINE_CHANNEL_TOKEN=<secret>
+  METRICS_PORT=9108
+
+STACK เสริม (ออปชัน ใส่ใน compose profile "monitoring")
+  Prometheus + Grafana   dashboard ดู latency/ค่าใช้จ่าย LLM/จำนวนแผนที่สร้าง

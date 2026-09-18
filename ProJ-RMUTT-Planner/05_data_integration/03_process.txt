@@ -1,0 +1,25 @@
+[05_data_integration] 03_process.txt  —  Data Model / กติกา
+==================================================================
+CLEAN SCHEMA
+  Course     {code, name_th, name_en, credits, credit_detail, program_ids, prereq[]}
+  Section    {id, course_code, section, term, slots_bitmask, meetings[], teacher[],
+              room[], seat_total, seat_taken, exam_slot}
+  Student    {id_hash, program_id, entry_year, gpa, credits_earned}
+  Taken      {student, course_code, grade, term, passed:bool}
+  Preference {no_early_class:bool, free_days:[], max_credits, prefer_teacher[],
+              avoid_gap:bool, campus}
+
+TIME SLOT (ตัวอย่างการเช็คชน)
+  a = 0b...  (bitmask ของ section A)
+  b = 0b...
+  ชนกันเมื่อ  (a & b) != 0
+  ชนสอบ: เทียบ exam_slot แยกต่างหาก (สอบชน = ปัญหาใหญ่กว่าตารางเรียนชน)
+
+PIPELINE
+  raw(04) → validate → normalize → enrich(prereq, category) → store(Postgres)
+          → publish event data.ready → 06 & 07 (rebuild index)
+
+ข้อควรระวัง
+  - วิชาบางตัวมีหลาย meeting (บรรยาย+ปฏิบัติคนละวัน) → ต้องรวม bitmask ทุก meeting
+  - วิชาที่เรียนออนไลน์/ไม่ระบุเวลา → ไม่นับว่าชน แต่ติด flag ให้ผู้ใช้ดูเอง
+  - เทอมฤดูร้อนคาบยาวกว่า → ต้องรองรับ

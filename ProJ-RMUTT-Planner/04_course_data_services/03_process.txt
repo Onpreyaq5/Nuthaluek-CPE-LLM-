@@ -1,0 +1,28 @@
+[04_course_data_services] 03_process.txt  —  Schema / Process / จริยธรรมข้อมูล
+==================================================================
+RAW SCHEMA (RawCourseRecord)
+  course_code      "ENG101"
+  course_name_th / course_name_en
+  credits          3            # หรือ "3(2-2-5)" → แตกเป็น lecture/lab/self
+  section          "01"
+  term             "1/2569"
+  meetings[]       [{day:"MON", start:"09:00", end:"12:00", room:"ST1-301"}]
+  teacher[]        ["อ.สมชาย ..."]
+  seat_total / seat_taken
+  program_ids[]    หลักสูตรที่ลงได้
+  prereq[]         ["MTH101"]
+  exam             {mid:{date,time,room}, final:{...}}
+  source / fetched_at
+
+PROCESS
+  fetch → validate(pydantic) → dedupe(course_code+section+term)
+        → เก็บ raw (ไม่แก้) → publish event course.updated → 05
+
+FAILURE HANDLING
+  - source ล่ม → ใช้ข้อมูลเดิม + ติด stale=true + แจ้งใน /sync/status
+  - parse พัง → เก็บไฟล์ไว้ใน /data/raw/_failed + log ไป 08
+
+ข้อควรระวัง (สำคัญสำหรับโปรเจกต์นี้)
+  - ห้าม hardcode ข้อมูลตารางสอนมั่ว ๆ ลง repo แล้วอ้างว่าเป็นข้อมูลจริง
+  - ต้องมีป้ายกำกับบน UI ว่า "ข้อมูล ณ วันที่ ... โปรดยืนยันกับระบบทะเบียนอีกครั้ง"
+  - ไม่เก็บรหัสผ่านระบบทะเบียนของนักศึกษาไว้ในระบบเรา

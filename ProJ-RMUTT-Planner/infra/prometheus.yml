@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: rmutt-services
+    static_configs:
+      - targets:
+          - api_backend:8000
+          - ai_router:8100
+          - course_data:8400
+          - data_integration:8500
+          - schedule_engine:8600
+          - rag_llm:8700
+          - feedback:8800

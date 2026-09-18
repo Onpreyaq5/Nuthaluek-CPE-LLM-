@@ -1,0 +1,30 @@
+[01_web_app] 03_process.txt  —  สถาปัตยกรรม UI / Validation / Security
+==================================================================
+UI ARCHITECTURE
+  app/
+    (auth)/login
+    (main)/dashboard | planner | courses | plan | curriculum | chat | history
+  components/
+    timetable/   TimetableGrid, CourseBlock, ConflictBadge, DropZone
+    course/      CourseCard, CourseSearch, SectionPicker
+    ai/          ChatPanel, MessageBubble, SourceList, StreamingText
+    common/      ...
+  lib/           api-client.ts, hooks/, conflict-preview.ts (เช็คชนฝั่ง client แบบเบา)
+  store/         zustand: planDraft (แผนที่ยังไม่ save)
+
+CLIENT-SIDE CONFLICT PRE-CHECK
+  คำนวณ overlap แบบ (day, start, end) ในเบราว์เซอร์เพื่อให้ feedback ทันที (<16ms)
+  แต่ "คำตัดสินจริง" ต้องมาจาก 06_schedule_conflict_engine เสมอ
+  (client = UX, server = source of truth)
+
+VALIDATION
+  zod schema ทุก form; ตรวจหน่วยกิตต่ำสุด/สูงสุดต่อเทอมก่อนส่ง
+
+SECURITY
+  - ไม่เก็บ token ใน localStorage → httpOnly cookie
+  - ไม่ใส่ API key ของ LLM ใน frontend เด็ดขาด
+  - sanitize ข้อความจาก LLM ก่อน render (markdown + DOMPurify)
+
+STATE FLOW
+  user action → planDraft (local) → POST /plans/validate → รับ conflicts[]
+  → render สีแดง → user กด save → POST /plans

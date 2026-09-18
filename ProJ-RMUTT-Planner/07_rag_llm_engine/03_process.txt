@@ -1,0 +1,26 @@
+[07_rag_llm_engine] 03_process.txt  —  RAG Process / คุณภาพคำตอบ
+==================================================================
+FLOW
+  question
+   → (05) ดึง context นักศึกษา
+   → rewrite query (ขยายคำย่อ "ถอนวิชา" → "การถอนรายวิชา ระเบียบการศึกษา")
+   → hybrid retrieve → filter ปีหลักสูตร → rerank
+   → ถ้า score สูงสุด < threshold(0.35) → ตอบว่าไม่พบข้อมูล (ห้ามมั่ว)
+   → build prompt → LLM stream
+   → post-process: แนบ sources[] {title, section, page}
+
+ANTI-HALLUCINATION
+  1. ทุกประโยคที่อ้างระเบียบต้องมี citation
+  2. ตัวเลขวัน/เวลา/หน่วยกิต → เอาจาก 05/06 เท่านั้น ไม่ให้ LLM แต่ง
+  3. self-check pass: ถามโมเดลซ้ำว่า "คำตอบนี้มีส่วนไหนที่ไม่มีใน context บ้าง"
+     (เปิดเฉพาะคำถามสำคัญ เพราะเปลือง token)
+
+EVALUATION (ต้องทำก่อนส่งงาน)
+  สร้างชุดคำถาม 50 ข้อ พร้อมเฉลย (golden set) เช่น
+    - "ลงทะเบียนได้สูงสุดกี่หน่วยกิตต่อเทอม"
+    - "ถอนรายวิชาแล้วได้ W เมื่อไหร่"
+    - "วิชา X ต้องผ่านอะไรก่อน"
+  วัด: retrieval recall@6, answer accuracy, citation ถูกต้อง %, latency
+
+CACHE
+  redis: hash(query+filters) → คำตอบ TTL 24 ชม. (คำถามระเบียบซ้ำกันเยอะ)

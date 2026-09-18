@@ -1,0 +1,216 @@
+# RMUTT Study Planner — Docker Compose (โครงร่าง)
+# ใช้: docker compose up -d
+# เปิด monitoring เพิ่ม: docker compose --profile monitoring up -d
+# เปิดโมเดลในเครื่อง:   docker compose --profile local-ai up -d
+
+name: rmutt-planner
+
+x-common-env: &common-env
+  TZ: Asia/Bangkok
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+services:
+  # ---------- 01 Frontend ----------
+  web_app:
+    build: ./01_web_app
+    container_name: rmutt_web
+    ports: ["3000:3000"]
+    environment:
+      <<: *common-env
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    depends_on: [api_backend]
+    networks: [rmutt-net]
+
+  # ---------- 02 API Gateway ----------
+  api_backend:
+    build: ./02_api_backend
+    container_name: rmutt_api
+    ports: ["8000:8000"]
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      AI_ROUTER_URL: http://ai_router:8100
+      COURSE_DATA_URL: http://course_data:8400
+      DATA_INTEGRATION_URL: http://data_integration:8500
+      SCHEDULE_ENGINE_URL: http://schedule_engine:8600
+      RAG_LLM_URL: http://rag_llm:8700
+      FEEDBACK_URL: http://feedback:8800
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    networks: [rmutt-net]
+
+  # ---------- 03 AI Router / Agent ----------
+  ai_router:
+    build: ./03_ai_router_agent
+    container_name: rmutt_ai_router
+    ports: ["8100:8100"]
+    environment:
+      <<: *common-env
+      LLM_PROVIDER: ${LLM_PROVIDER}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL}
+      LOCAL_MODEL_URL: http://local_ai:11434
+      COURSE_DATA_URL: http://course_data:8400
+      DATA_INTEGRATION_URL: http://data_integration:8500
+      SCHEDULE_ENGINE_URL: http://schedule_engine:8600
+      RAG_LLM_URL: http://rag_llm:8700
+    networks: [rmutt-net]
+
+  # ---------- 04 Course Data ----------
+  course_data:
+    build: ./04_course_data_services
+    container_name: rmutt_course_data
+    ports: ["8400:8400"]
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/1
+      RAW_DATA_DIR: /data/raw
+      ALLOW_SCRAPING: "false"
+      SYNC_CRON: ${SYNC_CRON:-0 3 * * *}
+    volumes:
+      - ./data:/data
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [rmutt-net]
+
+  # ---------- 05 Data Integration ----------
+  data_integration:
+    build: ./05_data_integration
+    container_name: rmutt_data_integration
+    ports: ["8500:8500"]
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      SLOT_MINUTES: 30
+      DAY_START: "08:00"
+      DAY_END: "21:00"
+    volumes:
+      - ./data:/data
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [rmutt-net]
+
+  # ---------- 06 Schedule & Conflict Engine (CORE) ----------
+  schedule_engine:
+    build: ./06_schedule_conflict_engine
+    container_name: rmutt_schedule_engine
+    ports: ["8600:8600"]
+    environment:
+      <<: *common-env
+      DATA_INTEGRATION_URL: http://data_integration:8500
+      REDIS_URL: redis://redis:6379/2
+      MAX_SOLVER_SECONDS: 10
+      MAX_PLAN_CANDIDATES: 5
+    networks: [rmutt-net]
+
+  # ---------- 07 RAG + LLM ----------
+  rag_llm:
+    build: ./07_rag_llm_engine
+    container_name: rmutt_rag_llm
+    ports: ["8700:8700"]
+    environment:
+      <<: *common-env
+      QDRANT_URL: http://qdrant:6333
+      COLLECTION: rmutt_knowledge
+      EMBED_MODEL: ${EMBED_MODEL:-BAAI/bge-m3}
+      LLM_PROVIDER: ${LLM_PROVIDER}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL}
+    volumes:
+      - ./data:/data
+      - model_cache:/root/.cache
+    depends_on: [qdrant]
+    networks: [rmutt-net]
+
+  # ---------- 08 Recommendation / Feedback / Monitoring ----------
+  feedback:
+    build: ./08_recommendation_feedback
+    container_name: rmutt_feedback
+    ports: ["8800:8800"]
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/3
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [rmutt-net]
+
+  # ---------- Infrastructure ----------
+  postgres:
+    image: postgres:16-alpine
+    container_name: rmutt_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: Asia/Bangkok
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [rmutt-net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: rmutt_redis
+    ports: ["6379:6379"]
+    volumes: [redisdata:/data]
+    networks: [rmutt-net]
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rmutt_qdrant
+    ports: ["6333:6333"]
+    volumes: [qdrantdata:/qdrant/storage]
+    networks: [rmutt-net]
+
+  # ---------- Optional: โมเดลในเครื่อง ----------
+  local_ai:
+    image: ollama/ollama:latest
+    container_name: rmutt_local_ai
+    profiles: [local-ai]
+    ports: ["11434:11434"]
+    volumes: [ollama:/root/.ollama]
+    networks: [rmutt-net]
+
+  # ---------- Optional: Monitoring ----------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rmutt_prometheus
+    profiles: [monitoring]
+    ports: ["9090:9090"]
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks: [rmutt-net]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rmutt_grafana
+    profiles: [monitoring]
+    ports: ["3001:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes: [grafanadata:/var/lib/grafana]
+    networks: [rmutt-net]
+
+volumes:
+  pgdata:
+  redisdata:
+  qdrantdata:
+  ollama:
+  grafanadata:
+  model_cache:
+
+networks:
+  rmutt-net:
+    driver: bridge

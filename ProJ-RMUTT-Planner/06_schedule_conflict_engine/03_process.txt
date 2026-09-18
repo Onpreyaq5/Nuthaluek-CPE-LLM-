@@ -1,0 +1,38 @@
+[06_schedule_conflict_engine] 03_process.txt  —  Algorithm / Contract
+==================================================================
+ALGORITHM: TIME CLASH
+  slots(section) = OR ของทุก meeting → 182-bit mask
+  conflict(a,b)  = slots(a) & slots(b) != 0
+  ถ้าชน → หาช่วงที่ทับจริง (เอา bit ที่ซ้อน map กลับเป็นเวลา) เพื่อบอกผู้ใช้
+
+ALGORITHM: AUTO PLAN (ลำดับการทำ)
+  1. ดึง eligible sections จาก 05 (ผ่าน prereq + ตรงหลักสูตร + ที่นั่งว่าง)
+  2. จัดลำดับความสำคัญวิชา:
+       P0 วิชาบังคับที่ค้าง/เคยได้ F
+       P1 วิชาบังคับตามแผนเทอมนี้
+       P2 วิชาที่ปลดล็อกวิชาอื่นเยอะ (critical path)
+       P3 วิชาเลือก/เสรี
+  3. สร้างโมเดล CP-SAT ตามข้อจำกัดใน 02_step
+  4. solve (timeout MAX_SOLVER_SECONDS)
+  5. ถ้าไม่มีคำตอบ → relax ทีละชั้น: ที่นั่ง → ความชอบ → หน่วยกิตสูงสุด
+     แล้วบอกผู้ใช้ว่า "ต้องยอมอะไรบ้าง" (ห้ามคืน error เปล่า)
+  6. จัดอันดับ candidates ด้วยคะแนน + ความหลากหลาย
+
+RESPONSE CONTRACT
+{
+  "has_conflict": true,
+  "conflicts": [
+    {"code":"C1","severity":"ERROR",
+     "message_key":"time_clash",
+     "subjects":["ENG101-01","MTH102-02"],
+     "detail":{"day":"MON","overlap_start":"09:00","overlap_end":"10:30"},
+     "suggestions":[{"action":"change_section","to":"MTH102-05"}]}
+  ],
+  "warnings":[...],
+  "summary":{"total_credits":18,"days_on_campus":4,"free_days":["WED","SAT","SUN"]}
+}
+
+กฎเหล็กของทีม
+  - ตัวเลข/คำตัดสินเรื่อง "ชน/ไม่ชน" ต้องออกจาก service นี้เท่านั้น
+  - LLM ห้ามคำนวณเวลาเอง (มันคำนวณเวลาพลาดบ่อย)
+  - ทุก conflict ต้องมี message_key เพื่อทำ i18n ไทย/อังกฤษ

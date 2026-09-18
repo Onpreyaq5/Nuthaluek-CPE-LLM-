@@ -1,0 +1,39 @@
+[02_api_backend] 02_step.txt  —  ขั้นตอนทำงาน
+==================================================================
+STEP 1  โครง FastAPI
+  app/main.py, app/core/config.py, app/api/v1/, app/models/, app/schemas/, app/services/
+
+STEP 2  Auth
+  POST /auth/login          (รหัสนักศึกษา + รหัสผ่าน → JWT)
+  GET  /auth/me
+  role: student | advisor | admin
+
+STEP 3  Endpoints หลัก
+  --- Course ---
+  GET  /courses?q=&term=&day=&time=&teacher=
+  GET  /courses/{code}/sections
+  --- Student ---
+  GET  /students/me/profile          โปรไฟล์ + หลักสูตร + ชั้นปี
+  GET  /students/me/transcript       วิชาที่ผ่านแล้ว/เกรด
+  POST /students/me/transcript       อัปโหลด PDF/CSV → ส่งต่อ 05
+  --- Plan ---
+  GET  /plans?term=
+  POST /plans                        บันทึกแผน
+  POST /plans/validate               ★ เช็คตารางชน/เงื่อนไข → เรียก 06
+  POST /plans/auto                   ★ ให้ระบบจัดให้ → เรียก 06 + 07
+  GET  /plans/{id}/explain           เหตุผลของแผน (ภาษาคน) → 07
+  --- Chat/AI ---
+  POST /chat                         → 03_ai_router_agent  (SSE stream)
+  --- Feedback/Log ---
+  POST /feedback                     → 08
+
+STEP 4  DB Migration
+  alembic init → ตารางตาม 00_docs/05_data_model.md → alembic upgrade head
+
+STEP 5  Cross-cutting
+  middleware: request-id, logging, error handler มาตรฐาน
+  rate limit (redis) 60 req/min/user, chat 10 req/min
+  /health /ready /metrics
+
+STEP 6  Test + Dockerize
+  pytest + httpx AsyncClient; Dockerfile + healthcheck

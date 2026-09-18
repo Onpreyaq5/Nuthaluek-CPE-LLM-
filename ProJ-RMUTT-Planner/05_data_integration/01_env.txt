@@ -1,0 +1,20 @@
+[05_data_integration] 01_env.txt  —  ทำความสะอาด/รวมข้อมูล + โปรไฟล์นักศึกษา
+Owner: <ใส่ชื่อ>
+==================================================================
+RUNTIME
+  - Python 3.11 + FastAPI + Pandas
+  - Port: 8500
+
+PACKAGES
+  pandas, numpy, pydantic v2
+  networkx                # กราฟวิชาบังคับก่อน (prereq DAG)
+  python-dateutil, pytz   # Asia/Bangkok
+  pythainlp               # ตัดคำไทย/normalize ชื่อวิชา
+  rapidfuzz               # จับคู่ชื่อวิชาที่สะกดต่างกัน
+  sqlalchemy, psycopg, alembic
+
+ENV VARS
+  TZ=Asia/Bangkok
+  SLOT_MINUTES=30              # ความละเอียดของช่องเวลา
+  DAY_START=08:00  DAY_END=21:00
+  PROCESSED_DIR=/data/processed
