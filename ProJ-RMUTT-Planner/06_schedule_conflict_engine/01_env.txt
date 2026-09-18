@@ -18,7 +18,7 @@ ENV VARS
   MAX_SOLVER_SECONDS=10
   MAX_PLAN_CANDIDATES=5        # เสนอกี่ทางเลือก
   DEFAULT_MIN_CREDITS=9
-  DEFAULT_MAX_CREDITS=22       # ต้องเช็คกับระเบียบจริงของ มทร.ธัญบุรี
+  DEFAULT_MAX_CREDITS=21       # เพดานลงทะเบียนต่อเทอมของ มทร.ธัญบุรี (ยืนยันแล้ว)
 
 NOTE
   service นี้ "ไม่มี LLM" — เป็นตรรกะล้วน ผลลัพธ์ต้องทำซ้ำได้ (deterministic)

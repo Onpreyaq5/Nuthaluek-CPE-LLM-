@@ -105,7 +105,7 @@ CREATE TABLE student_preferences (
   student_id         TEXT PRIMARY KEY REFERENCES students(id),
   no_early_class     BOOLEAN DEFAULT FALSE,  -- ไม่เอาคาบก่อน 09:00
   free_days          SMALLINT[],             -- [4] = อยากว่างศุกร์
-  max_credits        SMALLINT DEFAULT 22,
+  max_credits        SMALLINT DEFAULT 21,   -- เพดานลงทะเบียนต่อเทอมของ มทร.ธัญบุรี
   min_credits        SMALLINT DEFAULT 9,
   avoid_gaps         BOOLEAN DEFAULT TRUE,
   preferred_teachers TEXT[],

@@ -106,6 +106,8 @@ services:
       REDIS_URL: redis://redis:6379/2
       MAX_SOLVER_SECONDS: 10
       MAX_PLAN_CANDIDATES: 5
+      DEFAULT_MIN_CREDITS: 9
+      DEFAULT_MAX_CREDITS: 21   # เพดานลงทะเบียนต่อเทอม มทร.ธัญบุรี
     networks: [rmutt-net]
 
   # ---------- 07 RAG + LLM ----------
