@@ -6,7 +6,7 @@ STEP 1  Conflict Detector (ทำก่อน — เป็น MVP)
     C1 TIME_CLASH      เวลาเรียนทับกัน            (bitmask AND)
     C2 EXAM_CLASH      เวลาสอบกลางภาค/ปลายภาคชน
     C3 PREREQ_FAIL     ยังไม่ผ่านวิชาบังคับก่อน
-    C4 CREDIT_LIMIT    หน่วยกิตเกิน/ต่ำกว่าเกณฑ์
+    C4 CREDIT_LIMIT    หน่วยกิตเกิน/ต่ำกว่าเกณฑ์  (ปกติ 9-21, ฤดูร้อน ≤ SUMMER_MAX_CREDITS)
     C5 DUPLICATE       ลงวิชาเดิมที่ผ่านแล้ว / ลงซ้ำ 2 sec
     C6 SEAT_FULL       ที่นั่งเต็ม
   แต่ละข้อคืน severity: ERROR (ลงไม่ได้) | WARNING (ลงได้แต่ควรรู้)

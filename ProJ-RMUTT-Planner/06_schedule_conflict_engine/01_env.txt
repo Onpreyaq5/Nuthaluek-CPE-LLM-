@@ -18,7 +18,11 @@ ENV VARS
   MAX_SOLVER_SECONDS=10
   MAX_PLAN_CANDIDATES=5        # เสนอกี่ทางเลือก
   DEFAULT_MIN_CREDITS=9
-  DEFAULT_MAX_CREDITS=21       # เพดานลงทะเบียนต่อเทอมของ มทร.ธัญบุรี (ยืนยันแล้ว)
+  DEFAULT_MAX_CREDITS=21       # เพดานลงทะเบียนต่อเทอมปกติ (ยืนยันแล้ว)
+  SUMMER_MAX_CREDITS=9         # เพดานเทอมฤดูร้อน (term 3) — ★ ยังไม่ยืนยัน ต้องเช็คระเบียบ
+
+กฎที่ตกลงว่า "ไม่ทำ" (out of scope)
+  - ลดเพดานหน่วยกิตสำหรับนักศึกษาสถานะรอพินิจ (GPAX ต่ำกว่าเกณฑ์) → ไม่ implement
 
 NOTE
   service นี้ "ไม่มี LLM" — เป็นตรรกะล้วน ผลลัพธ์ต้องทำซ้ำได้ (deterministic)
