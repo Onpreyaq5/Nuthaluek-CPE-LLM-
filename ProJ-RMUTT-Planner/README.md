@@ -121,6 +121,11 @@ python -m src.degree_plan ../data/raw/oreg/graduate_check_xxx.html ../data/raw/o
 cd 04_course_data_services && python -c "from src.adapters.oreg_rmutt import *; print(len(parse_search_results(open('tests/fixtures/search_results_sample.html','rb').read())))"
 ```
 
+## ทำงานเป็นทีม
+
+อ่าน [CONTRIBUTING.md](CONTRIBUTING.md) ก่อนเริ่ม — branch ต่อโมดูล, PR + review, CI รัน `pytest` ทุกโมดูล + เช็ค compose + กัน secret หลุด อัตโนมัติ
+(workflow อยู่ที่ `.github/workflows/ci.yml` ใน root ของ repo)
+
 ## สถานะปัจจุบัน
 
 🟡 **โครงร่าง + parser ข้อมูลจริง** — service ยังไม่มี logic แต่ท่อข้อมูลจากระบบทะเบียนใช้ได้แล้ว
