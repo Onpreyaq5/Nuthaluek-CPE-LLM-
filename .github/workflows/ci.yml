@@ -1,13 +1,11 @@
-# CI ของ ProJ-RMUTT-Planner — รันทุก PR และทุก push เข้า main
+# CI ของ ProJ-RMUTT-Planner — รันทุก PR และทุก push เข้า main (ทุก PR รวมที่แก้ LAB 1-3 ด้วย เพื่อให้ required check รายงานผลเสมอ)
 # ไฟล์นี้ต้องอยู่ที่ <root ของ repo>/.github/workflows/ci.yml (GitHub อ่านจาก root เท่านั้น)
 name: ProJ-RMUTT-Planner CI
 
 on:
   pull_request:
-    paths: ["ProJ-RMUTT-Planner/**", ".github/workflows/ci.yml"]
   push:
     branches: [main]
-    paths: ["ProJ-RMUTT-Planner/**", ".github/workflows/ci.yml"]
 
 defaults:
   run:
