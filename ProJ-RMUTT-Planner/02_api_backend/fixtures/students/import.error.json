@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "error": {
+    "code": "VALIDATION_422",
+    "message": "ไฟล์ที่อัปโหลดไม่ใช่ HTML ที่รองรับ",
+    "details": {}
+  },
+  "meta": { "request_id": "req_4s5t6u7w", "took_ms": 60.0 }
+}

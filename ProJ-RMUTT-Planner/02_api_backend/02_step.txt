@@ -1,39 +1,56 @@
-[02_api_backend] 02_step.txt  —  ขั้นตอนทำงาน
+[02_api_backend] 02_step.txt  —  ขั้นตอนทำงาน (สถานะจริงหลัง Prompt 1-10 — ดู PLAN.md §8 สำหรับ checkbox ล่าสุด)
 ==================================================================
-STEP 1  โครง FastAPI
-  app/main.py, app/core/config.py, app/api/v1/, app/models/, app/schemas/, app/services/
+STEP 1  โครง FastAPI  [เสร็จ]
+  src/main.py, src/core/{config,errors,envelope,middleware,logging,masking,security,db,redis,cache}.py
+  src/api/v1/, src/schemas/, src/services/, src/repositories/, src/models/, src/adapters/
 
-STEP 2  Auth
-  POST /auth/login          (รหัสนักศึกษา + รหัสผ่าน → JWT)
-  GET  /auth/me
-  role: student | advisor | admin
+STEP 2  Auth  [เสร็จ]
+  POST /api/v1/auth/login   (username + password เดโม → JWT ใน cookie HttpOnly "session")
+  GET  /api/v1/auth/me
+  POST /api/v1/auth/logout
+  role: student เท่านั้นในรอบนี้ (advisor/admin ไม่ทำ — ดู PLAN.md §10)
 
-STEP 3  Endpoints หลัก
-  --- Course ---
-  GET  /courses?q=&term=&day=&time=&teacher=
-  GET  /courses/{code}/sections
-  --- Student ---
-  GET  /students/me/profile          โปรไฟล์ + หลักสูตร + ชั้นปี
-  GET  /students/me/transcript       วิชาที่ผ่านแล้ว/เกรด
-  POST /students/me/transcript       อัปโหลด PDF/CSV → ส่งต่อ 05
-  --- Plan ---
-  GET  /plans?term=
-  POST /plans                        บันทึกแผน
-  POST /plans/validate               ★ เช็คตารางชน/เงื่อนไข → เรียก 06
-  POST /plans/auto                   ★ ให้ระบบจัดให้ → เรียก 06 + 07
-  GET  /plans/{id}/explain           เหตุผลของแผน (ภาษาคน) → 07
-  --- Chat/AI ---
-  POST /chat                         → 03_ai_router_agent  (SSE stream)
-  --- Feedback/Log ---
-  POST /feedback                     → 08
+STEP 3  Endpoints หลัก  [เสร็จทั้งหมด — 0 endpoint เป็น 501 stub]
+  --- Course (adapter 04) ---
+  GET  /api/v1/courses?q=&term=&day=&teacher=&cursor=&limit=          cache redis
+  GET  /api/v1/courses/{code}/sections?term=                          cache redis
+  --- Student (adapter 05) ---
+  GET  /api/v1/students/me/profile
+  GET  /api/v1/students/me/transcript
+  POST /api/v1/students/me/import        อัปโหลด HTML transcript → parse → ส่งต่อ 05 (ไม่เก็บไฟล์ดิบ)
+  --- Plan (adapter 06 conflict engine, 07 explainer) ---
+  GET  /api/v1/plans?cursor=&limit=
+  POST /api/v1/plans                      บันทึกแผน (ชื่อซ้ำ → 409)
+  GET  /api/v1/plans/{id}
+  DELETE /api/v1/plans/{id}
+  POST /api/v1/plans/validate             ★ เช็คตารางชน/เงื่อนไข → เรียก 06
+  POST /api/v1/plans/auto                 ★ ให้ระบบจัดให้ → เรียก 06 + 07 (07 ล่ม → null explanation + warning)
+  GET  /api/v1/plans/{id}/explain         เหตุผลของแผน (ภาษาคน) → 07
+  --- Chat/AI (adapter 03, http เสมอ) ---
+  POST /api/v1/chat                       → 03_ai_router_agent (SSE stream, peek-first-event ก่อนเปิด stream)
+  GET  /api/v1/chat/sessions
+  GET  /api/v1/chat/sessions/{id}/messages
+  --- Feedback (adapter 08 log sink) ---
+  POST /api/v1/feedback                   → log_queue (batch async flush) → 08
 
-STEP 4  DB Migration
-  alembic init → ตารางตาม 00_docs/05_data_model.md → alembic upgrade head
+STEP 4  DB Migration  [เสร็จ]
+  alembic (async, migrations/versions/0001-0004): students, student_preferences, plans, plan_items,
+  chat_sessions, chat_messages, feedback
 
-STEP 5  Cross-cutting
-  middleware: request-id, logging, error handler มาตรฐาน
-  rate limit (redis) 60 req/min/user, chat 10 req/min
-  /health /ready /metrics
+STEP 5  Cross-cutting  [เสร็จ — Prompt 10]
+  middleware: request-id (X-Request-ID ทุก response), structlog JSON, error handler มาตรฐาน (AppError,
+    RequestValidationError, unhandled Exception → envelope เดียวกันเสมอ)
+  rate limit (redis fixed window, FastAPI dependency ไม่ใช่ raw middleware — ดู src/core/rate_limit.py):
+    general 60/min ต่อ student_id (หรือ IP ถ้ายังไม่ login), /chat 10/min, /auth/login 5/min ต่อ IP
+    Redis ล่ม → fail open (log warning ไม่ error)
+  GET /health   (ไม่มี envelope)
+  GET /ready    (Postgres, Redis, adapter 04-08 ที่ตั้ง http, 03 เสมอ — ไม่ ready → 503)
+  GET /metrics  (Prometheus text, รวม log_dropped_total)
 
-STEP 6  Test + Dockerize
-  pytest + httpx AsyncClient; Dockerfile + healthcheck
+STEP 6  Test + Dockerize  [เสร็จ]
+  pytest -q (unit/api/contract/sse), httpx AsyncClient + ASGITransport, fakeredis (autouse ทุก test),
+  Postgres จริงสำหรับ tests/api และ tests/sse (มี pytest.mark.db, skip อัตโนมัติถ้าไม่ตั้ง TEST_DATABASE_URL)
+  Dockerfile (uvicorn src.main:app ผ่าน entrypoint.sh: alembic upgrade head → seed ถ้าสั่ง → uvicorn)
+  requirements.lock (pip freeze จาก venv ที่ติดตั้งเฉพาะ requirements.txt) — Dockerfile ติดตั้งจากไฟล์นี้
+  scripts/smoke.sh — จำลอง clean-clone: build image, รัน Postgres+Redis+api จริง, curl login→courses→
+    validate→save→chat (chat คาดหวัง UPSTREAM_502 ตราบใดที่ยังไม่มี 03 จริงให้ต่อ)
