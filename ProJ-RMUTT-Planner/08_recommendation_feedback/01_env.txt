@@ -1,22 +1,59 @@
-[08_recommendation_feedback] 01_env.txt  —  คำแนะนำ / แจ้งเตือน / Log / Feedback
-Owner: <ใส่ชื่อ>
-==================================================================
-RUNTIME
-  - Python 3.11 + FastAPI + Celery worker
-  - Port: 8800
+[08_recommendation_feedback] 01_env.txt — Runtime / Package / Environment
+==========================================================================
+OWNER
+  Module 08 เท่านั้น: Recommendation, Event Log, Feedback, Analytics,
+  Calendar export, Alert และ Privacy cleanup
 
-PACKAGES
-  fastapi, uvicorn, celery, redis
+RUNTIME
+  - Python 3.11
+  - FastAPI + Uvicorn (API port 8800)
+  - SQLAlchemy + PostgreSQL
+  - Celery + Redis DB 3 (background/retention worker)
+  - Timezone ของปฏิทิน: Asia/Bangkok
+
+PACKAGES (ดูเวอร์ชันที่ requirements.txt)
+  fastapi, uvicorn, pydantic
   sqlalchemy, psycopg
+  celery, redis
   prometheus-client
-  icalendar                 # export .ics เข้า Google Calendar
-  line-bot-sdk (ออปชัน)      # แจ้งเตือนผ่าน LINE — นักศึกษาไทยใช้เยอะ
+  icalendar
+  httpx
+  pytest (test)
 
 ENV VARS
-  REDIS_URL / DATABASE_URL
-  NOTIFY_CHANNELS=web,email,line
-  LINE_CHANNEL_TOKEN=<secret>
-  METRICS_PORT=9108
+  DATABASE_URL             PostgreSQL DSN; local fallback = sqlite:///./feedback.db
+  REDIS_URL                default redis://localhost:6379/3
+  LOG_LEVEL                default INFO
+  INTERNAL_API_TOKEN       token ระหว่าง service สำหรับ analytics/alert/privacy
+                           production ต้องตั้งค่า ห้ามปล่อยว่าง
+  CORS_ORIGINS             comma-separated; default http://localhost:3000
+  NOTIFY_CHANNELS          default web (email/line รอ channel adapter + recipient mapping)
+  LINE_CHANNEL_TOKEN       optional; ห้าม commit secret
+  LOG_RETENTION_DAYS       default 90
+  LOW_SEAT_THRESHOLD       default 5
+  REVIEW_RATING_THRESHOLD  default 2 (คะแนน 1-2 เข้าคิว review)
+  MAX_EVENT_BATCH          default 500
 
-STACK เสริม (ออปชัน ใส่ใน compose profile "monitoring")
-  Prometheus + Grafana   dashboard ดู latency/ค่าใช้จ่าย LLM/จำนวนแผนที่สร้าง
+RUN LOCAL
+  python -m pip install -r requirements.txt
+  uvicorn src.main:app --host 0.0.0.0 --port 8800 --reload
+
+RUN TEST
+  python -m pytest -q
+
+RUN WORKER
+  celery -A src.workers.celery_app.celery_app worker --loglevel=INFO
+
+DOCKER
+  Dockerfile ปัจจุบันรัน API ได้ทันที
+  Celery worker/beat ต้องให้เจ้าของไฟล์ส่วนกลางเพิ่ม service ใน docker-compose.yml
+  เพราะสมาชิก 08 ห้ามแก้ docker-compose.yml และ infra/
+
+MONITORING
+  GET /metrics ใช้ Prometheus text format
+  infra/prometheus.yml มี target feedback:8800 อยู่แล้ว
+
+ข้อห้าม
+  - ห้ามส่ง student_id จริง ให้ส่ง student_hash เท่านั้น
+  - ห้ามใส่ transcript, ชื่อ, email, phone หรือ secret ใน event payload
+  - ห้ามให้ Module 08 ตัดสิน conflict เอง ต้องใช้ structured result จาก Module 06
