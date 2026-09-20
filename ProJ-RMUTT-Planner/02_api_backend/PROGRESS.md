@@ -487,3 +487,18 @@ failed มาก่อนบนเครื่อง dev เดิม**:
 `fakeredis` (แยกไว้ใน `requirements-dev.txt` ตามที่ตั้งใจแยก prod/dev deps) — ต้องแจ้งเฟิส/ทีมกลางถ้าจะเพิ่ม
 02 เข้า matrix ว่าให้ใช้ `pip install -r requirements.txt -r requirements-dev.txt` แทน ไม่งั้น CI จะ fail
 ทันทีที่เพิ่มเข้าไปทั้งที่โค้ดไม่มีปัญหาอะไร (เขียนเป็นข้อเสนอไว้ใน `handoff/ci.md` แล้วด้วย)
+
+---
+
+## ย้ายจาก main ไปทำงานต่อบน branch `feat/api-backend`
+
+หลัง push งาน 02 เข้า `main` ครั้งแรก (commit `[02] API backend: auth, courses, plans, chat SSE, import,
+feedback + tests`) ทีมให้ย้ายมาทำงาน 02 ต่อบน branch **`feat/api-backend`** แทน (branch นี้มีอยู่แล้วบน
+origin แต่ตามหลัง `main` ไม่มี commit ของตัวเอง) — sync เข้าด้วยกันด้วย `git checkout -B feat/api-backend
+origin/feat/api-backend` แล้ว `git merge --ff-only origin/main` (fast-forward สำเร็จ ไม่มี conflict
+เพราะ `feat/api-backend` ไม่เคยมี commit ของตัวเองมาก่อน)
+
+**งาน 02 ทุกอย่างต่อจากนี้ push ไปที่ `origin feat/api-backend` ไม่ใช่ `main`** (`main` คงไว้ตามเดิม ไม่แตะ
+ต่อ — commit `[02] API backend: ...` ยังอยู่บน `main` เหมือนเดิมทุกประการ) อัปเดต
+`02_api_backend_prompts.md` ส่วน "เตรียมก่อนเริ่ม"/"หลังจบ" ให้ตรงกับ workflow ใหม่นี้แล้ว (checkout/pull/
+push ที่ `feat/api-backend`, ห้าม rebase branch ที่ push ไปแล้ว ใช้ `merge` แทนถ้าต้องการของจาก `main`)

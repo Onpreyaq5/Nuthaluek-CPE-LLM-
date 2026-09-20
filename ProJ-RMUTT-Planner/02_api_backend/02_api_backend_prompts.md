@@ -16,8 +16,12 @@
 
 ## เตรียมก่อนเริ่ม
 1. วาง `CLAUDE.md` และ `PLAN.md` ใน `02_api_backend/`
-2. `git checkout main && git pull origin main` (ทำงานตรงบน `main` ตาม `CONTRIBUTING.md` ของทีม —
-   ไม่ต้องสร้าง branch/PR)
+2. `git checkout feat/api-backend && git pull origin feat/api-backend` — งาน 02 ต่อจากนี้ทำบน branch
+   `feat/api-backend` (ไม่ใช่ `main` ตรงๆ อีกต่อไป — `feat/api-backend` sync มาจาก `main` แล้วครั้งหนึ่ง
+   ตอนย้ายงานเข้า repo ทีม) ไม่ต้องเปิด PR ระหว่างทำงานประจำวัน (push ตรงเข้า `feat/api-backend` ได้เลย)
+   ถ้าต้องการของใหม่จาก `main` ระหว่างทาง: `git merge --ff-only origin/main` ก่อน (ถ้าทำไม่ได้เพราะมี
+   commit ของตัวเองใน branch แล้วให้ใช้ `git merge origin/main` แทน — **ห้าม rebase branch ที่ push
+   ไปแล้ว** เพราะจะทำให้ history ไม่ตรงกับที่คนอื่นอาจ pull ไปแล้ว)
 3. เปิด Claude Code ที่ root ของ `ProJ-RMUTT-Planner`
 4. ทำทีละ prompt → ตรวจ `pytest -q` + เปิด `http://localhost:8000/docs` → `/clear` → prompt ถัดไป
 
@@ -343,12 +347,15 @@ commit:
 ---
 
 ## หลังจบ
-ทำงานตรงบน `main` ตาม `CONTRIBUTING.md` ของทีม (ไม่ใช้ branch/PR):
+งาน 02 ทำบน branch `feat/api-backend` ต่อจากนี้ (แยกจาก `main` ที่ใช้ตอนย้ายงานเข้า repo ทีมครั้งแรก):
 ```bash
-git add 02_api_backend/
+git add ProJ-RMUTT-Planner/02_api_backend/
 git commit -m "[02] <สิ่งที่ทำ>"
-git pull --rebase origin main
-git push origin main
+git merge --ff-only origin/main    # ถ้าอยากได้ของใหม่จาก main ก่อน push (ข้ามได้ถ้าไม่จำเป็น)
+git push origin feat/api-backend
 ```
+**ห้าม `git rebase` บน `feat/api-backend`** หลังจาก push ไปแล้วครั้งแรก (แก้ history ที่คนอื่นอาจ pull
+ไปแล้วจะทำให้ conflict ซ้ำซ้อน) ใช้ `git merge` แทนเสมอถ้าต้องรวมของจาก `main`
+
 แจ้งทีมให้ดูไฟล์ใน `02_api_backend/handoff/` (compose, CI, api-spec) — ส่วนนี้ทีมเป็นคนตัดสินและแก้ไฟล์ส่วนกลางเอง
 (ส่งงานรายวันให้ 01 เร็วขึ้นได้ด้วยการ commit+push หลังจบแต่ละวันแทนที่จะรวบท้ายสุด)
