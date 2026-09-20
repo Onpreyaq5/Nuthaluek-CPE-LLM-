@@ -66,18 +66,22 @@ def _base_code(code: str) -> str:
     return code.split("-")[0]
 
 
-def build_candidates(audit: DegreeAudit) -> list[Candidate]:
+def build_candidates(audit: DegreeAudit, prereq_dag: Any | None = None) -> list[Candidate]:
     out: list[Candidate] = []
+    critical_scores = prereq_dag.calculate_critical_path_scores() if prereq_dag else {}
     for cat in audit.categories:
         cat_label = f"{cat.number} {cat.name}"
         cat_needs_more = (cat.is_passed is False) or cat.below_min
         for c in cat.courses:
             if c.passed:
                 continue
+            unlocks_count = len(prereq_dag.get_all_unlocks(c.code)) if prereq_dag else 0
             if c.taken:
                 pr, why = P0_RETAKE, f"เคยลงแล้วได้ {c.last_grade} ต้องลงใหม่"
             elif cat_needs_more:
                 pr, why = P1_REQUIRED, f"หมวด {cat.number} ยังขาดอีก {cat.remaining_credits} หน่วยกิต"
+            elif unlocks_count > 0:
+                pr, why = P2_UNLOCK, f"ปลดล็อกวิชาอื่นอีก {unlocks_count} วิชา (Critical Path Score: {critical_scores.get(c.code, 0)})"
             else:
                 pr, why = P3_OTHER, "อยู่ในโครงสร้างหลักสูตร ยังไม่ได้ลง"
             out.append(Candidate(
@@ -101,8 +105,12 @@ def attach_open_sections(candidates: list[Candidate], search_rows: list) -> None
             })
 
 
-def build_plan_input(audit: DegreeAudit, search_rows: list | None = None) -> DegreePlanInput:
-    cands = build_candidates(audit)
+def build_plan_input(
+    audit: DegreeAudit,
+    search_rows: list | None = None,
+    prereq_dag: Any | None = None,
+) -> DegreePlanInput:
+    cands = build_candidates(audit, prereq_dag=prereq_dag)
     term = None
     if search_rows:
         attach_open_sections(cands, search_rows)
