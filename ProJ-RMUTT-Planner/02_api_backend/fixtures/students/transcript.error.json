@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "UPSTREAM_502",
-    "message": "โมดูลข้อมูลนักศึกษา (05) ไม่ตอบสนอง",
-    "details": { "module": "05" }
-  },
-  "meta": { "request_id": "req_3r4s5t6v", "took_ms": 5021.5 }
-}

@@ -1,40 +1,29 @@
 [02_api_backend] 01_env.txt  —  Runtime / Package / Config
+Owner: <ใส่ชื่อ>
 ==================================================================
 RUNTIME
   - Python 3.11
-  - FastAPI + Uvicorn (ASGI, CMD: uvicorn src.main:app)
+  - FastAPI + Uvicorn
   - Container: python:3.11-slim
   - Port: 8000
 
-PACKAGES (ดู requirements.txt / requirements.lock ฉบับ pin จริง)
+PACKAGES
   fastapi, uvicorn[standard], pydantic v2, pydantic-settings
-  sqlalchemy[asyncio] 2.x, alembic, psycopg[binary]   # Postgres
-  redis (redis.asyncio)                                # cache + rate limit
-  python-jose[cryptography]                            # JWT
-  httpx                                                # เรียก adapter http ของ 03-08
-  python-multipart, beautifulsoup4, lxml               # upload/parse import HTML
-  structlog                                            # log แบบ JSON, mask PII
-  prometheus-fastapi-instrumentator                    # /metrics
-  Dev only (requirements-dev.txt): pytest, pytest-asyncio, fakeredis, ruff
+  sqlalchemy 2.x, alembic, psycopg[binary]      # Postgres
+  redis                                          # cache + rate limit + session
+  python-jose[cryptography], passlib[bcrypt]     # JWT / hash
+  httpx                                          # เรียก service ภายใน
+  python-multipart                               # upload ไฟล์ transcript
+  structlog, prometheus-fastapi-instrumentator
 
-ENV VARS (ตัวเต็มดู .env.example)
-  DATABASE_URL=postgresql+psycopg://rmutt:***@postgres:5432/rmutt
+ENV VARS
+  DATABASE_URL=postgresql+psycopg://rmutt:***@postgres:5432/rmutt_planner
   REDIS_URL=redis://redis:6379/0
-  JWT_SECRET=<gen>  JWT_EXPIRE_MINUTES=480
-  DEMO_USERNAME / DEMO_PASSWORD / DEMO_STUDENT_ID   # บัญชีเดโม (PLAN.md หัวข้อ 5)
-  CORS_ORIGINS=http://localhost:5173
-  SEED_DEMO=false                                    # entrypoint.sh: true เฉพาะ dev/demo
+  JWT_SECRET=<gen>  JWT_EXPIRE_MIN=120
+  AI_ROUTER_URL=http://ai_router:8100
+  SCHEDULE_ENGINE_URL=http://schedule_engine:8600
+  RAG_LLM_URL=http://rag_llm:8700
+  COURSE_DATA_URL=http://course_data:8400
+  CORS_ORIGINS=http://localhost:3000
 
-  ADAPTER_04..08 = mock | inprocess | http           # 03 (chat router) ใช้ http เสมอ
-  ROUTER_URL=http://router:8001                      # 03 (เสมอ)
-  COURSE_CATALOG_URL / STUDENT_DATA_URL / PLAN_ENGINE_URL / EXPLAINER_URL / LOG_SINK_URL
-    → ใช้เมื่อ ADAPTER_xx=http (04-08 ตามลำดับ) — เป็น PLACEHOLDER ยังไม่มีสัญญาจริงจากทีม (ดู PROGRESS.md)
-  MODULES_ROOT / MODULE_04_DIR / MODULE_05_DIR       # ใช้เมื่อ ADAPTER_04/05=inprocess
-
-  TIMEOUT_READ_SECONDS / RETRY_READ
-  TIMEOUT_VALIDATE_SECONDS / RETRY_VALIDATE
-  TIMEOUT_AUTO_SECONDS / RETRY_AUTO
-  TIMEOUT_WRITE_SECONDS / RETRY_WRITE
-  TIMEOUT_CHAT_START_SECONDS / TIMEOUT_CHAT_IDLE_SECONDS / TIMEOUT_CHAT_TOTAL_SECONDS
-
-DEPENDS ON  Postgres, Redis, 03 (ai_router, http เสมอ), 04-08 (mock ในโหมด dev จนกว่าจะมีของจริง)
+DEPENDS ON  postgres, redis, 03, 04, 06, 07

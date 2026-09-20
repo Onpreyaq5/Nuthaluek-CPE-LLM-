@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "AUTH_401",
-    "message": "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
-    "details": {}
-  },
-  "meta": { "request_id": "req_1a2b3c4e", "took_ms": 4.7 }
-}

@@ -1,5 +1,0 @@
-{
-  "ok": true,
-  "data": { "username": "admin", "student_id": "6500000000", "role": "student" },
-  "meta": { "request_id": "req_1a2b3c4f", "took_ms": 3.1 }
-}

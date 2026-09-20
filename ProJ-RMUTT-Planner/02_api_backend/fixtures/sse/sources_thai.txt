@@ -1,8 +1,0 @@
-data: {"type": "session", "session_id": 1}
-
-data: {"type": "token", "text": "อ้างอิงจากประกาศของมหาวิทยาลัย"}
-
-data: {"type": "sources", "items": [{"title": "ประกาศ มทร.ธัญบุรี เรื่อง การลงทะเบียนเรียน", "section": "ข้อ 5 วรรคสอง", "page": 3, "document_id": "doc-announcement-2569-01", "url": null}, {"title": "คู่มือนักศึกษา ปีการศึกษา 2569", "section": "บทที่ 4", "page": 21, "document_id": "doc-handbook-2569", "url": "https://reg.rmutt.ac.th/handbook-2569"}]}
-
-data: {"type": "done", "message_id": 2}
-

@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "CONFLICT_409",
-    "message": "มีแผนชื่อนี้อยู่แล้วในภาคการศึกษานี้",
-    "details": { "term": "1/2569", "name": "แผนตัวอย่าง B" }
-  },
-  "meta": { "request_id": "req_7c886a33505ee01d", "took_ms": 5.01 }
-}

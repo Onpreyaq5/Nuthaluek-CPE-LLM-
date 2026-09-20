@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "FORBIDDEN_403",
-    "message": "ไม่มีสิทธิ์เข้าถึงแผนนี้",
-    "details": { "plan_id": 99 }
-  },
-  "meta": { "request_id": "req_7l8m9n0p", "took_ms": 3.5 }
-}

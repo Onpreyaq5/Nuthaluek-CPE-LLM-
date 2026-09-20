@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "FORBIDDEN_403",
-    "message": "ไม่มีสิทธิ์เข้าถึงบทสนทนานี้",
-    "details": { "session_id": 999 }
-  },
-  "meta": { "request_id": "req_1p2q3r4t", "took_ms": 2.8 }
-}

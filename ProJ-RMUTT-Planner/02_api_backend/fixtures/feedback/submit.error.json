@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "FORBIDDEN_403",
-    "message": "ไม่สามารถให้ feedback รายการของผู้อื่นได้",
-    "details": { "target_type": "plan", "target_id": "999" }
-  },
-  "meta": { "request_id": "req_5t6u7v8x", "took_ms": 2.6 }
-}

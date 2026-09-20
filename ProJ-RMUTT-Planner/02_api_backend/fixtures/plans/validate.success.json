@@ -1,9 +1,0 @@
-{
-  "ok": true,
-  "data": {
-    "conflicts": [],
-    "warnings": [],
-    "summary": { "total_credits": 6, "section_count": 2, "is_valid": true }
-  },
-  "meta": { "request_id": "req_9a1e53525a4411ec", "took_ms": 8.72 }
-}

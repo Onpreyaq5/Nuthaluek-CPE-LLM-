@@ -1,8 +1,0 @@
-data: {"type": "session", "session_id": 1}
-
-data: {"type": "tool_start", "tool": "search_knowledge"}
-
-data: {"type": "token", "text": "กำลังค้นหาคำตอบ"}
-
-data: {"type": "error", "code": "UPSTREAM_502", "message": "โมดูล RAG/LLM ภายในของ 03 หยุดตอบสนองกลางทาง"}
-

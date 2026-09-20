@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "NOT_FOUND_404",
-    "message": "ไม่พบ section บางรายการ",
-    "details": { "section_ids": ["NOT-EXIST"] }
-  },
-  "meta": { "request_id": "req_4bd54e52fdecde2c", "took_ms": 1.73 }
-}

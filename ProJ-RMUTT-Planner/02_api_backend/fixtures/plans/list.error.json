@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "AUTH_401",
-    "message": "กรุณาเข้าสู่ระบบ",
-    "details": {}
-  },
-  "meta": { "request_id": "req_6k7l8m9o", "took_ms": 1.2 }
-}

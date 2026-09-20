@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "NOT_FOUND_404",
-    "message": "ไม่พบรายวิชานี้",
-    "details": { "course_code": "CPE999" }
-  },
-  "meta": { "request_id": "req_3h4i5j6l", "took_ms": 6.3 }
-}

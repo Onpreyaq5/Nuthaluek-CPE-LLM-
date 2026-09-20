@@ -1,9 +1,0 @@
-{
-  "ok": false,
-  "error": {
-    "code": "UPSTREAM_502",
-    "message": "โมดูลสร้างแผน (06) ไม่ตอบสนอง",
-    "details": { "module": "06" }
-  },
-  "meta": { "request_id": "req_8m9n0o1q", "took_ms": 15032.0 }
-}
