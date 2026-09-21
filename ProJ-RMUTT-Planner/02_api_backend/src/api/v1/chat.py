@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import StreamingResponse
 
-from src.adapters import get_chat_router, get_student_data
-from src.adapters.interfaces import ChatRouter, StudentData
+from src.adapters import get_answer_generator, get_chat_router, get_student_data
+from src.adapters.interfaces import AnswerGenerator, ChatRouter, StudentData
 from src.api.deps import CurrentUser, current_user
 from src.core.config import get_settings
 from src.core.db import get_db
@@ -31,12 +31,20 @@ from src.schemas.chat import (
 )
 from src.schemas.chat import ChatMessage as ChatMessageSchema
 from src.schemas.envelope import SuccessEnvelope
-from src.services import chat_service
+from src.services import chat_orchestrator, chat_service
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 _UPSTREAM_START_FAIL_MESSAGE = "โมดูล Router (03) ไม่ตอบสนอง"
 _UPSTREAM_MIDSTREAM_MESSAGE = "โมดูล Router (03) หยุดตอบสนองกลางทาง"
+
+
+async def _prepend(first: dict, rest: AsyncIterator[dict]) -> AsyncIterator[dict]:
+    """ใส่ event ที่ peek ไปแล้วคืนเข้า stream ก่อนอ่านต่อจากตัวเดิม (ไม่เสีย event แรกที่ดึงมาเช็คแล้วว่า
+    03 ตอบสนองจริง)"""
+    yield first
+    async for item in rest:
+        yield item
 
 
 @router.post("")
@@ -46,6 +54,7 @@ async def chat(
     db: AsyncSession = Depends(get_db),
     student_data: StudentData = Depends(get_student_data),
     chat_router_adapter: ChatRouter = Depends(get_chat_router),
+    answer_generator: AnswerGenerator = Depends(get_answer_generator),
 ) -> StreamingResponse:
     settings = get_settings()
     request_id = get_request_id()
@@ -61,10 +70,11 @@ async def chat(
     )
     student_context = await student_data.get_context(user.student_id)
 
+    scrubbed_query = scrub_text(payload.message)
     enriched = EnrichedChatRequest(
         request_id=request_id,
         session_id=session.id,
-        query=scrub_text(payload.message),
+        query=scrubbed_query,
         student=EnrichedStudent(
             id_hash=user.id_hash,
             program_id=student_context.program_id,
@@ -78,15 +88,29 @@ async def chat(
         term=settings.CURRENT_TERM,
     )
 
-    agen: AsyncIterator[dict] = chat_router_adapter.stream(enriched)
+    # chat_router_adapter.stream() คืน "internal event" ของ router เท่านั้น (key "kind") —
+    # chat_orchestrator เป็นตัวตัดสินว่าจะเรียก answer_generator (07) ไหม แล้วผลิต public event
+    # (key "type") ที่ปลอดภัยจะส่งต่อ frontend ผ่าน sanitize_event เท่านั้น ห้าม forward event ภายในตรงๆ
+    router_events: AsyncIterator[dict] = chat_router_adapter.stream(enriched)
 
-    # ก่อนเริ่ม stream จริง: ถ้า 03 ไม่ตอบภายใน chat_start timeout หรือพังทันที -> HTTP 502 ปกติ (ไม่ใช่ SSE)
+    # ก่อนเริ่ม stream จริง: peek เฉพาะฝั่ง router (03) เท่านั้น — ถ้า 03 ไม่ตอบภายใน chat_start timeout
+    # หรือพังทันที -> HTTP 502 ปกติ (ไม่ใช่ SSE) ต้อง peek "ก่อน" เข้า orchestrator เสมอ ไม่งั้นความล้มเหลว
+    # ของ 07 (answer_generator ยังไม่พร้อม) ที่เกิดขึ้นทันทีสำหรับ intent ที่ไม่มี tool เลย (เช่น GENERAL_CHAT)
+    # จะถูกเข้าใจผิดว่าเป็น "03 ไม่ตอบสนอง" ทั้งที่ 03 ตอบมาถูกต้องแล้ว
     try:
-        first_raw_event = await asyncio.wait_for(
-            agen.__anext__(), timeout=settings.timeouts.chat_start.seconds
+        first_router_event = await asyncio.wait_for(
+            router_events.__anext__(), timeout=settings.timeouts.chat_start.seconds
         )
     except Exception as exc:
+        await router_events.aclose()
         raise Upstream502Error(_UPSTREAM_START_FAIL_MESSAGE, details={"module": "03"}) from exc
+
+    orchestrated: AsyncIterator[dict] = chat_orchestrator.run_chat_turn(
+        _prepend(first_router_event, router_events),
+        answer_generator,
+        question=scrubbed_query,
+        history=history_items,
+    )
 
     assistant_message = await chat_service.start_assistant_message(db, session_id=session.id)
     tool_allowlist = settings.tool_allowlist_set
@@ -102,10 +126,20 @@ async def chat(
 
         yield format_sse({"type": "session", "session_id": session.id})
 
-        current = first_raw_event
         try:
             while True:
-                sanitized = sanitize_event(current, tool_allowlist)
+                elapsed = time.monotonic() - started_at
+                remaining_total = chat_total_seconds - elapsed
+                if remaining_total <= 0:
+                    raise TimeoutError("chat total timeout exceeded")
+                idle_timeout = min(chat_idle_seconds, remaining_total)
+                current = await asyncio.wait_for(orchestrated.__anext__(), timeout=idle_timeout)
+
+                raw = dict(current)
+                if raw.get("type") == "done":
+                    # message_id ต้องเป็นแถวจริงที่บันทึกไว้ใน DB ของ 02 เท่านั้น ไม่ใช่ค่าจาก 03/07
+                    raw["message_id"] = assistant_message.id
+                sanitized = sanitize_event(raw, tool_allowlist)
                 if sanitized is not None and sanitized["type"] != "session":
                     # อัปเดตสถานะที่ต้อง persist "ก่อน" yield เสมอ: ถ้าถูก cancel พอดีตอน yield
                     # (client ตัดการเชื่อมต่อ) ข้อมูลที่ส่งออกไปแล้วต้องถูกบันทึกไว้ ไม่ใช่หายไป
@@ -120,13 +154,6 @@ async def chat(
                     yield format_sse(sanitized)
                     if event_type in ("done", "error"):
                         break
-
-                elapsed = time.monotonic() - started_at
-                remaining_total = chat_total_seconds - elapsed
-                if remaining_total <= 0:
-                    raise TimeoutError("chat total timeout exceeded")
-                idle_timeout = min(chat_idle_seconds, remaining_total)
-                current = await asyncio.wait_for(agen.__anext__(), timeout=idle_timeout)
         except StopAsyncIteration:
             if message_status != "complete":
                 yield format_sse(
@@ -153,6 +180,10 @@ async def chat(
             yield format_sse(
                 {"type": "error", "code": "UPSTREAM_502", "message": _UPSTREAM_MIDSTREAM_MESSAGE}
             )
+        finally:
+            # ปิด orchestrator generator เสมอ (cascade ไปปิด router_events/answer_generator ที่ยังค้างอยู่
+            # ด้วยกลไก async-for delegation ของ Python) ไม่ว่าจะจบแบบไหนก็ตาม
+            await orchestrated.aclose()
 
         await chat_service.finish_assistant_message(
             db,

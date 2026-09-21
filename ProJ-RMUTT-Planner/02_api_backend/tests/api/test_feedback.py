@@ -5,7 +5,7 @@ import json
 import httpx
 import pytest
 
-from src.adapters import get_chat_router, get_student_data
+from src.adapters import get_answer_generator, get_chat_router, get_student_data
 from src.adapters.mock.student_data import MockStudentData
 from src.main import app
 
@@ -14,9 +14,13 @@ pytestmark = pytest.mark.db
 
 class _SimpleChatRouter:
     async def stream(self, enriched):
-        yield {"type": "session", "session_id": enriched.session_id}
+        yield {"kind": "context_ready", "intent": "GENERAL_CHAT", "context": {}, "question": None}
+        yield {"kind": "router_done", "outcome": "context_ready"}
+
+
+class _SimpleAnswerGenerator:
+    async def generate(self, *, question: str, context: dict, history: list[dict]):
         yield {"type": "token", "text": "คำตอบสั้นๆ"}
-        yield {"type": "done", "message_id": 1}
 
 
 @pytest.fixture(autouse=True)
@@ -43,6 +47,7 @@ async def test_submit_feedback_on_own_plan_success(logged_in_client: httpx.Async
 async def test_submit_feedback_on_own_chat_message_success(logged_in_client: httpx.AsyncClient) -> None:
     app.dependency_overrides[get_student_data] = lambda: MockStudentData()
     app.dependency_overrides[get_chat_router] = lambda: _SimpleChatRouter()
+    app.dependency_overrides[get_answer_generator] = lambda: _SimpleAnswerGenerator()
 
     chat_response = await logged_in_client.post(
         "/api/v1/chat", json={"session_id": None, "message": "ทดสอบ"}

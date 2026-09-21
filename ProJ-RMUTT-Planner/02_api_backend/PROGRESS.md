@@ -615,3 +615,66 @@ scripts.seed_demo` เพราะ `docker-compose.yml` ที่ root ไม่
 ถูกต้องทุกคำ
 
 ปิดท้าย: `docker compose down` (ไม่ใช้ `-v`) และลบ `.env` ทดสอบทิ้ง (เป็นไฟล์ local ล้วนๆ ไม่ commit)
+
+---
+
+## รอบแก้ที่ 2: แยก router (03) ออกจากตัวสร้างคำตอบ (07) — แก้ 3 เคสที่ fail จากการทดสอบรอบก่อน (commit `6ab1e3a`)
+
+**หมายเหตุ:** งานรอบนี้ทำเฉพาะใน working copy บนเครื่อง **ไม่ได้ commit/push** ตามกติกาที่ได้รับ (ห้าม
+GitHub mutation ใดๆ ในงานนี้) — ไฟล์ที่เปลี่ยนยังเป็น uncommitted changes อยู่ ผู้ที่รับงานต่อต้อง
+review + commit เอง
+
+**สาเหตุ 3 เคส fail เดิม:** (1) `_DONE_MESSAGE_ID_PLACEHOLDER = 0` ถูกส่งเป็น `message_id` จริงให้ frontend
+เสมอ (2) `_build_router_payload()` ไม่ส่ง `request_id`/`term`/`preferences` เลย (3) `context_ready` จาก 03
+ถูกทิ้งไปเฉยๆ ไม่เคยมีการเรียกตัวสร้างคำตอบจริง (07) เลย ทำให้คำทักทาย/คำถามทั่วไปได้ `done` เปล่าๆ
+
+**สถาปัตยกรรมใหม่:** แยกชั้นชัดเจน 3 ชั้น — `HttpChatRouter.stream()` (คืน "internal event" key `kind`
+เท่านั้น เช่น `tool_start`, `clarify`, `refusal`, `context_ready`, `router_done{outcome}`, `error` — มี
+state machine อนุมาน `outcome` จากลำดับ event เพราะ 03 ของจริงยังไม่ส่ง field `outcome` เอง) →
+`src/services/chat_orchestrator.py::run_chat_turn()` (ใหม่ทั้งไฟล์ ตัดสินใจว่าจะเรียก `AnswerGenerator`
+(07, interface ใหม่ใน `interfaces.py`) ไหม ผลิต public event key `type` ที่ปลอดภัยส่ง frontend) →
+`src/api/v1/chat.py` (เติม `message_id` จริงจาก `assistant_message.id` ก่อน `sanitize_event` เสมอ)
+
+**07 ยังไม่มี contract จริง** — `NotReadyAnswerGenerator` (ใน `interfaces.py`) เป็น production default
+เสมอ raise `Upstream502Error` ทันทีที่ถูกเรียก ไม่มี fallback คำตอบปลอมให้ผู้ใช้เด็ดขาด ทดสอบ flow จริงต้อง
+inject fake ผ่าน `Depends(get_answer_generator)` override เท่านั้น
+
+**บั๊กที่เจอระหว่างทำ (ไม่ใช่แค่ code review — เจอจากรัน test/Docker จริง):**
+1. `state["final_kind"]`/`state["final_message"]` ไม่ได้ set ตอน `done{answer}` (กรณี guardrail refusal)
+   ทำให้ answer หายไปเงียบๆ กลายเป็น `outcome=None` (กำกวม) แทนที่จะเป็น refusal จริง — เจอจาก unit test
+2. **เจอจาก Docker จริงเท่านั้น (unit test ไม่เจอ):** peek แรกที่ chat.py เดิม peek ที่ `orchestrated`
+   (หลัง orchestrator แล้ว) แทนที่จะ peek ที่ `router_events` ตรงๆ ทำให้ทุกครั้งที่ intent ไม่มี tool เลย
+   (เช่น GENERAL_CHAT) แล้ว 07 ยังไม่พร้อม (`NotReadyAnswerGenerator` raise ทันที) กลายเป็น HTTP 502 ดิบ
+   ก่อนเข้า SSE เลย ทั้งที่ 03 ตอบถูกต้องแล้ว — message ผิดว่า "โมดูล Router (03) ไม่ตอบสนอง" ทั้งที่ 03
+   ไม่มีปัญหา แก้โดยแยก peek: peek `router_events` ก่อนเสมอ (ยืนยันว่า 03 ตอบจริง) แล้วค่อยส่งเข้า
+   orchestrator ภายใน SSE stream (ความล้มเหลวของ 07 กลายเป็น SSE error event แทน HTTP 502 ดิบ ถูกต้องกว่า)
+   — ยืนยันด้วย curl จริงกับ container ที่ build จาก Dockerfile จริงทั้งก่อน/หลังแก้
+
+**ข้อจำกัดที่ยังไม่แก้ (ทราบแล้ว ไม่ใช่บั๊กบล็อก):** ข้อความ error ตอน 07 ล่ม/ไม่พร้อมยังใช้
+`_UPSTREAM_MIDSTREAM_MESSAGE = "โมดูล Router (03) หยุดตอบสนองกลางทาง"` ซึ่งพาดพิง 03 ผิดตัว (จริงๆ คือ 07)
+— เป็น generic catch-all message เดิมที่ไม่แยกว่าใครพังจริง ไม่ได้แก้เพราะเป็น cosmetic ไม่กระทบ code/status
+(`UPSTREAM_502` ถูกต้อง ไม่มีข้อมูลหลุด) และไม่อยากแตะ public error message โดยไม่จำเป็น
+
+**ผลตรวจ:** `pytest -q` กับ Postgres จริง (ผ่าน `scripts/test.sh`) → **226 passed, 1 skipped** (skip เดิม
+ไม่เกี่ยวกับงานนี้) เพิ่มจาก 210 เดิม (16 เทสต์ใหม่: `test_chat_orchestrator.py` 8 เคส + เพิ่มใน
+`test_http_chat_router.py`/`test_chat_stream.py` อีกหลายเคส) `pytest -q` แบบไม่มี Postgres → 162 passed,
+65 skipped · `ruff check .` ผ่านหมด · `python -m compileall -q src` ผ่าน · grep รหัสนักศึกษารูปแบบจริง —
+ไม่พบ
+
+**ทดสอบจริงผ่าน Docker ซ้ำอีกรอบ** (build+up จริง, seed demo, login, ยิง `/api/v1/chat` หลายแบบ) ยืนยันครบ
+ทั้ง 3 เคสที่เคย fail: greeting ตอนนี้ error ชัดเจน (ไม่ใช่ done เปล่าๆ) เพราะ 07 ยังไม่พร้อม, clarify ได้
+`message_id` จริง (เช่น 17) ตรงกับแถวใน DB เป๊ะ (ไม่ใช่ 0), payload ส่ง request_id/term/preferences ครบ
+(ยืนยันด้วย unit test เพราะ 03 ของจริงยังไม่อ่าน field พวกนี้ ตรวจจาก log ไม่ได้) — **หมายเหตุตามกติกา**:
+นี่คือทดสอบ ASGI/Docker เจาะจงจุดๆ ไป ไม่ใช่ integration test เต็มระบบ (04-08 ไม่ได้รันในเทสต์นี้เลย)
+
+**สิ่งที่ต้องส่งต่อ:**
+- **03**: ยังไม่รองรับ contract ใหม่เลย (ไม่มี field `request_id`/`term`/`preferences` ใน `RouterRequest`,
+  ไม่มี event `refusal` แยก, ไม่ส่ง `outcome` ใน `done`) — adapter ฝั่ง 02 ออกแบบให้ทำงานร่วมกับ 03 ตัวเดิม
+  ได้อยู่แล้วผ่าน state-machine อนุมาน outcome แต่ถ้า 03 อัปเดตตาม contract ใหม่จริง ควรได้ผลลัพธ์แม่นยำขึ้น
+  (ไม่ต้องเดา)
+- **07**: ยังไม่มี contract ที่ยืนยันแล้วเลย — `AnswerGenerator` เป็น interface ที่ 02 กำหนดเอง
+  (`generate(question, context, history) -> AsyncIterator[{"type":"token"/"sources",...}]`) ต้องให้เจ้าของ
+  07 ยืนยันว่ารับได้ไหมก่อนจะ implement `HttpAnswerGenerator` จริง ตอนนี้ production path ตอบ
+  `UPSTREAM_502` เสมอ (ตั้งใจ ไม่ใช่บั๊ก) จนกว่าจะมี contract จริง
+- ข้อความ error `_UPSTREAM_MIDSTREAM_MESSAGE` ควรแก้ให้ระบุโมดูลที่พังจริง (03 หรือ 07) แทนการเหมาว่าเป็น
+  03 เสมอ — เป็น cosmetic follow-up ไม่บล็อกงานนี้
