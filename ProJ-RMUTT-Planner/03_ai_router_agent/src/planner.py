@@ -41,16 +41,9 @@ def _build_tool_plan(
     req: RouterRequest,
     classification: ClassificationResult,
 ) -> list[list[tuple[str, dict]]]:
-    """
-    Return a list of "stages". Each stage is a list of (tool, args) pairs
-    that can be run IN PARALLEL within that stage.
-    Stages run SEQUENTIALLY (stage n may depend on stage n-1 results).
-
-    NOT IN DL-06: named tool plan per domain intent.
-    """
     slots = classification.slots
     student_id = req.student_id
-    term = slots.term or "1/2569"
+    term = slots.term
     course_codes = slots.course_codes
 
     if intent == "SCHEDULE_CONFLICT":
@@ -68,7 +61,7 @@ def _build_tool_plan(
             [("generate_plan", {
                 "student_id": student_id,
                 "term": term,
-                "preferences": {},
+                "preferences": req.preferences.model_dump(mode="json") if req.preferences else {},
             })],
         ]
 
@@ -89,7 +82,6 @@ def _build_tool_plan(
             [("search_knowledge", {"query": req.message, "top_k": 6})],
         ]
 
-    # GENERAL_CHAT — no tool calls needed; Module 07 handles it directly
     return []
 
 
@@ -142,7 +134,7 @@ async def run_planner(
     # ── Guardrail check ──────────────────────────────────────
     ok, refusal_msg = validate_tools_for_intent(classification, all_tool_calls)
     if not ok:
-        sse_events.append(SSEEvent(type="done", data={"answer": refusal_msg}))
+        sse_events.append(SSEEvent(type="refusal", data={"message": refusal_msg}))
 
     # ── Build context package for Module 07 ─────────────────
     student_context = accumulated_context.get("get_student_context", {})
