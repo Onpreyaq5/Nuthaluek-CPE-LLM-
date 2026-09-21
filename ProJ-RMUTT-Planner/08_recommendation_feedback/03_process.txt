@@ -36,20 +36,25 @@ EVENT FLOW
     -> Module 02 in-memory queue (ไม่บล็อก user response)
     -> POST /events/batch
     -> validate + reject raw ID + scrub payload
-    -> deduplicate ด้วย event_id
+    -> deduplicate เฉพาะเมื่อมี event_id
     -> event_logs + Prometheus
+
+  Event names ที่ 02 ส่งจริง: plan_validate, plan_auto, chat_message, feedback
+  08 ไม่บังคับ 02 เปลี่ยน field/event; รับ event -> action และ id_hash -> student_hash
+  request_id ใน body ไม่มีได้ เพราะ 02 ส่ง X-Request-ID header
 
   ถ้า action=feedback และ payload มี target_type/target_id/rating:
     -> feedback_events
     -> rating 1-2 เข้า review_queue
 
-  หมายเหตุ: ผู้ส่งต้องสร้าง event_id ที่ stable ต่อ logical event
-  หากไม่ส่ง event_id ระบบรับได้ แต่ไม่รับประกัน deduplication เมื่อ retry
+  02 ยังไม่ส่ง event_id; หาก retry อาจนับซ้ำ และ 08 จะไม่เดา ID จาก payload
 
 FEEDBACK CONTRACT
   คะแนนมาตรฐาน = 1..5 (เลือกตาม contract ปัจจุบันของ Module 02)
   target_type = plan | chat_message | explanation
   source_feedback_id = ID จาก source system ใช้ idempotency
+  02 ปัจจุบันส่ง feedback ผ่าน event queue โดยไม่มี feedback_id/reason
+  ดังนั้น review queue มี rating แต่ไม่มีเหตุผล และ retry อาจสร้างสำเนา
 
   Ownership:
   - Module 02 ตรวจ JWT, ตรวจว่า target เป็นของผู้ใช้ และเก็บข้อมูล transactional
@@ -76,18 +81,21 @@ ALERT PROCESS
   3. secret/config จากเฟิส
 
 ANALYTICS DEFINITION
-  Plan Acceptance Rate = จำนวน feedback ของ plan ที่ rating >= 4
-                         / feedback ของ plan ทั้งหมด
+  Plan Positive Feedback Rate = plan feedback rating >= 4 / plan feedback ทั้งหมด
+  Plan Acceptance Rate = null จนมี event ยืนยันการใช้/บันทึกแผนจริง
   Negative Feedback    = rating <= 2
   P95 latency          = percentile จาก event.latency_ms ในช่วงที่เลือก
-  Unanswered Question  = action == "chat.unanswered"
-  Frequent Conflict    = conflict code ใน payload ของ conflict/plan.validate event
+  Unanswered Question  = null จน 02 ส่ง chat outcome ที่วัดได้
+  Invalid Validation   = plan_validate ที่ payload.is_valid = false
+  Frequent Conflict    = conflict code เฉพาะเมื่อ event ส่งรายละเอียดมา
 
 PRIVACY / PDPA
   - student_hash เท่านั้น; raw student ID ถูก reject
   - ตัด sensitive keys และ mask ID/โทรศัพท์/email ใน nested payload
-  - endpoint analytics/alert/notification/delete ป้องกันด้วย INTERNAL_API_TOKEN
-  - production ห้ามปล่อย INTERNAL_API_TOKEN ว่าง
+  - endpoint analytics/alert/notification/delete/POST ICS ต้องมี INTERNAL_API_TOKEN
+  - หาก token ไม่ถูกตั้ง endpoint ภายในจะตอบ 503 (fail closed)
+  - /events และ /feedback ยังไม่บังคับ token เพื่อคง compatibility กับ 02;
+    ต้องจำกัด private network และตกลง service authentication ก่อน production
   - retention default 90 วัน ปรับได้ด้วย LOG_RETENTION_DAYS
   - DELETE /privacy/students/{student_hash} ลบข้อมูล analytics ของ Module 08
   - transcript/เกรดไม่ควรผ่าน service นี้
@@ -99,8 +107,9 @@ DATABASE OWNERSHIP
     review_queue
     notifications
 
-  อ่านอย่างเดียวเพื่อ export ICS:
-    plans, plan_items, sections, section_meetings
+  ไม่อ่าน plans/plan_items/feedback table ที่ Module 02 เป็นเจ้าของ
+  ICS รับ ownership-checked snapshot ผ่าน POST /export/ics เท่านั้น
+  GET /export/ics/{plan_id} ตอบ 503 จนกว่าจะมีการเชื่อม owner check จริง
 
   Production ต้องย้ายจาก create_all ไป migration กลางเมื่อทีมตกลง schema แล้ว
   การแก้ infra/db เป็นหน้าที่เฟิส จึงไม่ได้แก้จากงาน Module 08
@@ -108,8 +117,7 @@ DATABASE OWNERSHIP
 FAILURE POLICY
   - event/feedback duplicate: ตอบสำเร็จพร้อม duplicate=true/count
   - database ไม่พร้อม: /ready ตอบ 503
-  - shared plan schema ไม่พร้อม: ICS ตอบ PLAN_SCHEMA_UNAVAILABLE 503
-  - plan ไม่มี: ICS ตอบ PLAN_NOT_FOUND 404
+  - GET ICS เดิม: PLAN_EXPORT_NOT_CONNECTED 503 เพื่อไม่ข้าม owner check
   - payload ไม่ถูกต้องหรือมี raw ID: VALIDATION_422
   - Module 02 ต้องส่ง log แบบ async; 08 ล่มต้องไม่ทำให้ user request หลักล้ม
 

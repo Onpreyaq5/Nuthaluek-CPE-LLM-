@@ -4,67 +4,69 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from icalendar import Calendar, Event
-from sqlalchemy import text
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field, model_validator
 
 BANGKOK = ZoneInfo("Asia/Bangkok")
 DAY_CODES = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
 
 
-class PlanNotFound(Exception):
-    pass
+class CalendarMeeting(BaseModel):
+    course_code: str = Field(min_length=1)
+    section: str = Field(min_length=1)
+    day_of_week: int = Field(ge=0, le=6)
+    start_min: int = Field(ge=0, lt=1440)
+    end_min: int = Field(gt=0, le=1440)
+    room: str | None = None
+    building: str | None = None
+
+    @model_validator(mode="after")
+    def check_interval(self):
+        if self.start_min >= self.end_min:
+            raise ValueError("meeting start_min must precede end_min")
+        return self
 
 
-class PlanSchemaUnavailable(Exception):
-    pass
+class CalendarSnapshot(BaseModel):
+    """An ownership-checked plan snapshot supplied by trusted module 02."""
+
+    plan_id: int = Field(gt=0)
+    name: str | None = None
+    term: str
+    start_date: date
+    end_date: date
+    meetings: list[CalendarMeeting]
+
+    @model_validator(mode="after")
+    def check_dates(self):
+        if self.start_date > self.end_date:
+            raise ValueError("start_date must be on or before end_date")
+        return self
 
 
 def _first_weekday(start: date, weekday: int) -> date:
     return start + timedelta(days=(weekday - start.weekday()) % 7)
 
 
-def export_plan(db: Session, plan_id: int, start_date: date, end_date: date) -> bytes:
-    try:
-        plan = db.execute(
-            text("SELECT id, name, term FROM plans WHERE id = :plan_id"), {"plan_id": plan_id}
-        ).mappings().first()
-        if not plan:
-            raise PlanNotFound
-        meetings = db.execute(
-            text(
-                """
-                SELECT s.course_code, s.section, sm.day_of_week, sm.start_min, sm.end_min,
-                       sm.room, sm.building, sm.meeting_type
-                FROM plan_items pi
-                JOIN sections s ON s.id = pi.section_id
-                JOIN section_meetings sm ON sm.section_id = s.id
-                WHERE pi.plan_id = :plan_id
-                ORDER BY sm.day_of_week, sm.start_min
-                """
-            ),
-            {"plan_id": plan_id},
-        ).mappings().all()
-    except SQLAlchemyError as exc:
-        raise PlanSchemaUnavailable from exc
-
+def export_snapshot(snapshot: CalendarSnapshot) -> bytes:
     calendar = Calendar()
     calendar.add("prodid", "-//RMUTT Study Planner//Module 08//TH")
     calendar.add("version", "2.0")
-    calendar.add("x-wr-calname", str(plan["name"] or f"RMUTT Plan {plan_id}"))
-    for row in meetings:
+    calendar.add("x-wr-calname", snapshot.name or f"RMUTT Plan {snapshot.plan_id}")
+    for index, row in enumerate(snapshot.meetings):
+        first = _first_weekday(snapshot.start_date, row.day_of_week)
+        if first > snapshot.end_date:
+            continue
         event = Event()
-        event.add("uid", f"plan-{plan_id}-{row['course_code']}-{row['section']}-{row['day_of_week']}-{row['start_min']}@rmutt-planner")
-        event.add("summary", f"{row['course_code']} หมู่ {row['section']}")
-        location = " ".join(filter(None, [row["building"], row["room"]]))
+        event.add("uid", f"plan-{snapshot.plan_id}-{index}@rmutt-planner")
+        event.add("summary", f"{row.course_code} หมู่ {row.section}")
+        location = " ".join(filter(None, [row.building, row.room]))
         if location:
             event.add("location", location)
-        first = _first_weekday(start_date, int(row["day_of_week"]))
-        start_dt = datetime.combine(first, time.min, BANGKOK) + timedelta(minutes=int(row["start_min"]))
-        end_dt = datetime.combine(first, time.min, BANGKOK) + timedelta(minutes=int(row["end_min"]))
+        start_dt = datetime.combine(first, time.min, BANGKOK) + timedelta(minutes=row.start_min)
+        end_dt = datetime.combine(first, time.min, BANGKOK) + timedelta(minutes=row.end_min)
         event.add("dtstart", start_dt)
         event.add("dtend", end_dt)
-        until = datetime.combine(end_date, time(23, 59, 59), BANGKOK)
-        event.add("rrule", {"freq": "weekly", "byday": DAY_CODES[int(row["day_of_week"])], "until": until})
+        until = datetime.combine(snapshot.end_date, time(23, 59, 59), BANGKOK)
+        event.add("rrule", {"freq": "weekly", "byday": DAY_CODES[row.day_of_week], "until": until})
         calendar.add_component(event)
     return calendar.to_ical()

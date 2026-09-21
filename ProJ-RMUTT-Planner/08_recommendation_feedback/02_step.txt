@@ -17,8 +17,10 @@ STEP 2  Event Logging MVP                                             [DONE]
 
   พฤติกรรม:
   - batch สูงสุด MAX_EVENT_BATCH (default 500)
-  - event_id ใช้ idempotency; event ซ้ำไม่นับซ้ำ
+  - event_id ใช้ idempotency เมื่อผู้ส่งมี field นี้; 02 ยังไม่ส่ง
   - รองรับ alias จาก Module 02: event -> action, id_hash -> student_hash
+  - รับ X-Request-ID จาก 02 เป็น request_id เมื่อ body ไม่มี
+  - contract fixture ของ 02 ครอบคลุม plan_validate/plan_auto/chat_message/feedback
   - scrub PII ซ้ำที่ปลายทางก่อนเขียนฐานข้อมูล
   - raw student id ใน student_hash ถูก reject ด้วย 422
   - Prometheus counter/histogram สำหรับ ingest
@@ -33,6 +35,7 @@ STEP 3  Feedback + Review Queue                                       [DONE]
 
   - source_feedback_id ใช้กันการส่งซ้ำ
   - event ที่ action=feedback จาก /events/batch จะถูกแปลงเป็น feedback analytics
+  - 02 ยังไม่ส่ง feedback_id/reason ใน event จึงกันซ้ำและวิเคราะห์เหตุผลไม่ได้ครบ
   - preference_signal เก็บเป็น structured JSON สำหรับส่งต่อ Module 05 ในอนาคต
   - Module 02 เป็นเจ้าของ transactional feedback/ownership check
   - Module 08 เก็บ analytical copy และ review queue ไม่เก็บ student_id จริง
@@ -60,13 +63,14 @@ STEP 5  Alert / Notification                                          [DONE: WEB
   - email/LINE ยังไม่ส่งจริง เพราะยังไม่มี recipient mapping/consent contract
   - Celery worker มี retention task; schedule/worker ใน Compose ให้เฟิสเชื่อม
 
-STEP 6  Calendar Export                                               [DONE]
-  GET /export/ics/{plan_id}?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+STEP 6  Calendar Export                                               [DONE: GENERATOR]
+  GET  /export/ics/{plan_id}   -> 503 จนกว่าจะมี owner-check contract จาก 02
+  POST /export/ics             -> รับ snapshot ที่ 02 ตรวจสิทธิ์แล้ว (internal)
 
-  - อ่าน plans -> plan_items -> sections -> section_meetings
+  - ไม่อ่านตาราง plans/plan_items ของ 02 โดยตรง
   - สร้าง weekly recurrence ด้วย Asia/Bangkok
   - รองรับหลาย meeting ต่อ section
-  - คืน 404 เมื่อไม่มี plan และ 503 เมื่อ shared plan schema ยังไม่พร้อม
+  - ต้องตกลงให้ 02 เรียก POST หลังตรวจสิทธิ์ และส่งไฟล์ต่อให้ผู้ใช้
   - ภาพตารางยังไม่ทำ เพราะทีมยังไม่กำหนด format/endpoint ของ image output
 
 STEP 7  Analytics Dashboard API                                       [DONE]
@@ -76,8 +80,9 @@ STEP 7  Analytics Dashboard API                                       [DONE]
   - events แยก action/status/service
   - P95 latency, token in/out, cost estimate
   - average rating, negative count, pending review
-  - plan acceptance rate (plan rating >= 4)
-  - unanswered questions และ conflict code ที่พบบ่อย
+  - plan_positive_feedback_rate (rating >= 4); ไม่ใช่ acceptance rate
+  - plan_acceptance_rate และ unanswered_questions = null จนมี event ที่วัดได้
+  - จำนวน plan_validate ที่ is_valid=false และ conflict code เท่าที่ event ให้มา
 
 STEP 8  Privacy                                                       [DONE]
   DELETE /privacy/students/{student_hash}         internal endpoint
@@ -89,15 +94,18 @@ STEP 8  Privacy                                                       [DONE]
 
 STEP 9  Test                                                         [DONE]
   python -m pytest -q
-  Current result: 10 passed
+  Current result: 15 passed
 
   ครอบคลุม health/ready, idempotency, PII, feedback/review, gateway alias,
   recommendation, A1-A5/dedup, auth, privacy deletion และ ICS
 
 INTEGRATION ที่ต้องประสานทีม (ห้ามแก้จาก Module 08 เอง)
-  1. Module 02 ใช้ /events/batch และส่ง event_id ทุก event
+  1. Module 02 ใช้ /events/batch อยู่แล้ว; ขอ event_id แบบ stable เพื่อกัน retry ซ้ำ
+     และขอ feedback_id/reason หากต้องการ dedup/review เชิงเหตุผล
   2. Module 05 ตกลง endpoint รับ preference_signal
   3. Module 06/07 ส่ง candidate/explanation ตาม schema ของ compose
-  4. เฟิสเพิ่ม INTERNAL_API_TOKEN และ Celery worker/beat ใน Compose
-  5. ทีม DB ตกลง migration กลางก่อน production; ขณะนี้ service ใช้ create_all
-  6. ทีม UI ตกลงรูปแบบภาพตารางและ endpoint ก่อนเพิ่ม image export
+  4. เฟิสตั้ง ADAPTER_08=http, LOG_SINK_URL ให้ตรงชื่อ service, INTERNAL_API_TOKEN
+     และ Celery worker/beat ใน Compose
+  5. Module 02 ตกลง owner-check + snapshot contract ของ ICS
+  6. ทีม DB ตกลง migration กลางก่อน production; ขณะนี้ service ใช้ create_all
+  7. ทีม UI ตกลงรูปแบบภาพตารางและ endpoint ก่อนเพิ่ม image export

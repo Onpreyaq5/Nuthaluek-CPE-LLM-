@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from src.api.deps import require_internal_token
 from src.core.config import get_settings
 from src.core.database import check_db, get_db
-from src.core.http import success
+from src.core.http import request_id_var, success
 from src.models import Notification
 from src.schemas.contracts import (
     AlertEvaluationRequest,
@@ -21,7 +21,7 @@ from src.schemas.contracts import (
     RecommendationComposeRequest,
 )
 from src.services import alerts, analytics, data_privacy, events, recommendations
-from src.services.calendar_export import PlanNotFound, PlanSchemaUnavailable, export_plan
+from src.services.calendar_export import CalendarSnapshot, export_snapshot
 from src.services.feedback import create_feedback, feedback_to_dict
 
 router = APIRouter()
@@ -46,6 +46,8 @@ def metrics():
 
 @router.post("/events", status_code=202)
 def create_event(payload: EventCreate, db: Session = Depends(get_db)):
+    if not payload.request_id:
+        payload = payload.model_copy(update={"request_id": request_id_var.get()})
     return success(events.ingest_events(db, [payload]), status_code=202)
 
 
@@ -59,11 +61,18 @@ def create_event_batch(payload: EventBatchCreate, db: Session = Depends(get_db))
                 "message": f"maximum {get_settings().max_event_batch} events per batch",
             },
         )
-    return success(events.ingest_events(db, payload.events), status_code=202)
+    request_id = request_id_var.get()
+    items = [
+        item if item.request_id else item.model_copy(update={"request_id": request_id})
+        for item in payload.events
+    ]
+    return success(events.ingest_events(db, items), status_code=202)
 
 
 @router.post("/feedback", status_code=201)
 def submit_feedback(payload: FeedbackCreate, db: Session = Depends(get_db)):
+    if not payload.request_id:
+        payload = payload.model_copy(update={"request_id": request_id_var.get()})
     item, duplicate = create_feedback(db, payload)
     return success(feedback_to_dict(item, duplicate), status_code=200 if duplicate else 201)
 
@@ -107,27 +116,21 @@ def analytics_summary(
 
 
 @router.get("/export/ics/{plan_id}")
-def export_ics(
-    plan_id: int,
-    start_date: date,
-    end_date: date,
-    db: Session = Depends(get_db),
-):
-    if start_date > end_date:
-        raise HTTPException(422, {"code": "INVALID_PERIOD", "message": "start_date must be on or before end_date"})
-    try:
-        content = export_plan(db, plan_id, start_date, end_date)
-    except PlanNotFound:
-        raise HTTPException(404, {"code": "PLAN_NOT_FOUND", "message": "ไม่พบแผนการเรียน"}) from None
-    except PlanSchemaUnavailable:
-        raise HTTPException(
-            503,
-            {"code": "PLAN_SCHEMA_UNAVAILABLE", "message": "ตารางข้อมูลแผนยังไม่พร้อม"},
-        ) from None
+def export_ics(plan_id: int):
+    # Module 08 cannot verify ownership of module 02's plans. Fail closed.
+    raise HTTPException(
+        503,
+        {"code": "PLAN_EXPORT_NOT_CONNECTED", "message": "ต้องส่งแผนที่ตรวจสิทธิ์แล้วผ่านโมดูล 02"},
+    )
+
+
+@router.post("/export/ics", dependencies=[Depends(require_internal_token)])
+def export_ics_from_snapshot(payload: CalendarSnapshot):
+    content = export_snapshot(payload)
     return Response(
         content,
         media_type="text/calendar; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="plan-{plan_id}.ics"'},
+        headers={"Content-Disposition": f'attachment; filename="plan-{payload.plan_id}.ics"'},
     )
 
 

@@ -11,7 +11,7 @@
 - FastAPI service บนพอร์ต `8800`
 - Health check และ database readiness check
 - Event logging แบบรายการเดียวและแบบ batch
-- ป้องกัน event ซ้ำด้วย `event_id`
+- ป้องกัน event ซ้ำเมื่อผู้ส่งให้ `event_id` (02 ยังไม่ส่ง field นี้)
 - รองรับ contract จาก API Gateway เช่น `event` และ `id_hash`
 - ตัดข้อมูลส่วนตัวออกจาก nested event payload
 - ปฏิเสธรหัสนักศึกษาจริงในช่อง `student_hash`
@@ -22,14 +22,17 @@
 - ป้องกันการแจ้งเตือนซ้ำด้วย deduplication key
 - Analytics summary สำหรับ dashboard
 - Prometheus metrics
-- ส่งออกแผนการเรียนเป็นไฟล์ `.ics`
+- สร้างไฟล์ `.ics` จาก snapshot ของแผนที่โมดูล 02 ตรวจสิทธิ์แล้ว
 - ลบข้อมูล analytics ของนักศึกษาด้วย `student_hash`
 - Celery task สำหรับลบ event log ที่หมดอายุ
-- ชุดทดสอบ API และ service จำนวน 10 รายการ
+- ชุดทดสอบ API, contract ของ 02 และ service จำนวน 15 รายการ
 
 ส่วนที่ต้องเชื่อมต่อเพิ่มเติม:
 
 - ให้โมดูล 02 ส่ง `event_id` ที่คงที่มากับทุก event
+- ให้โมดูล 02 ส่ง `feedback_id`/`reason` หากต้องการกัน feedback ซ้ำและวิเคราะห์เหตุผล
+- ตกลงวิธีส่ง snapshot แผนจาก 02 มายัง `/export/ics`; GET เดิมปิดไว้จนกว่าจะตรวจสิทธิ์ได้
+- ตั้ง `ADAPTER_08=http` และ `LOG_SINK_URL` ให้ชี้ service 08 จริงโดยผู้ดูแลไฟล์กลาง
 - ตกลง endpoint ของโมดูล 05 สำหรับรับ `preference_signal`
 - ให้โมดูล 06/07 ส่ง candidate และ explanation ตาม contract
 - เพิ่ม Celery worker/beat และ `INTERNAL_API_TOKEN` ใน `docker-compose.yml` โดยเจ้าของไฟล์ส่วนกลาง
@@ -70,7 +73,9 @@
 ├── tests/
 │   ├── conftest.py
 │   ├── test_api.py
-│   └── test_calendar.py
+│   ├── test_calendar.py
+│   ├── test_02_contract.py
+│   └── fixtures/02_event_batch.json
 ├── 01_env.txt
 ├── 02_step.txt
 ├── 03_process.txt
@@ -110,7 +115,7 @@ uvicorn src.main:app --host 0.0.0.0 --port 8800 --reload
 | `REVIEW_RATING_THRESHOLD` | `2` | คะแนนสูงสุดที่จะเข้าคิว review |
 | `MAX_EVENT_BATCH` | `500` | จำนวน event สูงสุดต่อ batch |
 
-Production ต้องกำหนด `INTERNAL_API_TOKEN` และห้าม commit secret ลง Git
+Production ต้องกำหนด `INTERNAL_API_TOKEN` และห้าม commit secret ลง Git หากไม่ได้ตั้งค่า endpoint ภายในจะตอบ `503` ไม่เปิดให้เรียกโดยไม่มีการยืนยันตัวตน ส่วน `/events` และ `/feedback` ยังไม่บังคับ token เพื่อรองรับ adapter 02 ปัจจุบัน จึงต้องจำกัดการเข้าถึงด้วย private network จนกว่าทีมจะตกลง service authentication ร่วมกัน **Compose ปัจจุบันยัง publish พอร์ต 8800 ออกมาที่ host** ผู้ดูแลไฟล์กลางต้องปิดหรือจำกัดพอร์ตนี้ก่อน production
 
 ## API endpoints
 
@@ -126,7 +131,8 @@ Production ต้องกำหนด `INTERNAL_API_TOKEN` และห้า�
 | `POST` | `/alerts/evaluate` | ประเมิน Alert A1–A5 |
 | `GET` | `/notifications/{student_hash}` | อ่าน web notifications |
 | `GET` | `/analytics/summary` | ข้อมูลสรุปสำหรับ dashboard |
-| `GET` | `/export/ics/{plan_id}` | ส่งออกแผนเป็น `.ics` |
+| `GET` | `/export/ics/{plan_id}` | ปิดไว้ชั่วคราว (`503`) เพราะ 08 ตรวจเจ้าของแผนไม่ได้ |
+| `POST` | `/export/ics` | สร้าง `.ics` จาก snapshot ที่ 02 ตรวจสิทธิ์แล้ว (internal) |
 | `DELETE` | `/privacy/students/{student_hash}` | ลบ analytics ของนักศึกษา |
 
 Endpoint ภายในต่อไปนี้ใช้ header `X-Internal-Token` เมื่อกำหนด `INTERNAL_API_TOKEN`:
@@ -135,6 +141,7 @@ Endpoint ภายในต่อไปนี้ใช้ header `X-Internal-Tok
 - `/notifications/{student_hash}`
 - `/analytics/summary`
 - `/privacy/students/{student_hash}`
+- `POST /export/ics`
 
 ## ตัวอย่างการส่ง Event Batch
 
@@ -142,27 +149,17 @@ Endpoint ภายในต่อไปนี้ใช้ header `X-Internal-Tok
 {
   "events": [
     {
-      "event_id": "evt-0192",
-      "request_id": "req-7ac1",
-      "student_hash": "8df1309c43a1e207",
-      "service": "02_api_backend",
-      "action": "plan.validate",
-      "intent": "validate_plan",
-      "tools": ["conflicts.check"],
-      "latency_ms": 143,
-      "tokens_in": 0,
-      "tokens_out": 0,
-      "cost_est": 0,
-      "status": "success",
-      "payload": {
-        "conflicts": []
-      }
+      "event": "plan_validate",
+      "id_hash": "8df1309c43a1e207",
+      "term": "1/2569",
+      "section_count": 2,
+      "is_valid": false
     }
   ]
 }
 ```
 
-`event_id` ควรเป็นค่าที่คงที่สำหรับ logical event เดิม เพื่อให้ retry แล้วไม่สร้างข้อมูลซ้ำ
+ตัวอย่างนี้เป็นรูปแบบที่ 02 ส่งจริงผ่านคิว โดย 08 แปลง `event` เป็น `action`, `id_hash` เป็น `student_hash` และย้าย field อื่นลง `payload` ส่วน `request_id` จะอ่านจาก header `X-Request-ID` เมื่อไม่มีใน body ปัจจุบัน 02 ยังไม่ส่ง `event_id` จึง **ไม่รับประกันการกันซ้ำเมื่อ retry**
 
 ## ตัวอย่าง Feedback
 
@@ -181,7 +178,7 @@ Endpoint ภายในต่อไปนี้ใช้ header `X-Internal-Tok
 }
 ```
 
-Feedback คะแนน 1–2 จะถูกเพิ่มเข้า `review_queue` อัตโนมัติ
+Feedback คะแนน 1–2 จะถูกเพิ่มเข้า `review_queue` อัตโนมัติ ตัวอย่างข้างบนเป็น contract ที่ 08 รองรับ แต่ event feedback ที่ 02 ส่งจริงยังไม่มี `source_feedback_id`, `reason` หรือ `preference_signal` จึงยังกันซ้ำ/วิเคราะห์เหตุผล/ส่งต่อความชอบไม่ได้ครบ
 
 ## Alert codes
 
@@ -195,18 +192,28 @@ Feedback คะแนน 1–2 จะถูกเพิ่มเข้า `revie
 
 ## Export ปฏิทิน
 
-```http
-GET /export/ics/12?start_date=2026-06-01&end_date=2026-10-01
+`GET /export/ics/{plan_id}` ตอบ `503 PLAN_EXPORT_NOT_CONNECTED` เพื่อป้องกันการอ่านแผนของผู้อื่นโดยไม่มีการตรวจสิทธิ์ โมดูล 02 เป็นเจ้าของข้อมูลแผน ต้องตรวจเจ้าของแผนก่อนและส่ง snapshot ผ่าน `POST /export/ics` พร้อม `X-Internal-Token`:
+
+```json
+{
+  "plan_id": 12,
+  "name": "แผน A",
+  "term": "1/2569",
+  "start_date": "2026-06-01",
+  "end_date": "2026-10-01",
+  "meetings": [{
+    "course_code": "CPE301",
+    "section": "01",
+    "day_of_week": 0,
+    "start_min": 540,
+    "end_min": 720,
+    "room": "301",
+    "building": "CPE"
+  }]
+}
 ```
 
-ระบบอ่านข้อมูลจากตารางกลางแบบ read-only:
-
-- `plans`
-- `plan_items`
-- `sections`
-- `section_meetings`
-
-ไฟล์ที่ได้ใช้ timezone `Asia/Bangkok` และสร้าง weekly recurring event จนถึง `end_date`
+08 ไม่อ่านหรือแก้ตารางของ 02 โดยตรง ไฟล์ที่ได้ใช้ timezone `Asia/Bangkok` และ weekly recurrence จนถึง `end_date`
 
 ## Analytics
 
@@ -217,8 +224,10 @@ GET /export/ics/12?start_date=2026-06-01&end_date=2026-10-01
 - token input/output และค่าใช้จ่ายโดยประมาณ
 - ค่าเฉลี่ย feedback และจำนวนคะแนนต่ำ
 - จำนวนรายการที่รอ review
-- Plan acceptance rate
-- คำถามที่ตอบไม่ได้
+- อัตรา feedback เชิงบวกต่อแผน (`plan_positive_feedback_rate`)
+- `plan_acceptance_rate` เป็น `null` จนกว่าจะมี event ว่าใช้/บันทึกแผนจริง
+- `unanswered_questions` เป็น `null` จนกว่า 02 จะส่ง outcome ของแชต
+- จำนวน `plan_validate` ที่ `is_valid=false`
 - Conflict code ที่พบบ่อย
 
 ระบบไม่คืน event รายบุคคลหรือข้อมูลส่วนตัวผ่าน analytics endpoint
@@ -253,7 +262,7 @@ python -m pytest -q
 ผลล่าสุด:
 
 ```text
-10 passed
+15 passed
 ```
 
 ชุดทดสอบครอบคลุม:

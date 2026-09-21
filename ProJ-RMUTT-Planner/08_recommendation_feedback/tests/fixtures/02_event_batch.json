@@ -1,0 +1,30 @@
+{
+  "events": [
+    {
+      "event": "plan_validate",
+      "id_hash": "8df1309c43a1e207",
+      "term": "1/2569",
+      "section_count": 2,
+      "is_valid": false
+    },
+    {
+      "event": "plan_auto",
+      "id_hash": "8df1309c43a1e207",
+      "term": "1/2569",
+      "plan_count": 3
+    },
+    {
+      "event": "chat_message",
+      "id_hash": "8df1309c43a1e207",
+      "session_id": 12,
+      "status": "complete"
+    },
+    {
+      "event": "feedback",
+      "id_hash": "8df1309c43a1e207",
+      "target_type": "plan",
+      "target_id": "42",
+      "rating": 2
+    }
+  ]
+}

@@ -36,10 +36,10 @@ def summary(db: Session, start: datetime, end: datetime) -> dict:
     token_in = sum(event.tokens_in or 0 for event in events)
     token_out = sum(event.tokens_out or 0 for event in events)
     plan_feedback = [item for item in feedback if item.target_type == "plan"]
-    adopted = sum(1 for item in plan_feedback if item.rating >= 4)
+    positive = sum(1 for item in plan_feedback if item.rating >= 4)
     conflicts: Counter[str] = Counter()
     for event in events:
-        if event.action in {"conflict", "plan.validate", "conflicts.check"}:
+        if event.action in {"conflict", "plan.validate", "plan_validate", "conflicts.check"}:
             for conflict in event.payload.get("conflicts", []):
                 code = conflict.get("code") if isinstance(conflict, dict) else str(conflict)
                 if code:
@@ -64,10 +64,18 @@ def summary(db: Session, start: datetime, end: datetime) -> dict:
             "average_rating": round(sum(item.rating for item in feedback) / len(feedback), 2) if feedback else None,
             "negative_count": sum(1 for item in feedback if item.rating <= 2),
             "pending_review": len(pending_reviews),
-            "plan_acceptance_rate": round(adopted / len(plan_feedback), 4) if plan_feedback else None,
+            # A rating is not proof that the student saved or used a plan.
+            "plan_positive_feedback_rate": round(positive / len(plan_feedback), 4) if plan_feedback else None,
+            "plan_acceptance_rate": None,
         },
         "quality": {
-            "unanswered_questions": action_counts.get("chat.unanswered", 0),
+            # 02 currently emits chat_message without an answer/refusal outcome.
+            "unanswered_questions": None,
+            "invalid_plan_validations": sum(
+                1 for event in events
+                if event.action in {"plan_validate", "plan.validate"}
+                and event.payload.get("is_valid") is False
+            ),
             "frequent_conflicts": dict(conflicts.most_common(10)),
         },
     }

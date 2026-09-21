@@ -137,5 +137,10 @@ def test_internal_endpoints_require_token(client):
 
 def test_privacy_deletion(client):
     client.post("/events", json={"student_hash": "hash-delete", "service": "02", "action": "test"})
+    client.post("/feedback", json={
+        "student_hash": "hash-delete", "target_type": "plan", "target_id": "1", "rating": 1
+    })
     response = client.delete("/privacy/students/hash-delete", headers=HEADERS)
     assert response.json()["data"]["deleted"]["events"] == 1
+    assert response.json()["data"]["deleted"]["feedback"] == 1
+    assert response.json()["data"]["deleted"]["reviews"] == 1

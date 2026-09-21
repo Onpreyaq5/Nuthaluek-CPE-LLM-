@@ -6,7 +6,13 @@ from typing import Any
 _STUDENT_IDS = [re.compile(r"\b\d{10}\b"), re.compile(r"\b\d{13}\b"), re.compile(r"\b\d{12}-\d\b")]
 _EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 _PHONE = re.compile(r"\b0\d{1,2}-?\d{3}-?\d{4}\b")
-_SENSITIVE_KEYS = {"student_id", "name", "name_th", "name_en", "email", "phone", "password", "transcript"}
+_SENSITIVE_KEYS = {
+    "student_id", "name", "name_th", "name_en", "email", "phone", "password",
+    "transcript", "jwt", "token", "access_token", "refresh_token", "secret",
+    "api_key", "authorization", "cookie", "set-cookie",
+}
+_BEARER = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+/-]+=*")
+_JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
 
 
 def is_probably_raw_student_id(value: str | None) -> bool:
@@ -18,7 +24,9 @@ def is_probably_raw_student_id(value: str | None) -> bool:
 
 def scrub_text(value: str) -> str:
     # Phone numbers are also ten digits, so classify them before student IDs.
-    result = _PHONE.sub("[PHONE]", value)
+    result = _BEARER.sub("Bearer [REDACTED]", value)
+    result = _JWT.sub("[JWT]", result)
+    result = _PHONE.sub("[PHONE]", result)
     for pattern in _STUDENT_IDS:
         result = pattern.sub("[STUDENT_ID]", result)
     result = _EMAIL.sub("[EMAIL]", result)

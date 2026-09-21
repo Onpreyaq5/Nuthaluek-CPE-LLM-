@@ -25,7 +25,9 @@ ENV VARS
   REDIS_URL                default redis://localhost:6379/3
   LOG_LEVEL                default INFO
   INTERNAL_API_TOKEN       token ระหว่าง service สำหรับ analytics/alert/privacy
-                           production ต้องตั้งค่า ห้ามปล่อยว่าง
+                           รวมถึง POST /export/ics; ถ้าไม่ตั้ง endpoint เหล่านี้ตอบ 503
+                           /events และ /feedback ยังไม่บังคับ token เพื่อเข้ากับ 02
+                           ต้องจำกัดด้วย private network ระหว่างรอ auth contract
   CORS_ORIGINS             comma-separated; default http://localhost:3000
   NOTIFY_CHANNELS          default web (email/line รอ channel adapter + recipient mapping)
   LINE_CHANNEL_TOKEN       optional; ห้าม commit secret
@@ -46,6 +48,9 @@ RUN WORKER
 
 DOCKER
   Dockerfile ปัจจุบันรัน API ได้ทันที
+  ทีมรวมระบบต้องตั้ง ADAPTER_08=http และ LOG_SINK_URL ให้ชี้ service 08
+  ค่าเริ่มต้นของ branch 02 ยังเป็น mock และ host log_sink ต่างจาก Compose feedback
+  Compose ปัจจุบัน publish 8800 ที่ host; ต้องปิดหรือจำกัดก่อน production
   Celery worker/beat ต้องให้เจ้าของไฟล์ส่วนกลางเพิ่ม service ใน docker-compose.yml
   เพราะสมาชิก 08 ห้ามแก้ docker-compose.yml และ infra/
 
