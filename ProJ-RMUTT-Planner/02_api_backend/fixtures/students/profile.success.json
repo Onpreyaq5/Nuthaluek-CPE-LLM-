@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "data": {
+    "student_id": "6500000000",
+    "program_id": "CPE-2566",
+    "program_name": "วิศวกรรมคอมพิวเตอร์",
+    "year_level": 3,
+    "gpax": 3.42,
+    "credits_earned": 80,
+    "credits_remaining": 56
+  },
+  "meta": { "request_id": "req_2q3r4s5t", "took_ms": 25.0 }
+}

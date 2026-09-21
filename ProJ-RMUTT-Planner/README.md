@@ -46,6 +46,9 @@ ProJ-RMUTT-Planner/
 │          02_step.txt     = ทำอะไรก่อนหลัง (build order)
 │          03_process.txt  = สถาปัตยกรรมภายใน + contract + ข้อควรระวัง
 │
+├── 09_main_app/                    # 🔒 เฟิสเท่านั้น — รวมและทดสอบแอปหลัก
+│   └── README.md                   # กติกาพื้นที่รวมระบบ
+│
 ├── infra/                            # db init, prometheus config
 ├── data/                             # ข้อมูลดิบ/ที่ทำความสะอาดแล้ว (ไม่ขึ้น git)
 ├── docker-compose.yml
@@ -123,8 +126,13 @@ cd 04_course_data_services && python -c "from src.adapters.oreg_rmutt import *; 
 
 ## ทำงานเป็นทีม
 
-อ่าน [CONTRIBUTING.md](CONTRIBUTING.md) ก่อนเริ่ม — branch ต่อโมดูล, PR + review, CI รัน `pytest` ทุกโมดูล + เช็ค compose + กัน secret หลุด อัตโนมัติ
-(workflow อยู่ที่ `.github/workflows/ci.yml` ใน root ของ repo)
+อ่าน [CONTRIBUTING.md](CONTRIBUTING.md) ก่อนเริ่ม — ทุกคนทำงานตรงบน `main` และแก้เฉพาะโฟลเดอร์ที่ได้รับมอบหมาย
+
+- ก่อนเริ่มงาน: `git pull origin main`
+- ก่อน push: `git pull --rebase origin main`
+- ห้ามแก้ `09_main_app/`, `docker-compose.yml`, `Makefile`, `.env.example` และ `infra/` — พื้นที่เหล่านี้ให้ **เฟิส** รวมและทดสอบแอปจริง
+- ห้าม `git push --force`
+- CI ยังตรวจ test, compose และ secret ทุกครั้งที่ push
 
 ## สถานะปัจจุบัน
 

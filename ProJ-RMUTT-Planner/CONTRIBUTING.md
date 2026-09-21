@@ -1,80 +1,72 @@
-# วิธีทำงานร่วมกันในทีม (CONTRIBUTING)
+# วิธีทำงานร่วมกันในทีม (ทำงานตรงบน main)
 
-> อ่านหน้านี้ 5 นาทีก่อนแตะโค้ด — จะได้ไม่ทับงานกันและ merge ไม่พัง
+> ทีมตกลงให้ทุกคนทำงานบน `main` โดยแบ่งความรับผิดชอบตามโฟลเดอร์ ไม่ต้องสร้าง Branch หรือ Pull Request
 
 ## 1. เริ่มต้นครั้งแรก
 
 ```bash
 git clone https://github.com/Onpreyaq5/Nuthaluek-CPE-LLM-.git
 cd Nuthaluek-CPE-LLM-/ProJ-RMUTT-Planner
-cp .env.example .env          # ใส่ค่าจริงของตัวเอง ห้าม commit ไฟล์นี้
+cp .env.example .env
 ```
 
-Windows: ถ้าเจอ `Filename too long` ให้รัน `git config --global core.longpaths true`
+ห้าม commit ไฟล์ `.env`, API key, รหัสผ่าน หรือข้อมูลนักศึกษาจริง
 
-## 2. ใครทำโฟลเดอร์ไหน
+## 2. ขอบเขตการทำงาน
 
-1 โฟลเดอร์ = 1 เจ้าของ = 1 branch — ดูตารางใน [`00_docs/04_team_roles.md`](00_docs/04_team_roles.md) แล้ว**เติมชื่อตัวเอง**ลงไป
-
-| โฟลเดอร์ | branch ของคุณ |
+| พื้นที่ | ผู้รับผิดชอบ |
 |---|---|
-| `01_web_app` | `feat/web-app` |
-| `02_api_backend` | `feat/api-backend` |
-| `03_ai_router_agent` | `feat/ai-router` |
-| `04_course_data_services` | `feat/course-data` |
-| `05_data_integration` | `feat/data-integration` |
-| `06_schedule_conflict_engine` | `feat/schedule-engine` |
-| `07_rag_llm_engine` | `feat/rag-llm` |
-| `08_recommendation_feedback` | `feat/feedback` |
-| `00_docs` / README | `docs/<เรื่อง>` |
-| docker / CI | `chore/<เรื่อง>` |
+| `00_docs/` | เอกสารกลาง — แก้เมื่อทีมตกลงร่วมกัน |
+| `01_web_app/` | เจ้าของโมดูล Web/UI |
+| `02_api_backend/` | เจ้าของโมดูล API/Auth |
+| `03_ai_router_agent/` | เจ้าของโมดูล AI Router |
+| `04_course_data_services/` | เจ้าของโมดูลข้อมูลรายวิชา |
+| `05_data_integration/` | เจ้าของโมดูลเชื่อมและทำความสะอาดข้อมูล |
+| `06_schedule_conflict_engine/` | เจ้าของโมดูลตรวจตารางชน |
+| `07_rag_llm_engine/` | เจ้าของโมดูล RAG/LLM |
+| `08_recommendation_feedback/` | เจ้าของโมดูลคำแนะนำและ Feedback |
+| `09_main_app/` | **เฟิสเท่านั้น — พื้นที่รวมแอปหลัก** |
+| `docker-compose.yml`, `Makefile`, `.env.example`, `infra/` | **เฟิสเท่านั้น — ไฟล์เชื่อมระบบ** |
 
-**กติกาสำคัญ:** แก้ได้เฉพาะโฟลเดอร์ของตัวเอง ถ้าต้องแก้ของคนอื่น (เช่น เปลี่ยน contract ใน `03_process.txt`) ให้เปิด Issue คุยก่อน
+**กติกาหลัก:** สมาชิกแก้เฉพาะโฟลเดอร์ของตัวเอง ห้ามย้าย ลบ หรือแก้ไฟล์ของคนอื่น หากจำเป็นต้องเปลี่ยน contract ระหว่างโมดูลให้คุยกับเจ้าของโฟลเดอร์และเฟิสก่อน
 
 ## 3. รอบการทำงานประจำวัน
 
+ก่อนเริ่มแก้ทุกครั้ง:
+
 ```bash
-git checkout main && git pull            # เอาของใหม่สุดมาก่อนเสมอ
-git checkout -b feat/schedule-engine     # (ครั้งแรก) หรือ git checkout feat/schedule-engine
-# ... เขียนโค้ด ...
-git add 06_schedule_conflict_engine/     # add เฉพาะโฟลเดอร์ตัวเอง
-git commit -m "[06] เพิ่มการตรวจสอบตารางสอบชน"
-git push -u origin feat/schedule-engine
+git checkout main
+git pull origin main
 ```
 
-แล้วไปเปิด **Pull Request** บน GitHub → เลือก base = `main`
-→ ให้เพื่อน 1 คน review → CI เขียวแล้วค่อยกด **Squash and merge**
+เมื่อทำเสร็จ ให้ add เฉพาะโฟลเดอร์ของตัวเอง ตัวอย่างโมดูล 06:
+
+```bash
+git add 06_schedule_conflict_engine/
+git commit -m "[06] อธิบายสิ่งที่แก้"
+git pull --rebase origin main
+git push origin main
+```
 
 รูปแบบ commit message: `[หมายเลขโมดูล] ทำอะไร` เช่น `[04] แก้ parser ให้รองรับวิชาออนไลน์`
 
-## 4. ก่อนเปิด PR เช็ค 4 ข้อ
+## 4. ก่อน push เช็ก
 
-- [ ] `docker compose build <service>` ผ่าน
-- [ ] `pytest` ในโฟลเดอร์ตัวเองผ่าน (`cd 0X_xxx && pip install -r requirements.txt pytest && pytest`)
-- [ ] อัปเดต `01_env.txt` / `02_step.txt` / `03_process.txt` ถ้าของจริงเปลี่ยนไปจากที่เขียนไว้
-- [ ] ไม่มี `.env`, API key, หรือข้อมูลนักศึกษาจริง (รหัส/ชื่อ/เกรด) ติดไปใน commit
+- ทดสอบโค้ดในโฟลเดอร์ตัวเองแล้ว
+- อัปเดต `01_env.txt`, `02_step.txt` หรือ `03_process.txt` หากพฤติกรรมเปลี่ยน
+- ไม่มี `.env`, API key, รหัสผ่าน หรือข้อมูลนักศึกษาจริง
+- `git status` ไม่มีไฟล์จากโฟลเดอร์ของคนอื่นติดมาด้วย
+- ดึง `main` ล่าสุดก่อน push แล้ว
 
-## 5. ห้ามเด็ดขาด
+## 5. ถ้า push ไม่ผ่านหรือโค้ดชนกัน
 
-- `git push origin main` ตรง ๆ (main รับได้เฉพาะจาก PR)
-- `git push --force` บน branch ที่มีคนอื่นใช้
-- commit ไฟล์ HTML ที่เซฟจากระบบทะเบียนของตัวเอง (มีชื่อ-รหัส-เกรด) → วางไว้ใน `data/raw/` ซึ่ง `.gitignore` กันไว้แล้ว
-- ใส่รหัสผ่านระบบทะเบียนลงในโค้ด/config/แชท
+1. ห้ามใช้ `git push --force`
+2. รัน `git pull --rebase origin main`
+3. หากเกิด conflict ในโฟลเดอร์ของตัวเอง ให้แก้แล้วทดสอบใหม่
+4. หาก conflict อยู่ใน `09_main_app` หรือไฟล์ส่วนกลาง ให้หยุดและแจ้งเฟิส
 
-## 6. ถ้า merge แล้วชนกัน (conflict)
+## 6. การรวมแอป
 
-```bash
-git checkout feat/xxx
-git fetch origin
-git merge origin/main        # แก้ไฟล์ที่ขึ้น <<<<<<< >>>>>>> แล้ว
-git add . && git commit
-git push
-```
+เฟิสเป็นผู้ตรวจงานจาก `01–08` และรวมให้ทำงานจริงใน `09_main_app` รวมถึงดูแล `docker-compose.yml`, `Makefile`, `.env.example` และ `infra/`
 
-ชนกันบ่อย = มีคน 2 คนแก้ไฟล์เดียวกัน → กลับไปดูข้อ 2
-
-## 7. ช่องทางคุยงาน
-
-- เรื่องโค้ด/บั๊ก → GitHub **Issues** (ติด label ตามโมดูล)
-- เรื่อง contract ระหว่างโมดูล → Issue + แท็กเจ้าของทั้ง 2 ฝั่ง
-- ประชุมทีม → อัปเดตความคืบหน้าใน `00_docs/03_flow.md` ท้ายตาราง Sprint Plan
+GitHub ไม่ได้บล็อกสิทธิ์เป็นรายโฟลเดอร์ กติกานี้เป็นข้อตกลงของทีม ทุกคนที่มีสิทธิ์ Write ต้องรับผิดชอบไม่แก้พื้นที่นอกหน้าที่ของตนเอง

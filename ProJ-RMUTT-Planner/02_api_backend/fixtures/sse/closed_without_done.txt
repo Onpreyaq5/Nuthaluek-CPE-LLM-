@@ -1,0 +1,8 @@
+data: {"type": "session", "session_id": 1}
+
+data: {"type": "tool_start", "tool": "search_courses"}
+
+data: {"type": "token", "text": "กำลังค้นหาวิชาที่ว่าง"}
+
+data: {"type": "error", "code": "UPSTREAM_502", "message": "โมดูล Router (03) หยุดตอบสนองกลางทาง"}
+

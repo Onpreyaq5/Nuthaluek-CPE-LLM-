@@ -1,0 +1,29 @@
+from __future__ import annotations
+
+from src.core.config import get_settings
+from src.schemas.students import ExplainResponse
+
+from ..http_base import HttpAdapterClient
+from ..interfaces import StudentContext
+
+# ปลายทางของ 07 ยังไม่มีสัญญาจริง — PLACEHOLDER
+PATH_EXPLAIN = "/explain"
+
+
+class HttpExplainer:
+    async def explain_plan(
+        self, term: str, section_ids: list[str], student: StudentContext
+    ) -> ExplainResponse:
+        settings = get_settings()
+        client = HttpAdapterClient(
+            base_url=settings.EXPLAINER_URL, module="07", timeout_policy=settings.timeouts.write
+        )
+        try:
+            response = await client.request(
+                "POST",
+                PATH_EXPLAIN,
+                json={"term": term, "section_ids": section_ids, "student": student.model_dump(mode="json")},
+            )
+        finally:
+            await client.aclose()
+        return ExplainResponse.model_validate(response.json())
