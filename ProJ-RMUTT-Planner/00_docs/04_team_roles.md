@@ -2,19 +2,21 @@
 
 หลักการ: **1 โฟลเดอร์ = 1 เจ้าของ** ทุกคนทำงานตรงบน `main` และห้ามแก้พื้นที่ของคนอื่น
 
-| โฟลเดอร์ / งาน | ผู้รับผิดชอบ | ทักษะหลัก |
-|---|---|---|
-| `01_web_app/` | เติมชื่อ/GitHub | React, Next.js, UI/UX |
-| `02_api_backend/` | เติมชื่อ/GitHub | FastAPI, Postgres, Auth |
-| `03_ai_router_agent/` | เติมชื่อ/GitHub | Prompt, Agent, LLM API |
-| `04_course_data_services/` | เติมชื่อ/GitHub | Parsing, Data services |
-| `05_data_integration/` | เติมชื่อ/GitHub | Data cleaning, Graph, Algorithm |
-| `06_schedule_conflict_engine/` | เติมชื่อ/GitHub | Algorithm, OR-Tools |
-| `07_rag_llm_engine/` | เติมชื่อ/GitHub | RAG, Vector DB, Embedding |
-| `08_recommendation_feedback/` | เติมชื่อ/GitHub | Monitoring, Analytics, Feedback |
-| `09_main_app/` | **เฟิส** | รวมระบบและทดสอบแอปจริง |
-| `docker-compose.yml`, `Makefile`, `.env.example`, `infra/` | **เฟิส** | Docker, Integration, CI |
-| `00_docs/` | ทีมตกลงร่วมกัน | เอกสาร, Diagram, รายงาน |
+| โฟลเดอร์ / งาน | ผู้รับผิดชอบ | ทักษะหลัก | สถานะ |
+|---|---|---|---|
+| `01_web_app/` | **เฟิส** | React, Next.js, UI/UX | ยังไม่เริ่ม |
+| `02_api_backend/` | fffalafair | FastAPI, Postgres, Auth | มีโค้ดแล้ว (`feat/api-backend`) |
+| `03_ai_router_agent/` | Automatic28m (Phanlop) | Prompt, Agent, LLM API | มีโค้ดแล้ว (`develop`) |
+| `04_course_data_services/` | ยังไม่มีเจ้าของ | Parsing, Data services | มี parser ระบบทะเบียนบน `main` |
+| `05_data_integration/` | DevnameJay | Data cleaning, Graph, Algorithm | มีโค้ดแล้ว (`feat/data-integration`) |
+| `06_schedule_conflict_engine/` | **เฟิส** | Algorithm, OR-Tools | ยังไม่เริ่ม — งานสำคัญที่สุด |
+| `07_rag_llm_engine/` | **ยังไม่มีเจ้าของ — รับสมัคร** | RAG, Vector DB, Embedding | ยังไม่เริ่ม (ติดที่ยังไม่มีไฟล์ระเบียบ PDF) |
+| `08_recommendation_feedback/` | marisa46054 (Marisa) | Monitoring, Analytics, Feedback | มีโค้ดแล้ว (`feat/feedback`) |
+| `09_main_app/` | **เฟิส** | รวมระบบและทดสอบแอปจริง | — |
+| `docker-compose.yml`, `Makefile`, `.env.example`, `infra/` | **เฟิส** | Docker, Integration, CI | — |
+| `00_docs/` | ทีมตกลงร่วมกัน | เอกสาร, Diagram, รายงาน | — |
+
+> ชื่อในตารางดึงจากคนที่ commit จริงในแต่ละโมดูล ใครไม่ตรงให้แก้ได้เลย
 
 ## กติกา Git ของทีม
 
@@ -33,6 +35,21 @@
 3. ดูแลไฟล์เชื่อมระบบและ Docker
 4. ทดสอบว่าแอปหลักรันร่วมกันได้จริง
 5. ตัดสินใจเมื่อมี conflict ระหว่างโมดูล
+6. รับผิดชอบ `06_schedule_conflict_engine` (ตรรกะตารางชน) และ `01_web_app` (หน้าเดโม่) เพิ่ม
+
+## งานที่ยังไม่มีคนรับ
+
+| โมดูล | ทำไมสำคัญ | ต้องเริ่มจาก |
+|---|---|---|
+| `07_rag_llm_engine/` | ตอบคำถามระเบียบพร้อมอ้างอิง — เป็นส่วนที่ตรงกับวิชา LLM มากที่สุด | หาไฟล์ PDF ระเบียบ/คู่มือนักศึกษา/มคอ.2 ก่อน |
+| `04_course_data_services/` | ดึงข้อมูลรายวิชาจริงจากระบบทะเบียน | มี parser อยู่แล้วบน `main` เหลือทำเป็น service |
+
+## สิ่งที่ต้องทำร่วมกันเร็ว ๆ นี้
+
+1. **นัดวันรวมงาน** — ตอนนี้โค้ดกระจายอยู่ 4 ที่ (`main`, `develop`, `feat/api-backend`,
+   `feat/data-integration`, `feat/feedback`) ยัง `docker compose up` ทั้งระบบไม่ได้
+2. ตกลงว่าจะรวมที่ `main` หรือ `develop`
+3. `02_api_backend` ถูกถอดออกจาก `main` ไปแล้ว ต้องเอากลับเข้ามาตอนรวม
 
 ## Definition of Done
 
