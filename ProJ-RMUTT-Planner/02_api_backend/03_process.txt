@@ -1,28 +1,42 @@
-[02_api_backend] 03_process.txt  —  Layering / Contract / Security
+[02_api_backend] 03_process.txt  —  Layering / Contract / Security (สอดคล้องกับ CLAUDE.md — ยึด CLAUDE.md/PLAN.md ถ้าขัดกัน)
 ==================================================================
 LAYER
-  api (router)  →  service (business)  →  repository (DB)  →  model
-  ห้าม router เรียก DB ตรง, ห้าม service รู้จัก HTTP
+  src/api/v1 (router, FastAPI-aware)
+    → src/services (business, ห้าม import fastapi)
+    → src/repositories (DB เท่านั้น, SQLAlchemy) / src/adapters (interface + mock|inprocess|http ของ 03-08)
+    → src/models (SQLAlchemy ORM)
+  ห้าม router เรียก DB ตรง, ห้าม service รู้จัก HTTP (fastapi/starlette)
 
-RESPONSE CONTRACT (ทุก endpoint)
-  { "ok": true, "data": {...}, "meta": {"request_id","took_ms"} }
-  { "ok": false, "error": {"code","message","details"} }
-  error code: AUTH_401, VALIDATION_422, CONFLICT_409, UPSTREAM_502, RATE_429
+RESPONSE CONTRACT (ทุก endpoint ยกเว้น /health /ready /metrics และ /chat ซึ่งเป็น SSE)
+  { "ok": true,  "data": {...}, "meta": {"request_id": "req_...", "took_ms": 0} }
+  { "ok": false, "error": {"code","message","details"}, "meta": {"request_id": "req_...", "took_ms": 0} }
+  HTTP status ตรงกับ code เสมอ · ทุก response มี header X-Request-ID
+  error code: AUTH_401, FORBIDDEN_403, NOT_FOUND_404, CONFLICT_409, PAYLOAD_413, VALIDATION_422,
+              RATE_429, UPSTREAM_502, INTERNAL_500
 
-REQUEST FLOW (/plans/validate)
-  1. auth → ดึง student_id จาก JWT
-  2. โหลด sections ที่เลือก จาก 04 (ผ่าน cache redis 10 นาที)
-  3. POST → 06_schedule_conflict_engine {student, sections, rules}
-  4. รับ conflicts[] + warnings[] → normalize → ตอบ frontend
-  5. log ลง 08 (async, ไม่บล็อกคำตอบ)
+REQUEST FLOW (/api/v1/plans/validate)
+  1. auth dependency → ดึง student_id จาก JWT ใน cookie "session"
+  2. rate_limit dependency (ก่อนถึง router เสมอ ผ่าน app.include_router(..., dependencies=[Depends(rate_limit)]))
+  3. โหลด section ที่เลือกจาก adapter 04 (course_catalog, cache ผ่าน redis)
+  4. เรียก adapter 06 (plan_engine) {student_id, term, section_ids} → conflicts[] + prereq issues[]
+  5. normalize → ตอบ frontend ตาม envelope ด้านบน
+  06 ล่ม/timeout → UPSTREAM_502 {"module": "06"} (ไม่ครอบ retry ใน 02 เกินตารางที่ตั้งไว้ใน .env)
 
-REQUEST FLOW (/chat)
-  1. โหลด context: profile + แผนปัจจุบัน + 10 ข้อความล่าสุด
-  2. POST → 03_ai_router_agent (stream=true)
-  3. proxy SSE กลับ frontend ทีละ token
-  4. จบแล้วบันทึก transcript + sources ลง DB
+REQUEST FLOW (/api/v1/chat) — SSE, ไม่มี envelope
+  1. auth dependency + rate_limit (scope "chat" แยกจาก general)
+  2. resolve session (ใหม่ถ้า session_id เป็น null, ถ้าไม่ใช่ต้องเป็นของ student คนนี้เท่านั้น → 403/404)
+  3. enrich payload (mask ชื่อ/รหัสจริงด้วย masking.hash_student_id ก่อนส่งออกนอก 02) → POST adapter 03 (stream)
+  4. "peek-first-event" ก่อนเปิด StreamingResponse จริง: เรียก __anext__() ครั้งแรกนอก stream, ถ้าพัง (03
+     ไม่ตอบ/error ตั้งแต่ต้น) → ตอบ 502 แบบ envelope ปกติ ไม่ยิง SSE เลย; ถ้าสำเร็จ 02 ยิง event "session"
+     ของตัวเองก่อน แล้วค่อย proxy event ที่เหลือทีละตัว (sanitize ทุก event ผ่าน allowlist ก่อนส่งต่อ)
+  5. client ตัด connection (CancelledError) ระหว่างส่ง token → บันทึกเฉพาะ token ที่ยิงไปแล้วจริงก่อน cancel
+     (bookkeeping ต้องอยู่ก่อน yield เสมอ ไม่งั้น token สุดท้ายที่ client ได้รับจะหายจาก DB)
+  6. จบสตรีมแล้วบันทึก message + sources ลง DB (status: complete | interrupted | cancelled)
 
-SECURITY
-  - API key ของ LLM อยู่ที่ backend/service เท่านั้น (อ่านจาก env, ไม่ commit)
-  - ข้อมูลนักศึกษาเป็น PII → log แบบ mask (รหัส นศ. เก็บ hash ใน log)
-  - ทุก endpoint ต้องระบุ scope ว่าใครเข้าถึงได้ (student เห็นของตัวเองเท่านั้น)
+SECURITY / PDPA
+  - ห้าม log ชื่อ/รหัสนักศึกษาจริง หรือเนื้อไฟล์ import/ข้อความแชต → ใช้ masking.hash_student_id() /
+    masking.scrub_text() / masking.mask_payload() ก่อน log และก่อนส่งออกนอก 02 (ไปยัง 03)
+  - ไฟล์ import (transcript HTML) parse แล้วทิ้งทันที ไม่เก็บไฟล์ดิบ
+  - ทุก query ใต้ /students/me, /plans, /chat กรองด้วย student_id ของ session เสมอ (ownership: คนอื่น
+    เข้าถึงของฉันไม่ได้ → FORBIDDEN_403 ไม่ใช่ NOT_FOUND_404 เมื่อ resource มีจริงแต่ไม่ใช่เจ้าของ)
+  - secrets (JWT_SECRET ฯลฯ) อ่านจาก env เท่านั้น ห้าม commit .env จริง

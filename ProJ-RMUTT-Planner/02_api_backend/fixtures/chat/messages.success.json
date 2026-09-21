@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "role": "user",
+        "content": "ช่วยอธิบายเรื่องการถอนรายวิชาหน่อย",
+        "status": "complete",
+        "sources": [],
+        "created_at": "2026-09-19T17:31:06.116004Z"
+      },
+      {
+        "id": 2,
+        "role": "assistant",
+        "content": "ถอนรายวิชาได้ตามระเบียบข้อ 18",
+        "status": "complete",
+        "sources": [
+          { "title": "ข้อบังคับฯ", "section": "ข้อ 18", "page": 12, "document_id": "doc-regulation-2566", "url": null }
+        ],
+        "created_at": "2026-09-19T17:31:06.124791Z"
+      }
+    ],
+    "next_cursor": null
+  },
+  "meta": { "request_id": "req_7653f80abed6d0f6", "took_ms": 5.64 }
+}

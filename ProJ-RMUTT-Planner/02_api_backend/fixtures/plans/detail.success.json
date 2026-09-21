@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "data": {
+    "id": 2,
+    "term": "1/2569",
+    "name": "แผนตัวอย่าง B",
+    "sections": [
+      {
+        "section_id": "CPE302-02",
+        "course_code": "CPE302",
+        "course_name_th": "ระบบปฏิบัติการ",
+        "teacher": "อ.รักชาติ วงศ์ดี",
+        "credits": 3,
+        "seats_available": 12,
+        "seats_total": 40,
+        "meetings": [{ "day": "THU", "start": "13:00", "end": "15:50", "room": "ENG-304" }],
+        "exam": null
+      }
+    ],
+    "last_validation": null
+  },
+  "meta": { "request_id": "req_a51297ff90dc57ba", "took_ms": 7.98 }
+}

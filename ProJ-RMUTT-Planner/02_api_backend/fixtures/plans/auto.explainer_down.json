@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "data": {
+    "plans": [
+      {
+        "sections": ["CPE201-01", "CPE301-02", "CPE302-02", "CPE305-01", "GE101-01", "GE102-01"],
+        "total_credits": 18,
+        "relaxed_constraints": [],
+        "explanation": null,
+        "warnings": ["ไม่สามารถอธิบายแผนนี้ได้ในขณะนี้ (โมดูล 07 ไม่ตอบสนอง)"]
+      },
+      {
+        "sections": ["CPE301-01", "CPE301-02", "CPE302-02", "CPE305-01", "GE101-01", "GE102-01"],
+        "total_credits": 18,
+        "relaxed_constraints": [],
+        "explanation": null,
+        "warnings": ["ไม่สามารถอธิบายแผนนี้ได้ในขณะนี้ (โมดูล 07 ไม่ตอบสนอง)"]
+      },
+      {
+        "sections": ["CPE301-02", "CPE302-02", "CPE305-01", "GE101-01", "GE102-01", "CPE201-01"],
+        "total_credits": 18,
+        "relaxed_constraints": [],
+        "explanation": null,
+        "warnings": ["ไม่สามารถอธิบายแผนนี้ได้ในขณะนี้ (โมดูล 07 ไม่ตอบสนอง)"]
+      }
+    ]
+  },
+  "meta": { "request_id": "req_346765561aaea2d6", "took_ms": 3.38 }
+}

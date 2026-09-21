@@ -1,0 +1,23 @@
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.flake8-bugbear]
+# รูปแบบมาตรฐานของ FastAPI: Depends(...)/Query(...) ใน default arg ไม่ใช่ mutable-default bug จริง
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body"]
+
+[tool.pytest.ini_options]
+# ไม่มีการทำ src เป็น installable package (ไม่มี pyproject [project]/[build-system]) — ต้องเติม "."
+# เข้า sys.path เอง ไม่งั้น `pytest -q` (ไม่ผ่าน `python -m`) จะหา `import src...` ไม่เจอ
+pythonpath = ["."]
+markers = [
+    "db: ต้องใช้ TEST_DATABASE_URL (Postgres) — ข้ามถ้าไม่มี",
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

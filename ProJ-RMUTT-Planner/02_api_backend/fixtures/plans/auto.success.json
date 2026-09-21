@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "data": {
+    "plans": [
+      {
+        "sections": ["CPE201-01", "CPE301-02", "CPE302-02", "CPE305-01", "GE101-01", "GE102-01"],
+        "total_credits": 18,
+        "relaxed_constraints": [],
+        "explanation": "แผนนี้ไม่มีวิชาเวลาชนกันและหน่วยกิตไม่เกิน 21 หน่วยกิตตามที่กำหนด",
+        "warnings": []
+      },
+      {
+        "sections": ["CPE301-01", "CPE301-02", "CPE302-02", "CPE305-01", "GE101-01", "GE102-01"],
+        "total_credits": 18,
+        "relaxed_constraints": [],
+        "explanation": "แผนนี้ไม่มีวิชาเวลาชนกันและหน่วยกิตไม่เกิน 21 หน่วยกิตตามที่กำหนด",
+        "warnings": []
+      },
+      {
+        "sections": ["CPE301-02", "CPE302-02", "CPE305-01", "GE101-01", "GE102-01", "CPE201-01"],
+        "total_credits": 18,
+        "relaxed_constraints": [],
+        "explanation": "แผนนี้ไม่มีวิชาเวลาชนกันและหน่วยกิตไม่เกิน 21 หน่วยกิตตามที่กำหนด",
+        "warnings": []
+      }
+    ]
+  },
+  "meta": { "request_id": "req_63c5c429bf5860fa", "took_ms": 10.94 }
+}

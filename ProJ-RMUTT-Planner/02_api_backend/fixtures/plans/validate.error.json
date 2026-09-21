@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "error": {
+    "code": "VALIDATION_422",
+    "message": "ข้อมูลที่ส่งมาไม่ถูกต้อง",
+    "details": {
+      "errors": [
+        {
+          "type": "too_short",
+          "loc": ["body", "section_ids"],
+          "msg": "List should have at least 1 item after validation, not 0",
+          "input": []
+        }
+      ]
+    }
+  },
+  "meta": { "request_id": "req_7382d8771502ebda", "took_ms": 6.3 }
+}
