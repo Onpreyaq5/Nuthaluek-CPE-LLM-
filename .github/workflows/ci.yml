@@ -22,6 +22,7 @@ jobs:
         service:
           - 04_course_data_services
           - 05_data_integration
+          - 07_rag_llm_engine
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

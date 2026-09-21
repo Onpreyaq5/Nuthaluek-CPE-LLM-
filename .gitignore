@@ -1,0 +1,23 @@
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# env / secret
+.env
+.env.local
+*.key
+*.pem
+
+# node
+node_modules/
+.next/
+
+# ide / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

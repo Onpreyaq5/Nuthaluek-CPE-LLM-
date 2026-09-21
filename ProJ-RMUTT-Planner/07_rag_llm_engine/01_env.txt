@@ -1,31 +1,45 @@
-[07_rag_llm_engine] 01_env.txt  —  RAG (ระเบียบ/หลักสูตร) + LLM Generation
-Owner: <ใส่ชื่อ>
+[07_rag_llm_engine] 01_env.txt  —  Runtime / Package / Config
+ผู้รับผิดชอบ: เฟิส
+สถานะ: ใช้งานได้แล้ว (เทส 56 เคสผ่าน)
 ==================================================================
 RUNTIME
   - Python 3.11 + FastAPI
   - Port: 8700
-  - Vector DB: Qdrant (container แยก, port 6333)
 
-PACKAGES
-  fastapi, uvicorn, httpx
-  qdrant-client
-  sentence-transformers          # embedding ภาษาไทย
-  rank-bm25                      # keyword search
-  pythainlp                      # ตัดคำไทยก่อน BM25
-  pypdf, python-docx, unstructured   # อ่านเอกสารระเบียบ
-  tiktoken
+PACKAGES (เท่านี้พอ ไม่มี dependency หนัก)
+  fastapi, uvicorn[standard], pydantic v2, httpx
+
+ทำไมไม่มี qdrant / sentence-transformers / pythainlp
+  คลังความรู้ของโปรเจกต์นี้คือระเบียบ+หลักสูตรไม่กี่สิบหน้า (ตอนนี้ 35 chunk)
+  การค้นแบบ in-memory เร็วพอและไม่ต้องพึ่ง service ภายนอก ทำให้ CI กับเครื่อง
+  ของทุกคนได้ผลเหมือนกัน และ image เล็ก
+  -> BM25 + TF-IDF cosine เขียนเองใน src/core/retrieval.py
+  -> ตัดคำไทยด้วย character n-gram (3,4) ใน src/core/text.py
+  ถ้าคลังโตเกิน ~5,000 chunk ค่อยเปลี่ยนคลาส VectorIndex ไปใช้ Qdrant + bge-m3
+  โดยไม่ต้องแก้ส่วนอื่น (interface เดิมคือ fit() กับ search())
 
 ENV VARS
-  QDRANT_URL=http://qdrant:6333
-  COLLECTION=rmutt_knowledge
-  EMBED_MODEL=BAAI/bge-m3            # หรือ intfloat/multilingual-e5-large
-  LLM_PROVIDER / LLM_API_KEY / LLM_MODEL   (เหมือน 03)
-  TOP_K_VECTOR=20  TOP_K_BM25=20  TOP_K_FINAL=6
-  RERANK_MODEL=BAAI/bge-reranker-v2-m3
+  KNOWLEDGE_DIR=/app/data/knowledge
+  SEED_DIR=/app/data/seed
+  CHUNK_CHARS=900   CHUNK_OVERLAP=150
+  TOP_K_BM25=20     TOP_K_VECTOR=20   TOP_K_FINAL=6   RRF_K=60
+  MIN_SCORE=0.21          # ต่ำกว่านี้ = ถือว่าไม่พบข้อมูล ห้ามให้ LLM เดา
+  LLM_PROVIDER=rule_based # rule_based | gemini | openai | anthropic
+  LLM_API_KEY=            # ว่าง = ใช้โหมด rule_based (ไม่ต้องมี key ก็รันได้)
+  LLM_MODEL=
+  DEFAULT_MIN_CREDITS=9   DEFAULT_MAX_CREDITS=21   SUMMER_MAX_CREDITS=9
 
-KNOWLEDGE BASE (เอกสารที่ต้องใส่)
-  - ระเบียบ/ข้อบังคับ มทร.ธัญบุรี ว่าด้วยการศึกษาระดับปริญญาตรี
-  - คู่มือนักศึกษา ปีล่าสุด
-  - โครงสร้างหลักสูตร + คำอธิบายรายวิชา (มคอ.2) ของสาขา
-  - ปฏิทินการศึกษา
-  - ประกาศ/FAQ จากสำนักทะเบียน (ถอน-เพิ่ม, ลาพัก, เทียบโอน)
+คลังความรู้ (data/knowledge/*.md)
+  01_regulations_undergrad.md   ข้อบังคับการศึกษาระดับปริญญาตรี
+  02_cpe_curriculum_2566.md     โครงสร้างหลักสูตรวิศวกรรมคอมพิวเตอร์ + แผน 4 ปี
+  03_academic_calendar_2569.md  ปฏิทินการศึกษา 3 ภาคเรียน
+  04_registration_faq.md        FAQ การลงทะเบียน
+  ** ทั้งหมดเป็นเอกสารจำลองสำหรับต้นแบบ ต้องแทนที่ด้วยฉบับจริงก่อนใช้งานจริง **
+
+ข้อมูลจำลองตารางเรียน (data/seed/)
+  cpe_timetable_1_2569.json     21 หมู่เรียน จาก 12 รายวิชา สาขาวิศวะคอม
+  generate_timetable.py         สคริปต์สร้างไฟล์ข้างบน (แก้แล้วรันใหม่ได้)
+  โครงสร้างตรงกับ SectionInput ของโมดูล 06 ส่งเข้า /conflicts/check ได้ทันที
+
+DEPENDS ON
+  ไม่มี — ทำงานเดี่ยวได้ (ผู้เรียก: 02 และ 03)

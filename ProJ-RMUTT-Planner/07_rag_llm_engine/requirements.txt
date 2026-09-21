@@ -1,5 +1,9 @@
-# 07_rag_llm_engine — ดูรายการเต็มใน 01_env.txt แล้วปักหมุดเวอร์ชันตอนเริ่มเขียนจริง
-fastapi
-uvicorn[standard]
-pydantic
-httpx
+# 07_rag_llm_engine
+# หมายเหตุ: การค้นคืน (BM25 + TF-IDF) เขียนเองใน src/core/retrieval.py
+# จึงไม่ต้องพึ่ง sentence-transformers / qdrant ทำให้ image เล็กและ CI รันเร็ว
+# ถ้าจะอัปเกรดเป็น embedding จริง ให้เพิ่ม qdrant-client + sentence-transformers
+# แล้วแทนที่คลาส VectorIndex
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+httpx>=0.27

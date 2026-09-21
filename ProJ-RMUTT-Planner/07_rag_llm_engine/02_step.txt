@@ -1,43 +1,58 @@
-[07_rag_llm_engine] 02_step.txt  —  ขั้นตอนทำงาน
+[07_rag_llm_engine] 02_step.txt  —  ทำอะไรไปแล้วบ้าง
 ==================================================================
-STEP 1  Ingest Pipeline
-  PDF/DOCX → extract text (เก็บเลขหน้า/หัวข้อ)
-  → chunk 500-800 token, overlap 100, ตัดตามหัวข้อ/ข้อ (ไม่ตัดกลางประโยค)
-  → metadata {doc_type, title, section, page, effective_year, url}
-  → embed → upsert Qdrant
-  สคริปต์: python -m ingest --path /data/knowledge
+[x] STEP 1  โครงสร้างเอกสารความรู้
+        เขียนเอกสารจำลอง 4 ไฟล์ พร้อม frontmatter (doc_type/effective_year/program_ids)
+        เพื่อให้กรองตามปีหลักสูตรและประเภทเอกสารได้
 
-STEP 2  Hybrid Retrieval
-  vector search (top 20) + BM25 (top 20)
-  → รวมด้วย Reciprocal Rank Fusion
-  → rerank (cross-encoder) → เอา top 6
+[x] STEP 2  Ingest pipeline
+        อ่าน .md -> แยก frontmatter -> ตัดตามหัวข้อ markdown -> หั่น chunk 900 ตัวอักษร
+        overlap 150 โดยพยายามตัดที่ท้ายบรรทัด ไม่ตัดกลางประโยค
+        ผลตอนนี้: 4 ไฟล์ -> 35 chunk
 
-STEP 3  Filter ตามบริบทนักศึกษา
-  กรองด้วย effective_year / program_id (หลักสูตรคนละปีกฎไม่เหมือนกัน)
-  ★ จุดพลาดที่พบบ่อย: ตอบด้วยระเบียบของหลักสูตรปีอื่น
+[x] STEP 3  Hybrid retrieval
+        BM25 (เขียนเอง รองรับ tokenizer ไทย) + TF-IDF cosine
+        รวมอันดับด้วย Reciprocal Rank Fusion (k=60)
+        ** คะแนนที่คืนออกไปคือ cosine (0-1) ไม่ใช่คะแนน RRF **
+        เพราะ RRF ให้คะแนนตามอันดับ ผลอันดับ 1 จะได้ 0.0328 เท่ากันหมด
+        ใช้เป็นเกณฑ์ตัด "ไม่พบข้อมูล" ไม่ได้ (เคยพลาดตรงนี้มาแล้ว)
 
-STEP 4  Prompt Template
-  System: "คุณคืออาจารย์ที่ปรึกษาของ มทร.ธัญบุรี ตอบภาษาไทย กระชับ สุภาพ
-           ห้ามเดา ถ้าไม่มีข้อมูลให้บอกว่าไม่พบและแนะนำให้ติดต่อ สวท."
-  Context: [เอกสารอ้างอิง] + [ผลจาก 06 conflict/plan] + [โปรไฟล์นักศึกษา]
-  Rules: - ตัวเลขตารางชนต้องใช้ตามที่ engine ส่งมาเท่านั้น
-         - ต้องอ้างอิงแหล่งที่มาทุกครั้งที่อ้างระเบียบ
-         - ปิดท้ายด้วย "โปรดยืนยันกับระบบทะเบียนอีกครั้ง" เมื่อเป็นเรื่องสำคัญ
+[x] STEP 4  ปรับ tokenizer ภาษาไทย
+        วัดจริงกับคำถาม 14 ข้อ (เกี่ยวข้อง 9 + นอกเรื่อง 5) เทียบ n-gram 4 แบบ
+        (2,3)=gap +0.0028 / (3,)=+0.0013 / (3,4)=+0.0265 / (4,)=-0.0034
+        เลือก (3,4) เพราะแยกคำถามที่ตอบได้ออกจากคำถามนอกเรื่องได้ห่างสุด
+        ตั้ง MIN_SCORE=0.21
 
-STEP 5  Explanation Generator (ใช้คู่กับ 06)
-  input: conflicts[] แบบ structured
-  output: อธิบายเป็นภาษาคน เช่น
-    "วิชา ENG101 หมู่ 01 เรียนวันจันทร์ 09:00-12:00 ซึ่งทับกับ MTH102 หมู่ 02
-     (09:00-10:30) ลงพร้อมกันไม่ได้ครับ — แนะนำเปลี่ยนเป็น MTH102 หมู่ 05
-     (พฤหัส 13:00-14:30) ซึ่งไม่ชนกับตัวอื่นในแผนนี้"
+[x] STEP 5  กันการมั่ว 3 ชั้น
+        1. คะแนนต่ำกว่า MIN_SCORE -> ตอบ "ไม่พบข้อมูล" ไม่เรียก LLM เลย
+        2. prompt สั่งให้ตอบเฉพาะจากเอกสาร + อ้างหมายเลขเอกสาร
+        3. ทุกคำตอบแนบ sources กลับไปเสมอ
 
-STEP 6  Endpoint
-  POST /rag/search       {query, filters} → chunks[] + scores
-  POST /generate         {context, question, stream} → SSE
-  POST /explain/plan     {plan, conflicts} → คำอธิบาย + ข้อเสนอแนะ
-  POST /ingest           (admin)
+[x] STEP 6  โหมด LLM
+        rule_based (ค่าเริ่มต้น) - เรียบเรียงจากข้อความในเอกสารตรง ๆ ไม่ต้องมี API key
+        gemini / openai / anthropic - เปิดเมื่อใส่ LLM_API_KEY
+        provider จริงล้ม -> fallback กลับ rule_based อัตโนมัติ ไม่ทำให้ผู้ใช้ค้าง
 
-STEP 7  Local AI Model (งานเบา รันในเครื่อง)
-  - classify intent (ถ้าไม่อยากเปลืองโควตา cloud)
-  - embedding (รันเองได้ ไม่ต้องส่งข้อมูลนักศึกษาออกนอก)
-  - ตัวเลือก: Ollama + llama3.1:8b / qwen2.5:7b  (แยก container ได้ port 8300)
+[x] STEP 7  Explainer (ต่อกับโมดูล 06)
+        รับ conflicts[] / warnings[] แบบ structured จาก 06 แล้วแปลงเป็นภาษาคน
+        แปลง day=0 -> "วันจันทร์", 540 -> "09:00" ตามที่ 06 ส่งมา
+        ** ไม่คำนวณเวลาหรือหน่วยกิตเองเลย **
+        ตรวจกติกาหน่วยกิต 9-21 (ฤดูร้อน <=9) แล้วบอกว่าต้องเพิ่ม/ถอดกี่หน่วยกิต
+
+[x] STEP 8  Endpoint
+        POST /knowledge/search   <- 03/src/tools.py::search_knowledge
+        POST /generate           <- 03/src/tools.py::answer_with_llm
+        POST /explain/plan       <- ใช้คู่กับผลจาก 06
+        POST /ingest             โหลดเอกสารใหม่หลังแก้ไฟล์
+        GET  /seed/timetable     ตารางสอนจำลองวิศวะคอม (ส่งต่อ 06 ได้ทันที)
+        GET  /health
+
+[x] STEP 9  ทดสอบ 56 เคส
+        test_retrieval.py  tokenizer, chunking, และวัดว่า MIN_SCORE แยกได้จริง
+        test_explainer.py  ขอบเขตหน่วยกิต 9/21/22/8, ฤดูร้อน, การอธิบาย C1-C4
+        test_api.py        contract ของทุก endpoint + ความถูกต้องของข้อมูลจำลอง
+
+[ ] STEP 10 ที่ยังไม่ได้ทำ
+        - สตรีมคำตอบแบบ SSE (ตอนนี้ตอบทีเดียวจบ) รอ 02 กำหนดรูปแบบ event
+        - reranker (cross-encoder) ยังไม่จำเป็นที่ขนาดคลังเท่านี้
+        - ชุดคำถามวัดผล 50 ข้อพร้อมเฉลย สำหรับใส่ในรายงาน
+        - แทนเอกสารจำลองด้วยระเบียบฉบับจริง <- ต้องรอไฟล์จากทีม

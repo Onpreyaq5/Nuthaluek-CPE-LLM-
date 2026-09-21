@@ -9,8 +9,8 @@
 | `03_ai_router_agent/` | Automatic28m (Phanlop) | Prompt, Agent, LLM API | มีโค้ดแล้ว (`develop`) |
 | `04_course_data_services/` | ยังไม่มีเจ้าของ | Parsing, Data services | มี parser ระบบทะเบียนบน `main` |
 | `05_data_integration/` | DevnameJay | Data cleaning, Graph, Algorithm | มีโค้ดแล้ว (`feat/data-integration`) |
-| `06_schedule_conflict_engine/` | **เฟิส** | Algorithm, OR-Tools | ยังไม่เริ่ม — งานสำคัญที่สุด |
-| `07_rag_llm_engine/` | **ยังไม่มีเจ้าของ — รับสมัคร** | RAG, Vector DB, Embedding | ยังไม่เริ่ม (ติดที่ยังไม่มีไฟล์ระเบียบ PDF) |
+| `06_schedule_conflict_engine/` | cheewakorn | Algorithm, OR-Tools | เสร็จแล้ว (C1-C6, W1-W5, CP-SAT, 27 เทส) บน `feat/schedule-enging` |
+| `07_rag_llm_engine/` | **เฟิส** | RAG, Retrieval, LLM | เสร็จแล้ว (เทส 56 เคสผ่าน) ใช้เอกสารจำลองไปก่อน |
 | `08_recommendation_feedback/` | marisa46054 (Marisa) | Monitoring, Analytics, Feedback | มีโค้ดแล้ว (`feat/feedback`) |
 | `09_main_app/` | **เฟิส** | รวมระบบและทดสอบแอปจริง | — |
 | `docker-compose.yml`, `Makefile`, `.env.example`, `infra/` | **เฟิส** | Docker, Integration, CI | — |
@@ -35,13 +35,12 @@
 3. ดูแลไฟล์เชื่อมระบบและ Docker
 4. ทดสอบว่าแอปหลักรันร่วมกันได้จริง
 5. ตัดสินใจเมื่อมี conflict ระหว่างโมดูล
-6. รับผิดชอบ `06_schedule_conflict_engine` (ตรรกะตารางชน) และ `01_web_app` (หน้าเดโม่) เพิ่ม
+6. รับผิดชอบ `07_rag_llm_engine` (RAG ระเบียบ) และ `01_web_app` (หน้าเดโม่) เพิ่ม
 
 ## งานที่ยังไม่มีคนรับ
 
 | โมดูล | ทำไมสำคัญ | ต้องเริ่มจาก |
 |---|---|---|
-| `07_rag_llm_engine/` | ตอบคำถามระเบียบพร้อมอ้างอิง — เป็นส่วนที่ตรงกับวิชา LLM มากที่สุด | หาไฟล์ PDF ระเบียบ/คู่มือนักศึกษา/มคอ.2 ก่อน |
 | `04_course_data_services/` | ดึงข้อมูลรายวิชาจริงจากระบบทะเบียน | มี parser อยู่แล้วบน `main` เหลือทำเป็น service |
 
 ## สิ่งที่ต้องทำร่วมกันเร็ว ๆ นี้
