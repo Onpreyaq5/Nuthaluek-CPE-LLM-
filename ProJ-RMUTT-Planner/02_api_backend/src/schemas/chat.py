@@ -102,9 +102,9 @@ class SourceItem(BaseModel):
     )
 
     title: str
-    section: str
+    section: str | None = None
     page: int | None = None
-    document_id: str
+    document_id: str | None = None
     url: str | None = None
 
 
