@@ -64,6 +64,54 @@ jobs:
       - run: pip install pyyaml
       - run: python scripts/check_compose.py
 
+  # ---- ต้อง build แล้วรันขึ้นจริง ไม่ใช่แค่ไฟล์ถูกรูปแบบ ----
+  compose-up:
+    name: docker compose build + up
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+
+      # build เฉพาะบริการที่มีโค้ดจริง ส่วน 02-06/08 ยังเป็นโครงเปล่า
+      # ไม่ได้ช่วยพิสูจน์อะไร แต่กินเวลา CI
+      - name: Build
+        run: docker compose build main_api main_app rag_llm
+
+      - name: Up
+        run: docker compose up -d main_api main_app rag_llm
+
+      - name: รอให้ main_api พร้อม
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:3000/" >/dev/null 2>&1; then echo "พร้อมแล้ว"; exit 0; fi
+            sleep 3
+          done
+          echo "::error::ไม่ขึ้นภายใน 90 วินาที"
+          docker compose ps
+          docker compose logs --tail 60 main_api main_app
+          exit 1
+
+      - name: ยิงของจริง
+        run: |
+          set -e
+          echo "--- หน้าเว็บ ---"
+          curl -fsS http://localhost:3000/ | head -c 200; echo
+          echo "--- /api/courses ผ่าน rewrite ของ Next ---"
+          curl -fsS "http://localhost:3000/api/courses?term=1/2569" | head -c 200; echo
+          echo "--- ตรวจตารางชนจริง ---"
+          curl -fsS -X POST http://localhost:3000/api/validate             -H 'Content-Type: application/json'             -d '{"term":"1/2569","section_ids":["04100201-66-01"]}' | head -c 250; echo
+          echo "--- RAG ของโมดูล 07 ---"
+          curl -fsS http://localhost:8700/health | head -c 200; echo
+
+      - name: เก็บ log เมื่อพัง
+        if: failure()
+        run: docker compose logs --tail 120
+
+      - name: ปิด
+        if: always()
+        run: docker compose down -v
+
   # ---- ห้ามมี secret / ข้อมูลนักศึกษาจริงหลุดเข้า repo ----
   secrets-guard:
     name: no secrets or student data
