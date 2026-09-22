@@ -6,6 +6,8 @@ import pytest
 from src.adapters import get_explainer, get_plan_engine
 from src.core.errors import Upstream502Error
 from src.main import app
+from src.schemas.plans import ConflictItem, PlanValidateResponse, ValidateSummary
+from src.schemas.students import ExplainResponse
 
 pytestmark = pytest.mark.db
 
@@ -19,8 +21,42 @@ class _FailingPlanEngine:
 
 
 class _FailingExplainer:
-    async def explain_plan(self, term, section_ids, student):
+    async def explain_plan(self, term, section_ids, student, validation=None):
         raise Upstream502Error("โมดูลอธิบายแผน (07) ไม่ตอบสนอง", details={"module": "07"})
+
+
+class _ConflictPlanEngine:
+    """จำลอง 06 ตอบกลับมาว่าแผนนี้ชนจริง — ใช้ยืนยันว่า explain_plan() เรียก plan_engine.validate()
+    จริงก่อนส่งต่อให้ 07 (บั๊กเดิม: ไม่เคยเรียกเลย ทำให้ 07 verdict "unknown" เสมอ)"""
+
+    async def validate(self, term, section_ids, student):
+        return PlanValidateResponse(
+            conflicts=[
+                ConflictItem(
+                    type="TIME_OVERLAP",
+                    message="เวลาเรียนชนกัน",
+                    section_ids=section_ids,
+                    code="C1_TIME_OVERLAP",
+                    severity="ERROR",
+                    message_th="เวลาเรียนชนกัน",
+                    message_en="Time overlap",
+                )
+            ],
+            warnings=[],
+            summary=ValidateSummary(total_credits=3, section_count=len(section_ids), is_valid=False),
+        )
+
+    async def generate(self, *args, **kwargs):
+        raise NotImplementedError
+
+
+class _CapturingExplainer:
+    def __init__(self) -> None:
+        self.received_validation: PlanValidateResponse | None | str = "__not_called__"
+
+    async def explain_plan(self, term, section_ids, student, validation=None) -> ExplainResponse:
+        self.received_validation = validation
+        return ExplainResponse(explanation="คำอธิบายจำลอง", sources=[])
 
 
 @pytest.fixture(autouse=True)
@@ -194,6 +230,48 @@ async def test_auto_plan_without_login_returns_401() -> None:
     async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
         response = await client.post("/api/v1/plans/auto", json={"term": "1/2569"})
     assert response.status_code == 401
+
+
+async def test_explain_plan_calls_plan_engine_validate_and_forwards_conflicts_to_explainer(
+    logged_in_client: httpx.AsyncClient,
+) -> None:
+    """เคสที่เคย fail: explain_plan() ไม่เคยเรียก plan_engine.validate() (06) เลย ทำให้ 07 ไม่มีทาง
+    ตอบ verdict ตามจริงได้ — ตอนนี้ต้องเรียกเสมอ และ validation ที่ส่งต่อต้องมี conflict จริงจาก 06"""
+    create_response = await logged_in_client.post(
+        "/api/v1/plans", json={"term": "1/2569", "name": "แผนตรวจ conflict", "section_ids": ["GE101-01"]}
+    )
+    plan_id = create_response.json()["data"]["plan_id"]
+
+    capturing = _CapturingExplainer()
+    app.dependency_overrides[get_plan_engine] = lambda: _ConflictPlanEngine()
+    app.dependency_overrides[get_explainer] = lambda: capturing
+
+    response = await logged_in_client.get(f"/api/v1/plans/{plan_id}/explain")
+
+    assert response.status_code == 200
+    assert capturing.received_validation != "__not_called__"
+    assert capturing.received_validation is not None
+    assert len(capturing.received_validation.conflicts) == 1
+    assert capturing.received_validation.conflicts[0].type == "TIME_OVERLAP"
+    assert capturing.received_validation.conflicts[0].code == "C1_TIME_OVERLAP"
+    assert capturing.received_validation.summary.is_valid is False
+
+
+async def test_auto_plan_forwards_no_conflict_validation_to_explainer_not_none(
+    logged_in_client: httpx.AsyncClient,
+) -> None:
+    """เคสเดียวกันแต่ฝั่ง /plans/auto: แผนจาก 06.generate() ผ่าน hard constraint มาแล้ว แต่ก่อนหน้านี้ก็ยัง
+    ไม่เคยส่ง validation อะไรให้ 07 เลยสักครั้ง (ไม่ใช่แค่ conflicts เปล่าๆ แต่ไม่ส่งอะไรไปเลย/None)"""
+    capturing = _CapturingExplainer()
+    app.dependency_overrides[get_explainer] = lambda: capturing
+
+    response = await logged_in_client.post("/api/v1/plans/auto", json={"term": "1/2569"})
+
+    assert response.status_code == 200
+    assert capturing.received_validation != "__not_called__"
+    assert capturing.received_validation is not None
+    assert capturing.received_validation.conflicts == []
+    assert capturing.received_validation.summary.is_valid is True
 
 
 async def test_explain_plan_success(logged_in_client: httpx.AsyncClient) -> None:

@@ -5,6 +5,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, Field
 
+from src.core.errors import Upstream502Error
 from src.schemas.chat import EnrichedChatRequest, StudentPreferences
 from src.schemas.common import Day
 from src.schemas.courses import CourseListResponse, Section, SectionListResponse
@@ -80,10 +81,18 @@ class PlanEngine(Protocol):
 
 
 class Explainer(Protocol):
-    """โมดูล 07 — อธิบายแผนเป็นภาษาคน"""
+    """โมดูล 07 — อธิบายแผนเป็นภาษาคน
+
+    validation (ผล 06 ล่าสุด) ต้องส่งไปด้วยเสมอเมื่อมี — ไม่งั้น 07 ไม่มีทาง verdict ตามจริงได้ (จะได้
+    "unknown" เสมอ) เป็น None ได้เฉพาะกรณีที่ไม่มีผลตรวจจริงๆ (ไม่ควรเกิดในโค้ด 02 เอง — caller ทุกจุดควร
+    validate/มี validation อยู่แล้วก่อนเรียกเสมอ)"""
 
     async def explain_plan(
-        self, term: str, section_ids: list[str], student: StudentContext
+        self,
+        term: str,
+        section_ids: list[str],
+        student: StudentContext,
+        validation: PlanValidateResponse | None = None,
     ) -> ExplainResponse: ...
 
 
@@ -96,6 +105,37 @@ class LogSink(Protocol):
 
 
 class ChatRouter(Protocol):
-    """โมดูล 03 — AI router/agent ใช้ http เสมอ"""
+    """โมดูล 03 — AI router/agent ใช้ http เสมอ
+
+    stream() คืน event "ภายใน" ของ router เท่านั้น (ไม่ใช่ public SSE event ที่ส่งให้ frontend ตรงๆ) —
+    แต่ละ dict มี key "kind" (ไม่ใช่ "type" แบบ public event) เป็นตัวจำแนก: tool_start/tool_end (มี "tool"),
+    clarify (มี "question"), refusal (มี "message"), context_ready (มี "intent","context","question"),
+    router_done (มี "outcome": "clarify"|"context_ready"|"refused"|None), error (มี "message")
+    ผู้เรียกต้องผ่าน src.services.chat_orchestrator ก่อนเสมอ ไม่ส่ง event เหล่านี้ตรงไปหา frontend"""
 
     def stream(self, enriched: EnrichedChatRequest) -> AsyncIterator[dict]: ...
+
+
+class AnswerGenerator(Protocol):
+    """โมดูล 07 — สร้างคำตอบจริงจาก context ที่ 03 รวบรวมมา (ใช้เฉพาะตอน router จบด้วย context_ready)
+
+    generate() คืน event แบบ public event บางส่วน: {"type":"token","text":...} หรือ
+    {"type":"sources","items":[...]} เท่านั้น (ไม่ต้องคืน "done" — orchestrator เป็นคนปิดท้ายเอง)"""
+
+    def generate(
+        self, *, question: str, context: dict, history: list[dict]
+    ) -> AsyncIterator[dict]: ...
+
+
+class NotReadyAnswerGenerator:
+    """placeholder ตอนที่ยังไม่มี contract จริงจากทีม 07 — production path ต้องได้ error ชัดเจน
+    ห้ามเงียบๆ แกล้งตอบสำเร็จ (ดู PLAN งานแก้ chat adapter รอบ 2) แทนที่ตัวนี้เมื่อ 07 ยืนยัน interface แล้ว"""
+
+    async def generate(
+        self, *, question: str, context: dict, history: list[dict]
+    ) -> AsyncIterator[dict]:
+        raise Upstream502Error(
+            "โมดูล 07 (ตัวสร้างคำตอบ) ยังไม่มี contract ที่ยืนยันแล้วจากทีม 07 จึงยังเรียกใช้งานจริงไม่ได้",
+            details={"module": "07"},
+        )
+        yield  # pragma: no cover - ทำให้เป็น async generator function

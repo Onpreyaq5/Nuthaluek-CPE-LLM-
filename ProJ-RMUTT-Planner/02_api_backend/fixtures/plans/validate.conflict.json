@@ -6,7 +6,15 @@
         "type": "TIME_OVERLAP",
         "message": "เวลาเรียนของ CPE201-01 และ CPE301-01 ชนกัน",
         "section_ids": ["CPE201-01", "CPE301-01"],
-        "details": {}
+        "details": {},
+        "code": "",
+        "severity": "ERROR",
+        "message_key": "",
+        "message_th": "",
+        "message_en": "",
+        "subjects": [],
+        "detail": {},
+        "suggestions": []
       }
     ],
     "warnings": [],

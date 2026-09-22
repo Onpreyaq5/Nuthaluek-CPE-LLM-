@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from src.core.config import get_settings
 
-from .interfaces import ChatRouter, CourseCatalog, Explainer, LogSink, PlanEngine, StudentData
+from .interfaces import (
+    AnswerGenerator,
+    ChatRouter,
+    CourseCatalog,
+    Explainer,
+    LogSink,
+    NotReadyAnswerGenerator,
+    PlanEngine,
+    StudentData,
+)
 
 
 def get_course_catalog() -> CourseCatalog:
@@ -83,3 +92,9 @@ def get_chat_router() -> ChatRouter:
     from .http.chat_router import HttpChatRouter
 
     return HttpChatRouter()
+
+
+def get_answer_generator() -> AnswerGenerator:
+    # ยังไม่มี contract จริงที่ยืนยันแล้วจากทีม 07 สำหรับการสร้างคำตอบแบบ stream (ต่างจาก Explainer ที่ใช้
+    # อธิบายแผนที่บันทึกแล้ว) — production path จึงตอบ error เสมอ ทดสอบ flow จริงต้อง override ด้วย fake
+    return NotReadyAnswerGenerator()

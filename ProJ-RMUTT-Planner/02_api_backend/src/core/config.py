@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseModel, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # core/config.py -> core -> src -> 02_api_backend -> parent (root ของ monorepo ที่วางโมดูล 03-08 ไว้ข้างๆ)
@@ -47,7 +47,12 @@ class Settings(BaseSettings):
     ADAPTER_06: str = "mock"
     ADAPTER_07: str = "mock"
     ADAPTER_08: str = "mock"
-    ROUTER_URL: str = "http://router:8001"
+    # 03 (ai_router_agent) จริงใช้ env AI_ROUTER_URL (ตั้งไว้ใน docker-compose.yml ที่ root) — รับทั้งสองชื่อ
+    # AI_ROUTER_URL มาก่อนเสมอถ้าตั้งไว้ ROUTER_URL เป็น fallback ชื่อเดิมของ 02 เอง
+    ROUTER_URL: str = Field(
+        default="http://ai_router:8100",
+        validation_alias=AliasChoices("AI_ROUTER_URL", "ROUTER_URL"),
+    )
 
     # URL ของโมดูล 04-08 เมื่อ ADAPTER_xx=http — PLACEHOLDER: ยังไม่มีสัญญาจริงจากทีม (ดูสรุปท้าย Prompt 3)
     COURSE_CATALOG_URL: str = "http://course_catalog:8400"
@@ -75,10 +80,13 @@ class Settings(BaseSettings):
     TIMEOUT_CHAT_IDLE_SECONDS: float = 30.0
     TIMEOUT_CHAT_TOTAL_SECONDS: float = 120.0
 
-    # แชต (PLAN.md หัวข้อ 6) — ทั้งสองตัวเป็น PLACEHOLDER:
-    # TOOL_ALLOWLIST ควรมาจาก INTENT -> TOOL MAP ใน 03_ai_router_agent/03_process.txt ซึ่งยังไม่มีในสภาพแวดล้อมนี้
-    # CURRENT_TERM ไม่มีที่มาชัดเจนจาก ChatRequest (ไม่มี field term) ต้องยืนยันกับทีมว่าจะเอามาจากไหนจริง
-    TOOL_ALLOWLIST: str = "search_knowledge,search_courses,check_schedule_conflict,generate_plan"
+    # แชต (PLAN.md หัวข้อ 6)
+    # TOOL_ALLOWLIST: ยืนยันแล้วจาก 03_ai_router_agent/src/tools.py (TOOL_REGISTRY) — ชื่อ tool จริงทั้ง 6 ตัว
+    # CURRENT_TERM ไม่มีที่มาชัดเจนจาก ChatRequest (ไม่มี field term) ต้องยืนยันกับทีมว่าจะเอามาจากไหนจริง (PLACEHOLDER)
+    TOOL_ALLOWLIST: str = (
+        "search_courses,get_student_context,check_conflicts,generate_plan,"
+        "search_knowledge,answer_with_llm"
+    )
     CURRENT_TERM: str = "1/2569"
 
     @property

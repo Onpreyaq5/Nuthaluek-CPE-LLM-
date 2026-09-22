@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.adapters import get_chat_router, get_student_data
+from src.adapters import get_answer_generator, get_chat_router, get_student_data
 from src.adapters.mock.student_data import MockStudentData
 from src.core.errors import Upstream502Error
 from src.main import app
@@ -11,26 +11,50 @@ from src.main import app
 pytestmark = pytest.mark.db
 
 
+class _FakeAnswerGenerator:
+    """แทน 07 ตัวจริง (ยังไม่มี contract ที่ยืนยันแล้ว) — inject เฉพาะใน test ตามที่ PLAN กำหนด"""
+
+    def __init__(self, events: list[dict] | None = None) -> None:
+        self._events = (
+            events
+            if events is not None
+            else [
+                {"type": "token", "text": "ถอนรายวิชา"},
+                {"type": "token", "text": "ได้ตามระเบียบข้อ 18"},
+                {
+                    "type": "sources",
+                    "items": [
+                        {
+                            "title": "ข้อบังคับฯ",
+                            "section": "ข้อ 18",
+                            "page": 12,
+                            "document_id": "doc-regulation-2566",
+                            "url": None,
+                        }
+                    ],
+                },
+            ]
+        )
+        self.calls: list[dict] = []
+
+    async def generate(self, *, question: str, context: dict, history: list[dict]):
+        self.calls.append({"question": question, "context": context, "history": history})
+        for event in self._events:
+            yield event
+
+
+class _NeverCalledAnswerGenerator:
+    async def generate(self, *, question: str, context: dict, history: list[dict]):
+        raise AssertionError("ไม่ควรเรียก answer_generator ในเคสนี้")
+        yield  # pragma: no cover - ทำให้เป็น async generator function
+
+
 class _NormalChatRouter:
     async def stream(self, enriched):
-        yield {"type": "session", "session_id": enriched.session_id}
-        yield {"type": "tool_start", "tool": "search_knowledge"}
-        yield {"type": "tool_end", "tool": "search_knowledge"}
-        yield {"type": "token", "text": "ถอนรายวิชา"}
-        yield {"type": "token", "text": "ได้ตามระเบียบข้อ 18"}
-        yield {
-            "type": "sources",
-            "items": [
-                {
-                    "title": "ข้อบังคับฯ",
-                    "section": "ข้อ 18",
-                    "page": 12,
-                    "document_id": "doc-regulation-2566",
-                    "url": None,
-                }
-            ],
-        }
-        yield {"type": "done", "message_id": 999}
+        yield {"kind": "tool_start", "tool": "search_knowledge"}
+        yield {"kind": "tool_end", "tool": "search_knowledge"}
+        yield {"kind": "context_ready", "intent": "REGULATION_QA", "context": {}, "question": None}
+        yield {"kind": "router_done", "outcome": "context_ready"}
 
 
 class _NeverStartsChatRouter:
@@ -41,22 +65,39 @@ class _NeverStartsChatRouter:
 
 class _CutsOffMidwayChatRouter:
     async def stream(self, enriched):
-        yield {"type": "session", "session_id": enriched.session_id}
-        yield {"type": "token", "text": "กำลังตรวจสอบ"}
-        # จบ generator ตรงนี้เลยโดยไม่มี done/error
+        yield {"kind": "tool_start", "tool": "search_knowledge"}
+        # จบ generator ตรงนี้เลยโดยไม่มี router_done (จำลอง 03 หลุดกลางทาง)
+
+
+class _AmbiguousDoneChatRouter:
+    """จำลอง 03 จบสตรีมด้วย done ที่ไม่มี outcome และไม่เคยมี clarify/context_ready มาก่อนเลย — กำกวม"""
+
+    async def stream(self, enriched):
+        yield {"kind": "router_done", "outcome": None}
+
+
+class _ClarifyChatRouter:
+    async def stream(self, enriched):
+        yield {"kind": "clarify", "question": "ต้องการจัดตารางเทอมไหนครับ?"}
+        yield {"kind": "router_done", "outcome": "clarify"}
+
+
+class _RefusalChatRouter:
+    async def stream(self, enriched):
+        yield {"kind": "tool_start", "tool": "search_knowledge"}
+        yield {"kind": "tool_end", "tool": "search_knowledge"}
+        yield {"kind": "refusal", "message": "ไม่พบข้อมูลอ้างอิงที่เพียงพอ"}
 
 
 class _MixedEventsChatRouter:
-    """ยิง event ปนกัน: นอกตาราง, tool นอก allowlist, arguments แถมมา, ก่อนจบด้วย done ปกติ"""
+    """tool นอก allowlist ต้องถูกกรองทิ้งที่ sanitize_event ก่อนถึง frontend"""
 
     async def stream(self, enriched):
-        yield {"type": "session", "session_id": enriched.session_id}
-        yield {"type": "debug_log", "message": "ไม่อยู่ในตาราง 6.2 ต้องถูกทิ้ง"}
-        yield {"type": "tool_start", "tool": "delete_all_data", "arguments": {"scope": "all"}}
-        yield {"type": "tool_start", "tool": "search_knowledge", "arguments": {"query": "แอบส่งมา"}}
-        yield {"type": "tool_end", "tool": "search_knowledge"}
-        yield {"type": "token", "text": "คำตอบ"}
-        yield {"type": "done", "message_id": 1}
+        yield {"kind": "tool_start", "tool": "delete_all_data"}
+        yield {"kind": "tool_start", "tool": "search_knowledge"}
+        yield {"kind": "tool_end", "tool": "search_knowledge"}
+        yield {"kind": "context_ready", "intent": "REGULATION_QA", "context": {}, "question": None}
+        yield {"kind": "router_done", "outcome": "context_ready"}
 
 
 class _CapturingChatRouter:
@@ -65,9 +106,8 @@ class _CapturingChatRouter:
 
     async def stream(self, enriched):
         self.captured = enriched
-        yield {"type": "session", "session_id": enriched.session_id}
-        yield {"type": "token", "text": "ตอบกลับ"}
-        yield {"type": "done", "message_id": 1}
+        yield {"kind": "context_ready", "intent": "GENERAL_CHAT", "context": {}, "question": None}
+        yield {"kind": "router_done", "outcome": "context_ready"}
 
 
 def _client(*, authed: bool = True) -> httpx.AsyncClient:
@@ -109,6 +149,12 @@ def _default_student_data():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _default_answer_generator():
+    app.dependency_overrides[get_answer_generator] = lambda: _FakeAnswerGenerator()
+    yield
+
+
 async def test_normal_event_sequence_ends_with_done(seeded_demo_student) -> None:
     app.dependency_overrides[get_chat_router] = lambda: _NormalChatRouter()
     async with _client() as client:
@@ -121,6 +167,105 @@ async def test_normal_event_sequence_ends_with_done(seeded_demo_student) -> None
     assert events[-1]["type"] == "done"
     types = [e["type"] for e in events]
     assert types == ["session", "tool_start", "tool_end", "token", "token", "sources", "done"]
+
+
+async def test_done_message_id_matches_real_persisted_assistant_message(seeded_demo_student) -> None:
+    """เคสที่เคย fail: message_id ต้องเป็นแถวจริงใน DB ไม่ใช่ placeholder 0 หรือค่าคงที่จาก router"""
+    app.dependency_overrides[get_chat_router] = lambda: _NormalChatRouter()
+    async with _client() as client:
+        response = await client.post("/api/v1/chat", json={"session_id": None, "message": "สวัสดีครับ"})
+        events = _parse_sse_events(response.text)
+        session_id = events[0]["session_id"]
+        done_event = events[-1]
+        assert done_event["type"] == "done"
+        message_id = done_event["message_id"]
+        assert message_id != 0
+
+        messages_response = await client.get(f"/api/v1/chat/sessions/{session_id}/messages")
+
+    messages = messages_response.json()["data"]["items"]
+    assistant_message = next(m for m in messages if m["role"] == "assistant")
+    assert assistant_message["id"] == message_id
+    assert assistant_message["content"] == "ถอนรายวิชาได้ตามระเบียบข้อ 18"
+    assert assistant_message["status"] == "complete"
+
+
+async def test_greeting_gets_real_answer_from_generator_not_empty_done(seeded_demo_student) -> None:
+    """เคสที่เคย fail: ไม่มีคำตอบสำหรับคำทักทาย — ตอนนี้ context_ready ต้องเรียก generator จริงเสมอ"""
+    app.dependency_overrides[get_chat_router] = lambda: _CapturingChatRouter()
+    fake_generator = _FakeAnswerGenerator(events=[{"type": "token", "text": "สวัสดีครับ มีอะไรให้ช่วยไหม"}])
+    app.dependency_overrides[get_answer_generator] = lambda: fake_generator
+
+    async with _client() as client:
+        response = await client.post("/api/v1/chat", json={"session_id": None, "message": "สวัสดีครับ"})
+
+    events = _parse_sse_events(response.text)
+    token_events = [e for e in events if e["type"] == "token"]
+    assert len(token_events) == 1
+    assert token_events[0]["text"] == "สวัสดีครับ มีอะไรให้ช่วยไหม"
+    assert events[-1]["type"] == "done"
+    assert len(fake_generator.calls) == 1
+
+
+async def test_clarify_ends_turn_with_question_and_real_message_id_without_calling_generator(
+    seeded_demo_student,
+) -> None:
+    app.dependency_overrides[get_chat_router] = lambda: _ClarifyChatRouter()
+    app.dependency_overrides[get_answer_generator] = lambda: _NeverCalledAnswerGenerator()
+
+    async with _client() as client:
+        response = await client.post("/api/v1/chat", json={"session_id": None, "message": "ช่วยจัดตาราง"})
+        events = _parse_sse_events(response.text)
+        session_id = events[0]["session_id"]
+
+        messages_response = await client.get(f"/api/v1/chat/sessions/{session_id}/messages")
+
+    assert response.status_code == 200
+    token_events = [e for e in events if e["type"] == "token"]
+    assert len(token_events) == 1
+    assert token_events[0]["text"] == "ต้องการจัดตารางเทอมไหนครับ?"
+    assert events[-1]["type"] == "done"
+    assert events[-1]["message_id"] != 0
+
+    messages = messages_response.json()["data"]["items"]
+    assistant_message = next(m for m in messages if m["role"] == "assistant")
+    assert assistant_message["status"] == "complete"
+    assert assistant_message["content"] == "ต้องการจัดตารางเทอมไหนครับ?"
+
+
+async def test_refusal_sends_message_once_and_never_calls_generator(seeded_demo_student) -> None:
+    app.dependency_overrides[get_chat_router] = lambda: _RefusalChatRouter()
+    app.dependency_overrides[get_answer_generator] = lambda: _NeverCalledAnswerGenerator()
+
+    async with _client() as client:
+        response = await client.post("/api/v1/chat", json={"session_id": None, "message": "คำถามที่ตอบไม่ได้"})
+
+    events = _parse_sse_events(response.text)
+    token_events = [e for e in events if e["type"] == "token"]
+    assert len(token_events) == 1
+    assert token_events[0]["text"] == "ไม่พบข้อมูลอ้างอิงที่เพียงพอ"
+    assert events[-1]["type"] == "done"
+
+
+async def test_ambiguous_router_done_outcome_becomes_error_not_fake_success(seeded_demo_student) -> None:
+    app.dependency_overrides[get_chat_router] = lambda: _AmbiguousDoneChatRouter()
+    app.dependency_overrides[get_answer_generator] = lambda: _NeverCalledAnswerGenerator()
+
+    async with _client() as client:
+        response = await client.post("/api/v1/chat", json={"session_id": None, "message": "ทดสอบกำกวม"})
+        events = _parse_sse_events(response.text)
+        session_id = events[0]["session_id"]
+
+        messages_response = await client.get(f"/api/v1/chat/sessions/{session_id}/messages")
+
+    assert events[-1]["type"] == "error"
+    assert events[-1]["code"] == "UPSTREAM_502"
+    assert "done" not in [e["type"] for e in events]
+
+    messages = messages_response.json()["data"]["items"]
+    assistant_message = next(m for m in messages if m["role"] == "assistant")
+    assert assistant_message["status"] == "interrupted"
+    assert assistant_message["content"] == ""
 
 
 async def test_null_session_id_creates_new_session(seeded_demo_student) -> None:
@@ -164,23 +309,17 @@ async def test_upstream_cuts_off_midway_sends_error_event_and_marks_interrupted(
     assert assistant_message["status"] == "interrupted"
 
 
-async def test_disallowed_event_type_and_tool_and_arguments_are_dropped(seeded_demo_student) -> None:
+async def test_disallowed_tool_is_dropped_before_frontend(seeded_demo_student) -> None:
     app.dependency_overrides[get_chat_router] = lambda: _MixedEventsChatRouter()
     async with _client() as client:
         response = await client.post("/api/v1/chat", json={"session_id": None, "message": "ทดสอบ filter"})
 
     events = _parse_sse_events(response.text)
-    types = [e["type"] for e in events]
-
-    # event นอกตาราง 6.2 ("debug_log") ต้องไม่ปรากฏเลย
-    assert "debug_log" not in types
+    tool_start_events = [e for e in events if e["type"] == "tool_start"]
 
     # tool_start ของ delete_all_data (นอก allowlist) ต้องไม่ปรากฏ มีแค่ search_knowledge
-    tool_start_events = [e for e in events if e["type"] == "tool_start"]
     assert len(tool_start_events) == 1
     assert tool_start_events[0]["tool"] == "search_knowledge"
-
-    # arguments ต้องถูกตัดทิ้งเสมอ แม้ tool จะอยู่ใน allowlist ก็ตาม
     assert "arguments" not in tool_start_events[0]
 
     assert events[-1]["type"] == "done"

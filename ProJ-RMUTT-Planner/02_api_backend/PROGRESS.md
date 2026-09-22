@@ -502,3 +502,225 @@ origin/feat/api-backend` แล้ว `git merge --ff-only origin/main` (fast-fo
 ต่อ — commit `[02] API backend: ...` ยังอยู่บน `main` เหมือนเดิมทุกประการ) อัปเดต
 `02_api_backend_prompts.md` ส่วน "เตรียมก่อนเริ่ม"/"หลังจบ" ให้ตรงกับ workflow ใหม่นี้แล้ว (checkout/pull/
 push ที่ `feat/api-backend`, ห้าม rebase branch ที่ push ไปแล้ว ใช้ `merge` แทนถ้าต้องการของจาก `main`)
+
+หมายเหตุภายหลัง (บันทึกไว้เพื่อความต่อเนื่อง ไม่ใช่ส่วนของงาน branch ข้างบนอีกต่อไป): `feat/api-backend`
+เดิมถูก squash-merge เข้า `develop` ไปแล้วผ่าน PR #3 แล้ว branch ก็ถูกลบออกจาก GitHub ตามปกติของ workflow
+merge-PR · แยกกันนั้น `main` ก็ถูก revert เอางาน 02 ออกไปแล้วเช่นกัน (กลับไปเป็น skeleton เดิม ตามคำขอของทีม)
+ดังนั้นตอนนี้ `develop` คือที่เดียวที่มีงาน 02 ตัวจริงอยู่ (`main` ไม่มีแล้ว) — สร้าง branch `feat/api-backend`
+ใหม่จาก `develop` (ไม่ใช่ตัวเดิม) เพื่อทำงานต่อ ดูรายละเอียดหัวข้อถัดไป
+
+---
+
+## แก้ adapter แชตให้ตรงกับ 03 (03_ai_router_agent) หลัง 03 เริ่มมีโค้ดจริง (PR #2 เข้า develop แล้ว)
+
+เริ่มงานนี้ใน branch `feat/api-backend` ที่สร้างใหม่จาก `develop` ปัจจุบัน (ของเดิมถูก squash-merge +
+ลบไปแล้ว — ดูหมายเหตุด้านบน) อ่านโค้ดจริงของ 03 (`03_ai_router_agent/src/{main,models,planner,tools}.py`)
+และ `docker-compose.yml` ก่อนแก้ พบว่าสัญญาที่ 02 เดาไว้ตอน Prompt 3/8 ไม่ตรงกับของจริงหลายจุด:
+
+- **URL/env**: 03 ใช้ env `AI_ROUTER_URL=http://ai_router:8100` (ตั้งไว้ใน docker-compose.yml ของทีมแล้ว)
+  ไม่ใช่ `ROUTER_URL=http://router:8001` ที่ 02 เดาไว้เอง — แก้ `src/core/config.py::ROUTER_URL` ให้อ่านได้
+  ทั้งสองชื่อ env ผ่าน `pydantic.AliasChoices("AI_ROUTER_URL", "ROUTER_URL")` (AI_ROUTER_URL มาก่อนเสมอถ้าตั้ง)
+  ค่า default เปลี่ยนเป็น `http://ai_router:8100`
+- **Path**: `POST /chat` (ไม่ใช่ `/chat/stream` ที่เดาไว้) — แก้ `PATH_STREAM` ใน
+  `src/adapters/http/chat_router.py`
+- **Payload ที่ส่งไป 03** (`RouterRequest` จริงจาก `03/src/models.py`): `student_id, message, session_id
+  (str), history, plan_draft` — คนละรูปแบบกับ `EnrichedChatRequest` ของ 02 เอง (`query`, `student.id_hash`
+  ฯลฯ) เขียนฟังก์ชัน `_build_router_payload()` แปลงให้ตรง (`student_id = student.id_hash` เสมอ ไม่ส่งรหัส
+  นักศึกษาจริงเด็ดขาด, `session_id` แปลงเป็น str)
+- **TOOL_ALLOWLIST**: ของเดิมเดาชื่อ tool ผิดหมด (`search_knowledge,search_courses,
+  check_schedule_conflict,generate_plan`) — ของจริงจาก `03/src/tools.py::TOOL_REGISTRY` คือ
+  `search_courses, get_student_context, check_conflicts, generate_plan, search_knowledge,
+  answer_with_llm` (6 ตัว) แก้ให้ตรงแล้ว
+- **รูปแบบ SSE**: 03 ใช้ `sse_starlette.EventSourceResponse` (บรรทัด `event: <type>` ตามด้วย `data:
+  <json>` ตามด้วยบรรทัดว่าง, มี `: ping` comment คั่นเป็นระยะ) ของเดิมของ 02 อ่านแค่บรรทัด `data:` เฉยๆ
+  ไม่สนใจ `event:` เลย (ตั้งสมมติฐานว่า 03 จะส่ง JSON ที่มี `type` ในตัวเองตรงกับ schema ของ 02 อยู่แล้ว ซึ่ง
+  ผิด) — เขียน parser SSE มาตรฐานใหม่ทั้งหมดใน `HttpChatRouter.stream()`: จำ event name จากบรรทัด
+  `event:`, สะสมบรรทัด `data:` จนเจอบรรทัดว่างถึง flush, ข้ามบรรทัด comment (ขึ้นต้นด้วย `:`), data ที่
+  parse JSON ไม่ได้ข้ามไปพร้อม log warning (ไม่ log เนื้อหา) รองรับทั้ง `\n`/`\r\n` (httpx `aiter_lines()`
+  จัดการให้อัตโนมัติอยู่แล้ว ไม่ต้อง parse เอง)
+- **แปลง event ของ 03 → event ของ 02** (ฟังก์ชัน `_translate_event()`):
+  - `tool_start`/`tool_end` → เก็บแค่ `{type, tool}` (ของจริงมี `success`/`latency_ms` แถมมาด้วย ตัดทิ้ง)
+  - `sources` → ของจริงมีแค่ `title`/`page` เท่านั้น (ไม่มี `section`/`document_id`/`url` เหมือนที่ 02 คาด)
+    ต้องแก้ `SourceItem.section`/`document_id` ใน `src/schemas/chat.py` ให้เป็น `str | None = None`
+    ไม่งั้น schema validation จะทิ้ง event `sources` ทั้งอันเงียบๆ ทุกครั้ง
+  - `clarify {question}` → `token(text=question)` (03 ถามกลับเมื่อ slot ที่จำเป็นขาด)
+  - `done` ที่มี `answer` (กรณี guardrail ปฏิเสธ) → `token(answer)` แล้วตามด้วย `done`
+  - `done` ปกติ (ไม่มี `answer`) → `done` เฉย ๆ
+  - `error` → แปลงเป็น `{code:"UPSTREAM_502", message:"ระบบ AI ขัดข้อง"}` เสมอ **ไม่ forward
+    `message` ดิบของ 03** (อาจมีรายละเอียดภายใน/stack trace หลุดมา — ทดสอบยืนยันด้วย
+    `test_error_event_never_forwards_raw_message_from_03`)
+  - `router_result` → ทิ้ง (03 ส่ง `intent`/`confidence` มาจริงแล้ว แต่ adapter ชั้นนี้ไม่มีทางส่งต่อไปบันทึก
+    ได้เพราะ interface `stream()` คืนแค่ `AsyncIterator[dict]` — ต้องแก้ `chat.py`/`chat_service.py` เพิ่ม
+    ถ้าจะเก็บ `intent` จริง ซึ่งอยู่นอกขอบเขตงานนี้ [แก้เฉพาะ adapter] — ทิ้งไว้เป็นข้อเสนอในสรุปแทน)
+  - `context_ready` และ event อื่นที่ไม่รู้จัก → ทิ้งเสมอ
+  - `token` (03 ยังไม่ส่งจริงตอนนี้) → pass through ตรงๆ เผื่อ 03 เริ่มส่งเมื่อไหร่ก็ใช้ได้ทันทีไม่ต้องแก้ 02 อีก
+- **บั๊กจริงที่เจอระหว่างเขียนเทสต์**: `logger.warning("...", event=event_name)` ชนกับ positional
+  argument "event" ที่ structlog ใช้เองภายใน (`TypeError: got multiple values for argument 'event'`) —
+  แก้เป็น `sse_event_type=event_name` แทน (เจอจาก test จริง ไม่ใช่แค่ code review)
+- **ตัดสินใจเอง (ไม่ขัดกับ spec แต่ spec ไม่ได้ระบุไว้)**: `DoneEvent.message_id: int` ของ 02 บังคับต้องมีค่า
+  แต่ 03 ไม่มีแนวคิดนี้เลย — ตรวจแล้วว่า `chat.py` ไม่ได้ใช้ค่านี้จริง (ใช้ `assistant_message.id` จาก DB
+  ของ 02 เองแทน) ใส่ `message_id: 0` เป็น placeholder คงที่เพื่อให้ผ่าน schema validation เท่านั้น (ไม่งั้น
+  `sanitize_event` จะทิ้ง event `done` ทั้งอันเงียบๆ ทำให้ `chat.py` จับจุดจบ stream ไม่ได้เลย)
+
+**สิ่งที่ 03 ยังต้องแก้ (ไม่ใช่งานของ 02 — แค่บันทึกไว้/ใส่ใน PR):**
+1. ยังไม่ส่ง event `token`/`data:{"text":...}` เลยก่อน `done` จริงๆ (ตอนนี้ได้แค่ `context_ready` ที่ไม่มี
+   คำตอบให้ผู้ใช้เห็น) — ฝั่งเพื่อนบอกว่ากำลังแก้เอง ไม่ต้องรอ
+2. event `error` ควรมี `code` แยกและไม่ส่ง `str(exc)` ดิบไปตรงๆ (ตอนนี้ 02 จับไว้แล้วไม่ให้หลุดถึงผู้ใช้ แต่
+   ฝั่ง log ของ 03 เองก็ควรระวัง เผื่อมีข้อมูลภายในหลุดไปที่อื่น)
+3. `sources` ควรมี `section`/`document_id` ถ้าเป็นไปได้ (ตอนนี้ 02 รองรับกรณีไม่มีแล้ว แต่ประสบการณ์ผู้ใช้จะดี
+   กว่าถ้ามี)
+4. `done` ควรมี `intent` แนบมาด้วยถ้าทำได้ (ตอนนี้ 02 ทิ้ง `router_result` เพราะยังไม่มีที่เก็บ ถ้า 03 ส่ง
+   `intent` มาพร้อม `done` แทน จะง่ายกว่าที่ 02 จะเอาไปใช้บันทึกในอนาคต)
+
+**ทดสอบ**: เขียน `tests/unit/test_http_chat_router.py` ใหม่ทั้งไฟล์ (ของเดิม 1 เทสต์ใช้รูปแบบ SSE ที่ไม่ตรง
+ของจริงเลย ไม่มี `event:` line) เป็น 15 เทสต์ครอบคลุมทุก event type ในตาราง + ping + CRLF + JSON เพี้ยน +
+payload ไม่มีรหัสจริง + history mapping + multi-byte Thai ข้าม chunk (ของเดิม, ปรับให้ใช้ format จริง) ·
+เพิ่ม `tests/unit/test_config.py` ใหม่ (5 เทสต์) ทดสอบ `AI_ROUTER_URL`/`ROUTER_URL` alias + ลำดับความ
+สำคัญ + `TOOL_ALLOWLIST` ตรงกับ `TOOL_REGISTRY` จริงของ 03
+
+**ผลตรวจ**: `pytest -q` กับ Postgres จริง (ผ่าน `scripts/test.sh`) → 210 passed, 1 skipped (skip เดิมจาก
+fixture สังเคราะห์ของ 05 ไม่ตรงหน้าจริง — ไม่เกี่ยวกับงานนี้) · `ruff check .` ผ่านหมด (เจอ E501 บรรทัดยาว
+เกินใน test helper ระหว่างทาง แก้แล้ว) · `python -m compileall -q src` ผ่าน · grep รหัสนักศึกษารูปแบบจริง
+นอก fixtures — ไม่พบ
+
+**บั๊กแฝงที่เจอระหว่างทดสอบ Docker จริง (ไม่เกี่ยวกับ 03 เลย แต่บล็อกการทดสอบจนกว่าจะแก้)**:
+`entrypoint.sh` มี line ending เป็น CRLF (เกิดจาก git `core.autocrlf` บนเครื่อง Windows แปลงไฟล์ตอน
+checkout) ทำให้ container พัง `exec ./entrypoint.sh: no such file or directory` (shebang
+`#!/bin/sh\r` หา interpreter ไม่เจอ) แก้ 3 ชั้น: (1) เพิ่ม `.gitattributes` บังคับ `*.sh text eol=lf`
+กันไฟล์ `.sh` ทุกตัวใน `02_api_backend/` ถูกแปลงเป็น CRLF อีกในอนาคต (2) `git add --renormalize` +
+แปลง `entrypoint.sh`, `scripts/smoke.sh`, `scripts/test.sh` เป็น LF ทันทีทั้ง index และ working tree
+(3) เพิ่ม `RUN sed -i 's/\r$//' entrypoint.sh` ใน `Dockerfile` ก่อน `chmod +x` เป็นเกราะกันชั้นสุดท้าย
+เผื่อคนอื่น clone ด้วย git config ที่ยังทำให้เป็น CRLF อยู่ดี — ยืนยันด้วย `docker compose build` +
+`up` สำเร็จจริงหลังแก้ (ก่อนแก้ build ผ่านแต่ container พังตอน start)
+
+**ทดสอบต่อกันจริงผ่าน `docker compose up -d --build ai_router api_backend postgres redis`** (หลังแก้
+CRLF แล้ว) — ทั้ง 4 container ขึ้นสำเร็จ, seed บัญชีเดโมเอง (`docker exec rmutt_api python -m
+scripts.seed_demo` เพราะ `docker-compose.yml` ที่ root ไม่ได้ตั้ง `SEED_DEMO=true` ให้ — ไม่ใช่บั๊ก แค่
+ค่า default), login ผ่าน 200 แล้วยิง `POST /api/v1/chat` จริงหลายแบบยืนยันครบทุก path การแปลง event:
+- ข้อความทั่วไปไม่ตรง keyword ไหนเลย → `GENERAL_CHAT` ไม่มี tool → ได้แค่ `session` → `done` (ถูกต้อง)
+- ข้อความขาด slot (ไม่มีรหัสวิชา) → 03 ส่ง `clarify` กลับมาจริง → แปลงเป็น `token(question)` แล้ว `done`
+  ตรงตามที่ออกแบบไว้เป๊ะ
+- ข้อความมีรหัสวิชาครบ → 03 เรียก tool จริง (`get_student_context`, `check_conflicts`) → ได้
+  `tool_start`/`tool_end` ของทั้งสอง tool ถูกต้อง (ยืนยันว่า `TOOL_ALLOWLIST` ที่แก้ใหม่ตรงกับชื่อจริง
+  ด้วย — ถ้าไม่ตรง `sanitize_event` จะกรองทิ้งเงียบๆ)
+- คำถามเกี่ยวกับระเบียบ → 03 เรียก `search_knowledge` (tool_start/tool_end) แล้วหาไม่เจอ (04-08 ยังไม่ได้
+  รันในเทสต์นี้) ส่งกลับมาเป็น `done{answer:"ไม่พบข้อมูล..."}` → แปลงเป็น `token(answer)` แล้ว `done`
+  ถูกต้อง (เส้นทาง guardrail-refusal/`done` ที่มี `answer` ก็ยืนยันด้วยของจริงแล้วเช่นกัน)
+- `GET /api/v1/chat/sessions` หลังจากนั้นเห็น session ครบทุกอันพร้อม title ภาษาไทยถูกต้อง ยืนยันว่าบันทึก
+  ลง DB ถูกต้องด้วย ไม่ใช่แค่ stream ผ่านหน้าจอเฉยๆ
+
+หมายเหตุ: ตอนทดสอบรอบแรกๆ เจอ session title ขึ้น `????` เพราะ `curl` บน Git Bash/Windows ส่ง argument
+ภาษาไทยแบบ `-d '...'` ตรงๆ ไม่ผ่าน UTF-8 ที่ถูกต้อง (ปัญหา terminal encoding ของเครื่องทดสอบเอง ไม่ใช่บั๊ก
+ของ 02 หรือ 03) แก้โดยเขียน payload ลงไฟล์ก่อนแล้วใช้ `curl --data-binary @file` แทน หลังจากนั้นข้อความไทย
+ถูกต้องทุกคำ
+
+ปิดท้าย: `docker compose down` (ไม่ใช้ `-v`) และลบ `.env` ทดสอบทิ้ง (เป็นไฟล์ local ล้วนๆ ไม่ commit)
+
+---
+
+## รอบแก้ที่ 2: แยก router (03) ออกจากตัวสร้างคำตอบ (07) — แก้ 3 เคสที่ fail จากการทดสอบรอบก่อน (commit `6ab1e3a`)
+
+**หมายเหตุ:** งานรอบนี้ทำเฉพาะใน working copy บนเครื่อง **ไม่ได้ commit/push** ตามกติกาที่ได้รับ (ห้าม
+GitHub mutation ใดๆ ในงานนี้) — ไฟล์ที่เปลี่ยนยังเป็น uncommitted changes อยู่ ผู้ที่รับงานต่อต้อง
+review + commit เอง
+
+**สาเหตุ 3 เคส fail เดิม:** (1) `_DONE_MESSAGE_ID_PLACEHOLDER = 0` ถูกส่งเป็น `message_id` จริงให้ frontend
+เสมอ (2) `_build_router_payload()` ไม่ส่ง `request_id`/`term`/`preferences` เลย (3) `context_ready` จาก 03
+ถูกทิ้งไปเฉยๆ ไม่เคยมีการเรียกตัวสร้างคำตอบจริง (07) เลย ทำให้คำทักทาย/คำถามทั่วไปได้ `done` เปล่าๆ
+
+**สถาปัตยกรรมใหม่:** แยกชั้นชัดเจน 3 ชั้น — `HttpChatRouter.stream()` (คืน "internal event" key `kind`
+เท่านั้น เช่น `tool_start`, `clarify`, `refusal`, `context_ready`, `router_done{outcome}`, `error` — มี
+state machine อนุมาน `outcome` จากลำดับ event เพราะ 03 ของจริงยังไม่ส่ง field `outcome` เอง) →
+`src/services/chat_orchestrator.py::run_chat_turn()` (ใหม่ทั้งไฟล์ ตัดสินใจว่าจะเรียก `AnswerGenerator`
+(07, interface ใหม่ใน `interfaces.py`) ไหม ผลิต public event key `type` ที่ปลอดภัยส่ง frontend) →
+`src/api/v1/chat.py` (เติม `message_id` จริงจาก `assistant_message.id` ก่อน `sanitize_event` เสมอ)
+
+**07 ยังไม่มี contract จริง** — `NotReadyAnswerGenerator` (ใน `interfaces.py`) เป็น production default
+เสมอ raise `Upstream502Error` ทันทีที่ถูกเรียก ไม่มี fallback คำตอบปลอมให้ผู้ใช้เด็ดขาด ทดสอบ flow จริงต้อง
+inject fake ผ่าน `Depends(get_answer_generator)` override เท่านั้น
+
+**บั๊กที่เจอระหว่างทำ (ไม่ใช่แค่ code review — เจอจากรัน test/Docker จริง):**
+1. `state["final_kind"]`/`state["final_message"]` ไม่ได้ set ตอน `done{answer}` (กรณี guardrail refusal)
+   ทำให้ answer หายไปเงียบๆ กลายเป็น `outcome=None` (กำกวม) แทนที่จะเป็น refusal จริง — เจอจาก unit test
+2. **เจอจาก Docker จริงเท่านั้น (unit test ไม่เจอ):** peek แรกที่ chat.py เดิม peek ที่ `orchestrated`
+   (หลัง orchestrator แล้ว) แทนที่จะ peek ที่ `router_events` ตรงๆ ทำให้ทุกครั้งที่ intent ไม่มี tool เลย
+   (เช่น GENERAL_CHAT) แล้ว 07 ยังไม่พร้อม (`NotReadyAnswerGenerator` raise ทันที) กลายเป็น HTTP 502 ดิบ
+   ก่อนเข้า SSE เลย ทั้งที่ 03 ตอบถูกต้องแล้ว — message ผิดว่า "โมดูล Router (03) ไม่ตอบสนอง" ทั้งที่ 03
+   ไม่มีปัญหา แก้โดยแยก peek: peek `router_events` ก่อนเสมอ (ยืนยันว่า 03 ตอบจริง) แล้วค่อยส่งเข้า
+   orchestrator ภายใน SSE stream (ความล้มเหลวของ 07 กลายเป็น SSE error event แทน HTTP 502 ดิบ ถูกต้องกว่า)
+   — ยืนยันด้วย curl จริงกับ container ที่ build จาก Dockerfile จริงทั้งก่อน/หลังแก้
+
+**ข้อจำกัดที่ยังไม่แก้ (ทราบแล้ว ไม่ใช่บั๊กบล็อก):** ข้อความ error ตอน 07 ล่ม/ไม่พร้อมยังใช้
+`_UPSTREAM_MIDSTREAM_MESSAGE = "โมดูล Router (03) หยุดตอบสนองกลางทาง"` ซึ่งพาดพิง 03 ผิดตัว (จริงๆ คือ 07)
+— เป็น generic catch-all message เดิมที่ไม่แยกว่าใครพังจริง ไม่ได้แก้เพราะเป็น cosmetic ไม่กระทบ code/status
+(`UPSTREAM_502` ถูกต้อง ไม่มีข้อมูลหลุด) และไม่อยากแตะ public error message โดยไม่จำเป็น
+
+**ผลตรวจ:** `pytest -q` กับ Postgres จริง (ผ่าน `scripts/test.sh`) → **226 passed, 1 skipped** (skip เดิม
+ไม่เกี่ยวกับงานนี้) เพิ่มจาก 210 เดิม (16 เทสต์ใหม่: `test_chat_orchestrator.py` 8 เคส + เพิ่มใน
+`test_http_chat_router.py`/`test_chat_stream.py` อีกหลายเคส) `pytest -q` แบบไม่มี Postgres → 162 passed,
+65 skipped · `ruff check .` ผ่านหมด · `python -m compileall -q src` ผ่าน · grep รหัสนักศึกษารูปแบบจริง —
+ไม่พบ
+
+**ทดสอบจริงผ่าน Docker ซ้ำอีกรอบ** (build+up จริง, seed demo, login, ยิง `/api/v1/chat` หลายแบบ) ยืนยันครบ
+ทั้ง 3 เคสที่เคย fail: greeting ตอนนี้ error ชัดเจน (ไม่ใช่ done เปล่าๆ) เพราะ 07 ยังไม่พร้อม, clarify ได้
+`message_id` จริง (เช่น 17) ตรงกับแถวใน DB เป๊ะ (ไม่ใช่ 0), payload ส่ง request_id/term/preferences ครบ
+(ยืนยันด้วย unit test เพราะ 03 ของจริงยังไม่อ่าน field พวกนี้ ตรวจจาก log ไม่ได้) — **หมายเหตุตามกติกา**:
+นี่คือทดสอบ ASGI/Docker เจาะจงจุดๆ ไป ไม่ใช่ integration test เต็มระบบ (04-08 ไม่ได้รันในเทสต์นี้เลย)
+
+**สิ่งที่ต้องส่งต่อ:**
+- **03**: ยังไม่รองรับ contract ใหม่เลย (ไม่มี field `request_id`/`term`/`preferences` ใน `RouterRequest`,
+  ไม่มี event `refusal` แยก, ไม่ส่ง `outcome` ใน `done`) — adapter ฝั่ง 02 ออกแบบให้ทำงานร่วมกับ 03 ตัวเดิม
+  ได้อยู่แล้วผ่าน state-machine อนุมาน outcome แต่ถ้า 03 อัปเดตตาม contract ใหม่จริง ควรได้ผลลัพธ์แม่นยำขึ้น
+  (ไม่ต้องเดา)
+- **07**: ยังไม่มี contract ที่ยืนยันแล้วเลย — `AnswerGenerator` เป็น interface ที่ 02 กำหนดเอง
+  (`generate(question, context, history) -> AsyncIterator[{"type":"token"/"sources",...}]`) ต้องให้เจ้าของ
+  07 ยืนยันว่ารับได้ไหมก่อนจะ implement `HttpAnswerGenerator` จริง ตอนนี้ production path ตอบ
+  `UPSTREAM_502` เสมอ (ตั้งใจ ไม่ใช่บั๊ก) จนกว่าจะมี contract จริง
+- ข้อความ error `_UPSTREAM_MIDSTREAM_MESSAGE` ควรแก้ให้ระบุโมดูลที่พังจริง (03 หรือ 07) แทนการเหมาว่าเป็น
+  03 เสมอ — เป็น cosmetic follow-up ไม่บล็อกงานนี้
+
+---
+
+## แก้บั๊กภายใน 02 เอง: `explain_plan()` ไม่เคยเรียก 06 (plan_engine.validate) ก่อนส่งให้ 07 เลย
+
+บั๊กนี้ไม่เกี่ยวกับสัญญาระหว่างโมดูล (ต่างจากงานก่อนๆ ที่แก้ adapter ให้ตรงกับ 03/05) — เป็นตรรกะผิดภายใน
+`02` เอง 2 จุด: `plan_service.py::explain_plan()` (endpoint `GET /plans/{id}/explain`) ไม่เคยเรียก
+`plan_engine.validate()` เลย ส่งตรงจาก 05 ไป 07 ทันที และ `generate_auto_plans()` (endpoint
+`POST /plans/auto`) เรียก 06 อยู่แล้วแต่ไม่ส่งผลต่อให้ 07 รับรู้ — ผลคือ 07 ได้ `conflicts` เป็นค่าว่าง/ไม่มี
+เสมอทั้ง 2 เส้นทาง (07 เลย verdict "unknown" ตลอด ไม่ว่าแผนจะชนจริงหรือไม่)
+
+**เจอกับดักเพิ่มระหว่างแก้**: ต่อให้เรียก 06 แล้ว `schemas/plans.py::ConflictItem`/`WarningItem` ของ 02 เอง
+ก็ยังเก็บ field ที่ 07 ต้องการไม่ครบ (`code`/`severity`/`message_th`/`message_en`/`subjects`/`detail`/
+`suggestions` หายหมด เพราะ 02 validate response จาก 06 ผ่าน model ที่ไม่ได้ประกาศ field เหล่านี้ไว้ —
+pydantic ทิ้งไปตั้งแต่ตอนรับจาก 06 แล้ว) ขยาย schema ให้ครบก่อนถึงจะส่งต่อให้ 07 ได้จริง
+
+**แก้ (ทุกไฟล์อยู่ใน 02 เอง ไม่แตะ 06/07 เลยสักบรรทัด):**
+- `src/schemas/plans.py`: เพิ่ม field เต็มชุดใน `ConflictItem`/`WarningItem` (default ว่างทั้งหมด ไม่กระทบ
+  ของเดิมที่ validate อยู่แล้ว)
+- `src/adapters/interfaces.py::Explainer`, `src/adapters/http/explainer.py`,
+  `src/adapters/mock/explainer.py`: เพิ่ม parameter `validation: PlanValidateResponse | None = None`
+  ให้ `explain_plan()` (default None กัน call site เดิมที่ยังไม่ได้แก้พังทันที — ไม่มีจริงในโค้ด แต่กันไว้)
+- `src/services/plan_service.py::explain_plan()`: เรียก `plan_engine.validate()` ก่อนเสมอ (เพิ่ม
+  dependency `plan_engine`) แล้วส่งต่อให้ `explainer.explain_plan()`
+- `src/services/plan_service.py::generate_auto_plans()`: ประกอบ `PlanValidateResponse(conflicts=[], ...,
+  is_valid=True)` ส่งแทนการไม่ส่งอะไรเลย (แผนจาก solver ผ่าน hard constraint "ห้ามชน" มาแล้วจริง ไม่ได้
+  เรียก `validate()` ซ้ำเพราะไม่มีประโยชน์ — แผนเดียวกันได้ผลเดิมแน่นอน)
+- `src/api/v1/plans.py::explain_plan` endpoint: เพิ่ม `plan_engine: PlanEngine = Depends(get_plan_engine)`
+- `fixtures/plans/validate.conflict.json`: capture ใหม่จาก response จริง (มีแต่ไฟล์นี้ไฟล์เดียวที่มี
+  `ConflictItem` ที่ไม่ว่างเปล่า ไฟล์อื่นที่มี key `conflicts`/`warnings` เป็น `[]` อยู่แล้วไม่กระทบ)
+
+**ทดสอบใหม่**: `test_explain_plan_calls_plan_engine_validate_and_forwards_conflicts_to_explainer` (mock
+`plan_engine.validate()` คืน conflict จริง ยืนยันว่า explainer ได้รับ validation ที่ไม่ใช่ None และมี
+conflict จริงในนั้น) และ `test_auto_plan_forwards_no_conflict_validation_to_explainer_not_none`
+(ยืนยันฝั่ง auto plan ก็ส่ง validation ไม่ใช่ None เหมือนกัน แม้จะเป็น conflicts=[] ก็ตาม)
+
+**ผลตรวจ**: `pytest -q` กับ Postgres จริง → **228 passed, 1 skipped** (เพิ่มจาก 226 เดิม, skip เดิมไม่
+เกี่ยวกับงานนี้) · `ruff check .` ผ่านหมด · `python -m compileall -q src` ผ่าน · grep รหัสนักศึกษารูปแบบจริง
+— ไม่พบ
+
+**หมายเหตุพฤติกรรมใหม่ที่ควรรู้**: `GET /plans/{id}/explain` ตอนนี้เรียก 06 เพิ่มขึ้นมา 1 ครั้งทุกครั้งที่
+เรียก endpoint นี้ (เดิมไม่เรียกเลย) — ถ้า 06 ล่ม endpoint นี้จะ `502` ทันที (เดิมจะยังพยายามอธิบายแผนต่อได้
+แม้ 06 จะล่มอยู่ก็ตาม เพราะไม่เคยเรียก 06 เลย) ถือว่าเป็นพฤติกรรมที่ถูกต้องกว่าเดิม (fail-closed ดีกว่าอธิบาย
+แผนโดยไม่รู้ว่าชนหรือไม่) แต่เป็น behavior change ที่ควรแจ้งทีม 01 ไว้
+
+**ยังไม่ได้ commit/push** — รอ confirm ตามรูปแบบเดิมของงานชุดนี้ (ไฟล์ทั้งหมดยัง uncommitted ใน working copy)
