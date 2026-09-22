@@ -5,7 +5,13 @@ from src.adapters.course_data import MemorySectionProvider
 from src.adapters.student_data import MemoryStudentContextProvider
 from src.api.routes import set_test_providers
 from src.main import app
-from src.models.schemas import Meeting, SectionInput, StudentContextInput
+from src.models.schemas import (
+    ConflictDetail,
+    Meeting,
+    SectionInput,
+    StudentContextInput,
+    WarningDetail,
+)
 
 client = TestClient(app)
 
@@ -80,6 +86,29 @@ def test_validate_endpoint():
     assert data["summary"]["is_valid"] is True
 
 
+def test_validate_endpoint_with_conflicts_has_contract_fields():
+    """ยิง POST /validate ที่มี conflict แล้ว assert ว่า response JSON มี key type, message, section_ids, details"""
+    payload = {
+        "term": "1/2569",
+        "section_ids": ["CPE101-01", "CPE102-01"],
+    }
+    response = client.post("/validate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "conflicts" in data
+    assert len(data["conflicts"]) >= 1
+
+    for conflict in data["conflicts"]:
+        assert "type" in conflict
+        assert "message" in conflict
+        assert "section_ids" in conflict
+        assert "details" in conflict
+        assert isinstance(conflict["type"], str)
+        assert isinstance(conflict["message"], str)
+        assert isinstance(conflict["section_ids"], list)
+        assert isinstance(conflict["details"], dict)
+
+
 def test_preview_endpoint():
     payload = {
         "sections": [
@@ -114,3 +143,41 @@ def test_generate_endpoint():
     data = response.json()
     assert "plans" in data
     assert isinstance(data["plans"], list)
+    assert len(data["plans"]) >= 1
+
+    first_plan = data["plans"][0]
+    assert "sections" in first_plan
+    assert isinstance(first_plan["sections"], list)
+    assert len(first_plan["sections"]) >= 1
+    assert isinstance(first_plan["sections"][0], str)
+    assert all(isinstance(s, str) for s in first_plan["sections"])
+
+
+def test_computed_fields_serialization():
+    """ตรวจสอบว่า Pydantic v2 serialize @computed_field ออกมาใน .model_dump() ครบถ้วน"""
+    conflict = ConflictDetail(
+        code="C1",
+        message_key="time_clash",
+        message_th="เวลาชนกัน",
+        message_en="Time clash",
+        subjects=["CPE101-01", "CPE102-01"],
+        detail={"day": "MON", "overlap_start": "11:00", "overlap_end": "12:00"},
+    )
+    c_dump = conflict.model_dump()
+    assert c_dump["type"] == "time_clash"
+    assert c_dump["message"] == "เวลาชนกัน"
+    assert c_dump["section_ids"] == ["CPE101-01", "CPE102-01"]
+    assert c_dump["details"]["day"] == "MON"
+
+    warning = WarningDetail(
+        code="W1",
+        message_key="early_class",
+        message_th="เรียนเช้า",
+        message_en="Early class",
+        detail={"day": "MON"},
+    )
+    w_dump = warning.model_dump()
+    assert w_dump["type"] == "early_class"
+    assert w_dump["message"] == "เรียนเช้า"
+    assert w_dump["details"]["day"] == "MON"
+

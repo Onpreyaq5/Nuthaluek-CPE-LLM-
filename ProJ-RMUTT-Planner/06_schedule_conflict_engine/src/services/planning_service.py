@@ -69,7 +69,7 @@ def map_plans_for_backend(response: GeneratePlanResponse) -> BackendGenerateResp
     for plan in response.plans:
         backend_plans.append(
             BackendGeneratedPlan(
-                sections=[s.id for s in plan.sections],  # ต้องเป็น string ID เท่านั้น
+                sections=[s if isinstance(s, str) else s.id for s in plan.sections],  # ต้องเป็น string ID เท่านั้น
                 total_credits=plan.total_credits,
                 relaxed_constraints=plan.tradeoffs_made,
                 explanation=None,  # หน้าที่สร้างคำอธิบายเป็นของ 07

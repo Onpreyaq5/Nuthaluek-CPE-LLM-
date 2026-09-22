@@ -233,7 +233,8 @@ def build_and_solve_plan(
                     name=plan_name,
                     total_credits=tot_cr,
                     score=float(solver.ObjectiveValue()),
-                    sections=chosen_sections,
+                    sections=[s.id for s in chosen_sections],
+                    section_details=chosen_sections,
                     summary=ValidationSummary(
                         total_credits=tot_cr,
                         section_count=len(chosen_sections),

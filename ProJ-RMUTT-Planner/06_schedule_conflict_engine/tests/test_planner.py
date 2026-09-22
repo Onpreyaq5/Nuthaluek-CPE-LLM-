@@ -67,9 +67,12 @@ def test_cp_sat_generates_valid_plans():
     # ตรวจสอบว่าทุกแผนที่คืนกลับมาไม่มีเวลาชนกัน
     for plan in response.plans:
         assert plan.total_credits >= 9
-        sec_ids = [s.id for s in plan.sections]
+        assert isinstance(plan.sections, list)
+        assert all(isinstance(s, str) for s in plan.sections)
+        sec_ids = plan.sections
         # ห้ามมีทั้ง CPE101-01 และ CPE102-01 ในแผนเดียวกันเพราะเวลาชนกัน
         assert not ("CPE101-01" in sec_ids and "CPE102-01" in sec_ids)
+        assert len(plan.section_details) == len(plan.sections)
 
 
 def test_cp_sat_respects_free_day_preference():
@@ -114,7 +117,8 @@ def test_cp_sat_respects_free_day_preference():
 
     assert response.plans_count >= 1
     best_plan = response.plans[0]
-    best_sec_ids = [s.id for s in best_plan.sections]
+    assert all(isinstance(s, str) for s in best_plan.sections)
+    best_sec_ids = best_plan.sections
     # แผนที่ดีที่สุดต้องเลือก CPE101-02 (วันอังคาร) แทน CPE101-01 (วันศุกร์)
     assert "CPE101-02" in best_sec_ids
     assert "CPE101-01" not in best_sec_ids

@@ -4,7 +4,7 @@ Compatible with 06 contract, 02_api_backend, and 03_ai_router_agent
 from __future__ import annotations
 
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class Meeting(BaseModel):
@@ -76,18 +76,22 @@ class ConflictDetail(BaseModel):
     suggestions: list[dict[str, Any]] = Field(default_factory=list)
 
     # สำหรับความเข้ากันได้กับ 02_api_backend
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def type(self) -> str:
         return self.message_key
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def message(self) -> str:
         return self.message_th
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def section_ids(self) -> list[str]:
         return self.subjects
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def details(self) -> dict[str, Any]:
         return self.detail
@@ -103,14 +107,17 @@ class WarningDetail(BaseModel):
     detail: dict[str, Any] = Field(default_factory=dict)
 
     # สำหรับความเข้ากันได้กับ 02_api_backend
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def type(self) -> str:
         return self.message_key
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def message(self) -> str:
         return self.message_th
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def details(self) -> dict[str, Any]:
         return self.detail
@@ -160,7 +167,8 @@ class CandidatePlan(BaseModel):
     name: str
     total_credits: int
     score: float
-    sections: list[SectionInput]
+    sections: list[str]  # section ID string ล้วนๆ ตรงกับ 02's GeneratedPlan.sections: list[str]
+    section_details: list[SectionInput] = Field(default_factory=list)  # รายละเอียดเต็ม เผื่อผู้เรียกที่ต้องการ
     summary: ValidationSummary
     warnings: list[WarningDetail] = Field(default_factory=list)
     tradeoffs_made: list[str] = Field(default_factory=list)
