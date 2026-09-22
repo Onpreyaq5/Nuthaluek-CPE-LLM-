@@ -161,9 +161,15 @@ async def explain_plan(
     user: CurrentUser = Depends(current_user),
     db: AsyncSession = Depends(get_db),
     student_data: StudentData = Depends(get_student_data),
+    plan_engine: PlanEngine = Depends(get_plan_engine),
     explainer: Explainer = Depends(get_explainer),
 ) -> dict:
     data = await plan_service.explain_plan(
-        db, plan_id=plan_id, student_id=user.student_id, student_data=student_data, explainer=explainer
+        db,
+        plan_id=plan_id,
+        student_id=user.student_id,
+        student_data=student_data,
+        plan_engine=plan_engine,
+        explainer=explainer,
     )
     return success_envelope(data.model_dump(mode="json"))

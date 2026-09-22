@@ -81,10 +81,18 @@ class PlanEngine(Protocol):
 
 
 class Explainer(Protocol):
-    """โมดูล 07 — อธิบายแผนเป็นภาษาคน"""
+    """โมดูล 07 — อธิบายแผนเป็นภาษาคน
+
+    validation (ผล 06 ล่าสุด) ต้องส่งไปด้วยเสมอเมื่อมี — ไม่งั้น 07 ไม่มีทาง verdict ตามจริงได้ (จะได้
+    "unknown" เสมอ) เป็น None ได้เฉพาะกรณีที่ไม่มีผลตรวจจริงๆ (ไม่ควรเกิดในโค้ด 02 เอง — caller ทุกจุดควร
+    validate/มี validation อยู่แล้วก่อนเรียกเสมอ)"""
 
     async def explain_plan(
-        self, term: str, section_ids: list[str], student: StudentContext
+        self,
+        term: str,
+        section_ids: list[str],
+        student: StudentContext,
+        validation: PlanValidateResponse | None = None,
     ) -> ExplainResponse: ...
 
 

@@ -678,3 +678,49 @@ inject fake ผ่าน `Depends(get_answer_generator)` override เท่า�
   `UPSTREAM_502` เสมอ (ตั้งใจ ไม่ใช่บั๊ก) จนกว่าจะมี contract จริง
 - ข้อความ error `_UPSTREAM_MIDSTREAM_MESSAGE` ควรแก้ให้ระบุโมดูลที่พังจริง (03 หรือ 07) แทนการเหมาว่าเป็น
   03 เสมอ — เป็น cosmetic follow-up ไม่บล็อกงานนี้
+
+---
+
+## แก้บั๊กภายใน 02 เอง: `explain_plan()` ไม่เคยเรียก 06 (plan_engine.validate) ก่อนส่งให้ 07 เลย
+
+บั๊กนี้ไม่เกี่ยวกับสัญญาระหว่างโมดูล (ต่างจากงานก่อนๆ ที่แก้ adapter ให้ตรงกับ 03/05) — เป็นตรรกะผิดภายใน
+`02` เอง 2 จุด: `plan_service.py::explain_plan()` (endpoint `GET /plans/{id}/explain`) ไม่เคยเรียก
+`plan_engine.validate()` เลย ส่งตรงจาก 05 ไป 07 ทันที และ `generate_auto_plans()` (endpoint
+`POST /plans/auto`) เรียก 06 อยู่แล้วแต่ไม่ส่งผลต่อให้ 07 รับรู้ — ผลคือ 07 ได้ `conflicts` เป็นค่าว่าง/ไม่มี
+เสมอทั้ง 2 เส้นทาง (07 เลย verdict "unknown" ตลอด ไม่ว่าแผนจะชนจริงหรือไม่)
+
+**เจอกับดักเพิ่มระหว่างแก้**: ต่อให้เรียก 06 แล้ว `schemas/plans.py::ConflictItem`/`WarningItem` ของ 02 เอง
+ก็ยังเก็บ field ที่ 07 ต้องการไม่ครบ (`code`/`severity`/`message_th`/`message_en`/`subjects`/`detail`/
+`suggestions` หายหมด เพราะ 02 validate response จาก 06 ผ่าน model ที่ไม่ได้ประกาศ field เหล่านี้ไว้ —
+pydantic ทิ้งไปตั้งแต่ตอนรับจาก 06 แล้ว) ขยาย schema ให้ครบก่อนถึงจะส่งต่อให้ 07 ได้จริง
+
+**แก้ (ทุกไฟล์อยู่ใน 02 เอง ไม่แตะ 06/07 เลยสักบรรทัด):**
+- `src/schemas/plans.py`: เพิ่ม field เต็มชุดใน `ConflictItem`/`WarningItem` (default ว่างทั้งหมด ไม่กระทบ
+  ของเดิมที่ validate อยู่แล้ว)
+- `src/adapters/interfaces.py::Explainer`, `src/adapters/http/explainer.py`,
+  `src/adapters/mock/explainer.py`: เพิ่ม parameter `validation: PlanValidateResponse | None = None`
+  ให้ `explain_plan()` (default None กัน call site เดิมที่ยังไม่ได้แก้พังทันที — ไม่มีจริงในโค้ด แต่กันไว้)
+- `src/services/plan_service.py::explain_plan()`: เรียก `plan_engine.validate()` ก่อนเสมอ (เพิ่ม
+  dependency `plan_engine`) แล้วส่งต่อให้ `explainer.explain_plan()`
+- `src/services/plan_service.py::generate_auto_plans()`: ประกอบ `PlanValidateResponse(conflicts=[], ...,
+  is_valid=True)` ส่งแทนการไม่ส่งอะไรเลย (แผนจาก solver ผ่าน hard constraint "ห้ามชน" มาแล้วจริง ไม่ได้
+  เรียก `validate()` ซ้ำเพราะไม่มีประโยชน์ — แผนเดียวกันได้ผลเดิมแน่นอน)
+- `src/api/v1/plans.py::explain_plan` endpoint: เพิ่ม `plan_engine: PlanEngine = Depends(get_plan_engine)`
+- `fixtures/plans/validate.conflict.json`: capture ใหม่จาก response จริง (มีแต่ไฟล์นี้ไฟล์เดียวที่มี
+  `ConflictItem` ที่ไม่ว่างเปล่า ไฟล์อื่นที่มี key `conflicts`/`warnings` เป็น `[]` อยู่แล้วไม่กระทบ)
+
+**ทดสอบใหม่**: `test_explain_plan_calls_plan_engine_validate_and_forwards_conflicts_to_explainer` (mock
+`plan_engine.validate()` คืน conflict จริง ยืนยันว่า explainer ได้รับ validation ที่ไม่ใช่ None และมี
+conflict จริงในนั้น) และ `test_auto_plan_forwards_no_conflict_validation_to_explainer_not_none`
+(ยืนยันฝั่ง auto plan ก็ส่ง validation ไม่ใช่ None เหมือนกัน แม้จะเป็น conflicts=[] ก็ตาม)
+
+**ผลตรวจ**: `pytest -q` กับ Postgres จริง → **228 passed, 1 skipped** (เพิ่มจาก 226 เดิม, skip เดิมไม่
+เกี่ยวกับงานนี้) · `ruff check .` ผ่านหมด · `python -m compileall -q src` ผ่าน · grep รหัสนักศึกษารูปแบบจริง
+— ไม่พบ
+
+**หมายเหตุพฤติกรรมใหม่ที่ควรรู้**: `GET /plans/{id}/explain` ตอนนี้เรียก 06 เพิ่มขึ้นมา 1 ครั้งทุกครั้งที่
+เรียก endpoint นี้ (เดิมไม่เรียกเลย) — ถ้า 06 ล่ม endpoint นี้จะ `502` ทันที (เดิมจะยังพยายามอธิบายแผนต่อได้
+แม้ 06 จะล่มอยู่ก็ตาม เพราะไม่เคยเรียก 06 เลย) ถือว่าเป็นพฤติกรรมที่ถูกต้องกว่าเดิม (fail-closed ดีกว่าอธิบาย
+แผนโดยไม่รู้ว่าชนหรือไม่) แต่เป็น behavior change ที่ควรแจ้งทีม 01 ไว้
+
+**ยังไม่ได้ commit/push** — รอ confirm ตามรูปแบบเดิมของงานชุดนี้ (ไฟล์ทั้งหมดยัง uncommitted ใน working copy)

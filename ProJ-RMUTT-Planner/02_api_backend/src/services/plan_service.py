@@ -9,7 +9,7 @@ from src.core.errors import Conflict409Error, Forbidden403Error, NotFound404Erro
 from src.models import Plan
 from src.repositories import plan_repository
 from src.schemas.chat import StudentPreferences
-from src.schemas.plans import PlanValidateResponse
+from src.schemas.plans import PlanValidateResponse, ValidateSummary
 from src.schemas.students import GeneratedPlan
 
 _DUPLICATE_NAME_MESSAGE = "มีแผนชื่อนี้อยู่แล้วในภาคการศึกษานี้"
@@ -131,8 +131,20 @@ async def generate_auto_plans(
 
     explained: list[GeneratedPlan] = []
     for plan in plans:
+        # แผนจาก solver ผ่าน hard constraint "ห้ามชน" มาแล้ว (06 การันตี) ถือว่าตรวจแล้วไม่เจอปัญหา —
+        # ไม่ได้เรียก plan_engine.validate() ซ้ำ (ไม่มีประโยชน์ แผนเดียวกันจะได้ผลเดิม) แค่ประกอบ
+        # PlanValidateResponse ว่างๆ ไว้ส่งบอก 07 ว่า "ตรวจแล้ว ไม่มี conflict" แทนการไม่ส่งอะไรเลย
+        no_conflict_validation = PlanValidateResponse(
+            conflicts=[],
+            warnings=[],
+            summary=ValidateSummary(
+                total_credits=plan.total_credits, section_count=len(plan.sections), is_valid=True
+            ),
+        )
         try:
-            explanation = await explainer.explain_plan(term, plan.sections, student)
+            explanation = await explainer.explain_plan(
+                term, plan.sections, student, no_conflict_validation
+            )
         except Upstream502Error:
             explained.append(
                 plan.model_copy(
@@ -150,9 +162,13 @@ async def explain_plan(
     plan_id: int,
     student_id: str,
     student_data: StudentData,
+    plan_engine: PlanEngine,
     explainer: Explainer,
 ) -> Any:
+    """บั๊กเดิม: เรียก 07 ตรงๆ โดยไม่เคยเรียก 06 (plan_engine.validate) เลย ทำให้ 07 ไม่มีทาง verdict
+    ตามจริงได้ (ได้ "unknown" เสมอ) — ต้อง validate ก่อนส่งต่อให้ explainer ทุกครั้ง"""
     plan = await _get_owned_plan(db, plan_id=plan_id, student_id=student_id)
     section_ids = [item.section_id for item in plan.items]
     student = await student_data.get_context(student_id)
-    return await explainer.explain_plan(plan.term, section_ids, student)
+    validation = await plan_engine.validate(plan.term, section_ids, student)
+    return await explainer.explain_plan(plan.term, section_ids, student, validation)
