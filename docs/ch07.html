@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="สไลด์บทที่ 7 RAG + LLM Engine ของระบบวางแผนการเรียน มทร.ธัญบุรี — สถาปัตยกรรม มายด์แมป use case และวิธีทำงานแบบเข้าใจง่าย">
+<style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>บทที่ 7 RAG และ LLM</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#101828; --ink2:#475467; --ink3:#8A96A8;
+  --paper:#FFFFFF; --sunken:#F2F5FA; --line:#DCE3EE; --line2:#C3CDDD;
+  --brand:#1D4ED8; --brand-deep:#152F96; --brand-soft:#E7EEFF;
+  --gold:#B07C12; --gold-soft:#FBF2DC;
+  --ok:#0B7F5B; --ok-soft:#E0F4EC;
+  --bad:#B3324A; --bad-soft:#FAE6EA;
+  --warn:#9A6410; --warn-soft:#FBF0DD;
+  --ui:"IBM Plex Sans Thai","Sarabun",system-ui,sans-serif;
+  --body:"Sarabun","IBM Plex Sans Thai",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E9EEF8; --ink2:#A9B5C9; --ink3:#71809A;
+  --paper:#0C1220; --sunken:#161F31; --line:#28334A; --line2:#3A4760;
+  --brand:#6E94FF; --brand-deep:#9DB6FF; --brand-soft:#1A2646;
+  --gold:#DDA83F; --gold-soft:#2E2413;
+  --ok:#3FCB9B; --ok-soft:#10301F;
+  --bad:#F08098; --bad-soft:#331C22;
+  --warn:#E0A94F; --warn-soft:#332614;
+}}
+:root[data-theme="dark"]{
+  --ink:#E9EEF8; --ink2:#A9B5C9; --ink3:#71809A;
+  --paper:#0C1220; --sunken:#161F31; --line:#28334A; --line2:#3A4760;
+  --brand:#6E94FF; --brand-deep:#9DB6FF; --brand-soft:#1A2646;
+  --gold:#DDA83F; --gold-soft:#2E2413;
+  --ok:#3FCB9B; --ok-soft:#10301F;
+  --bad:#F08098; --bad-soft:#331C22;
+  --warn:#E0A94F; --warn-soft:#332614;
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--sunken); color:var(--ink);
+  font-family:var(--body); -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--ui); margin:0; line-height:1.24; text-wrap:balance}
+p{margin:0}
+.mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
+svg{display:block; max-width:100%}
+svg text{font-family:var(--ui)}
+svg .m{font-family:var(--mono)}
+
+/* ── หนึ่ง .slide = หนึ่งหน้า 16:9 ── */
+.deck{max-width:1280px; margin:0 auto; padding:24px 16px; display:grid; gap:24px}
+.slide{
+  background:var(--paper); border:1px solid var(--line); border-radius:14px;
+  aspect-ratio:16/9; padding:38px 52px; position:relative; overflow:hidden;
+  display:flex; flex-direction:column;
+  box-shadow:0 1px 2px rgba(16,24,40,.05), 0 10px 30px -18px rgba(16,24,40,.35);
+}
+.eyebrow{font-family:var(--ui); font-size:12px; font-weight:600; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--brand)}
+.slide h2{font-size:31px; font-weight:700; margin-top:7px}
+.slide h3{font-size:16.5px; font-weight:600; margin-top:3px}
+.sub{margin-top:9px; font-size:16px; color:var(--ink2); max-width:78ch; line-height:1.6}
+.no{position:absolute; inset-block-end:20px; inset-inline-end:34px;
+  font-family:var(--mono); font-size:12px; color:var(--ink3)}
+.fill{flex:1; display:flex; align-items:center; justify-content:center; margin-top:14px}
+.fill.top{align-items:flex-start}
+
+/* ปก */
+.cover{background:linear-gradient(140deg,var(--brand),var(--brand-deep)); border:0; color:#fff;
+  justify-content:center}
+.cover h1{font-size:50px; font-weight:700; letter-spacing:-.015em}
+.cover .eyebrow{color:#C7D7FF}
+.cover .sub{color:#DCE6FF; font-size:19px; margin-top:16px}
+.cover .meta{margin-top:26px; display:flex; flex-wrap:wrap; gap:9px}
+.cover .meta span{background:rgba(255,255,255,.16); border-radius:99px; padding:6px 15px; font-size:14px}
+
+/* การ์ด */
+.cards{display:grid; gap:15px; width:100%}
+.c3{grid-template-columns:repeat(3,1fr)} .c4{grid-template-columns:repeat(4,1fr)}
+.c2{grid-template-columns:repeat(2,1fr)}
+.card{background:var(--sunken); border:1px solid var(--line); border-radius:11px; padding:17px 19px}
+.card b{font-family:var(--ui); font-size:17px; font-weight:600; display:block}
+.card p{margin-top:6px; font-size:14.5px; color:var(--ink2); line-height:1.58}
+.card .n{font-family:var(--mono); font-size:12px; color:var(--brand); font-weight:600}
+
+/* ขั้นตอน */
+.steps{display:grid; gap:11px; width:100%}
+.step{display:grid; grid-template-columns:38px 1fr; gap:15px; align-items:start}
+.step .b{width:34px; height:34px; border-radius:9px; display:grid; place-items:center;
+  background:var(--brand-soft); color:var(--brand); font-family:var(--mono); font-weight:600; font-size:15px}
+.step b{font-family:var(--ui); font-size:17px; font-weight:600; display:block}
+.step p{margin-top:2px; font-size:14.5px; color:var(--ink2); line-height:1.55}
+
+/* ตาราง */
+table{border-collapse:collapse; width:100%; font-size:15px}
+th,td{text-align:start; padding:10px 15px; border-bottom:1px solid var(--line); vertical-align:top}
+th{font-family:var(--ui); font-size:13px; font-weight:600; color:var(--ink2); background:var(--sunken)}
+tr:last-child td{border-bottom:0}
+
+/* ตัวเลขเด่น */
+.stats{display:flex; gap:15px; width:100%; justify-content:center; flex-wrap:wrap}
+.stat{background:var(--sunken); border:1px solid var(--line); border-radius:12px;
+  padding:19px 27px; text-align:center; min-width:150px}
+.stat b{display:block; font-family:var(--ui); font-size:37px; font-weight:700; color:var(--brand);
+  font-variant-numeric:tabular-nums; line-height:1.1}
+.stat span{display:block; margin-top:5px; font-size:14px; color:var(--ink2)}
+
+.pill{display:inline-block; font-family:var(--mono); font-size:12px; font-weight:600;
+  padding:2px 8px; border-radius:6px}
+.pill.ok{background:var(--ok-soft); color:var(--ok)}
+.pill.bad{background:var(--bad-soft); color:var(--bad)}
+.pill.warn{background:var(--warn-soft); color:var(--warn)}
+
+.note{background:var(--gold-soft); border-inline-start:3px solid var(--gold);
+  padding:11px 16px; border-radius:0 9px 9px 0; font-size:14.5px; color:var(--ink2); margin-top:13px}
+.note b{color:var(--gold); font-family:var(--ui)}
+
+@media print{
+  @page{ size:1280px 720px; margin:0; }
+  body{background:#fff}
+  .deck{max-width:none; margin:0; padding:0; gap:0; display:block}
+  .slide{
+    border:0; border-radius:0; box-shadow:none; aspect-ratio:auto;
+    width:1280px; height:720px; break-after:page; break-inside:avoid;
+  }
+  .slide:last-child{break-after:auto}
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact}
+}
+@media (max-width:780px){
+  .slide{aspect-ratio:auto; padding:26px 22px}
+  .c3,.c4{grid-template-columns:1fr} .c2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- 1 ปก -->
+<section class="slide cover">
+  <p class="eyebrow">บทที่ 7 · ระบบวางแผนการเรียน มทร.ธัญบุรี</p>
+  <h1>RAG + LLM Engine</h1>
+  <p class="sub">ระบบตอบคำถามเรื่องระเบียบและหลักสูตร<br>ที่ตอบจากเอกสารจริงเท่านั้น และบอกทุกครั้งว่าอ้างจากไหน</p>
+  <div class="meta">
+    <span>เอกสาร 5 ฉบับ · 69 ส่วน</span>
+    <span>BM25 + TF-IDF + RRF</span>
+    <span>ด่านกันตอบมั่ว 4 ชั้น</span>
+    <span>ทดสอบผ่าน 105 เคส</span>
+  </div>
+</section>
+
+<!-- 2 ปัญหา -->
+<section class="slide">
+  <p class="eyebrow">01 · โจทย์</p>
+  <h2>ทำไมต้องมีโมดูลนี้</h2>
+  <p class="sub">นักศึกษามีคำถามเรื่องระเบียบตลอดเวลา แต่คำตอบกระจายอยู่ในเอกสารหลายฉบับที่ยาวและอ่านยาก</p>
+  <div class="fill">
+    <div class="cards c3">
+      <div class="card">
+        <b>ถามคนไม่ทัน</b>
+        <p>ช่วงลงทะเบียนมีคนถามพร้อมกันเป็นร้อย เจ้าหน้าที่กับอาจารย์ที่ปรึกษาตอบไม่ทัน</p>
+      </div>
+      <div class="card">
+        <b>หาเองไม่เจอ</b>
+        <p>คำตอบอยู่ในข้อบังคับ ปฏิทินการศึกษา และโครงสร้างหลักสูตร คนละฉบับกัน ไม่รู้ว่าต้องเปิดเล่มไหน</p>
+      </div>
+      <div class="card">
+        <b>ถาม AI ทั่วไปแล้วมั่ว</b>
+        <p>โมเดลภาษาทั่วไปไม่รู้ระเบียบของ มทร.ธัญบุรี แต่ตอบเต็มปากเหมือนรู้จริง ซึ่งอันตรายกว่าไม่ตอบ</p>
+      </div>
+    </div>
+  </div>
+  <div class="note"><b>เป้าหมาย</b> ตอบได้เร็วเหมือน AI แต่เชื่อถือได้เหมือนเปิดเอกสารเอง — และถ้าไม่รู้ ต้องบอกว่าไม่รู้</div>
+  <span class="no">2</span>
+</section>
+
+<!-- 3 RAG คืออะไร -->
+<section class="slide">
+  <p class="eyebrow">02 · แนวคิด</p>
+  <h2>RAG คืออะไร อธิบายสั้นที่สุด</h2>
+  <p class="sub">RAG = Retrieval-Augmented Generation — <strong>ค้นก่อน แล้วค่อยตอบ</strong></p>
+  <div class="fill">
+    <svg viewBox="0 0 1060 330" role="img" aria-label="เปรียบเทียบ LLM ธรรมดากับ RAG">
+      <g>
+        <rect x="8" y="14" width="500" height="300" rx="13" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.6"/>
+        <text x="34" y="52" font-size="19" font-weight="700" fill="var(--bad)">LLM ธรรมดา</text>
+        <text x="34" y="80" font-size="14.5" fill="var(--ink2)">ตอบจากสิ่งที่จำมาตอนเทรน</text>
+        <rect x="34" y="102" width="130" height="50" rx="9" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="99" y="132" text-anchor="middle" font-size="14.5" fill="var(--ink)">คำถาม</text>
+        <path d="M172 127 H 214" stroke="var(--bad)" stroke-width="2" marker-end="url(#ab)"/>
+        <rect x="222" y="102" width="130" height="50" rx="9" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="287" y="132" text-anchor="middle" font-size="14.5" fill="var(--ink)">โมเดล</text>
+        <path d="M360 127 H 402" stroke="var(--bad)" stroke-width="2" marker-end="url(#ab)"/>
+        <rect x="410" y="102" width="76" height="50" rx="9" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="448" y="132" text-anchor="middle" font-size="14.5" fill="var(--ink)">คำตอบ</text>
+        <text x="34" y="196" font-size="14.5" fill="var(--bad)">ปัญหา: ตรวจไม่ได้ว่าเอามาจากไหน</text>
+        <text x="34" y="222" font-size="14.5" fill="var(--bad)">ไม่รู้ก็ยังตอบ และตอบผิดแบบมั่นใจ</text>
+        <text x="34" y="262" font-size="13.5" fill="var(--ink3)">ถาม “ถอนวิชาได้ถึงเมื่อไหร่”</text>
+        <text x="34" y="286" font-size="13.5" fill="var(--ink3)">อาจตอบระเบียบของมหาวิทยาลัยอื่น</text>
+      </g>
+      <g>
+        <rect x="552" y="14" width="500" height="300" rx="13" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.6"/>
+        <text x="578" y="52" font-size="19" font-weight="700" fill="var(--ok)">RAG (ที่เราทำ)</text>
+        <text x="578" y="80" font-size="14.5" fill="var(--ink2)">ค้นเอกสารก่อน แล้วตอบจากสิ่งที่ค้นเจอ</text>
+        <rect x="578" y="102" width="104" height="50" rx="9" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="630" y="132" text-anchor="middle" font-size="14" fill="var(--ink)">คำถาม</text>
+        <path d="M690 127 H 722" stroke="var(--ok)" stroke-width="2" marker-end="url(#ag)"/>
+        <rect x="730" y="102" width="104" height="50" rx="9" fill="var(--brand-soft)" stroke="var(--brand)" stroke-width="1.6"/>
+        <text x="782" y="126" text-anchor="middle" font-size="14" font-weight="600" fill="var(--brand)">ค้นเอกสาร</text>
+        <text x="782" y="144" text-anchor="middle" font-size="11.5" fill="var(--brand)">69 ส่วน</text>
+        <path d="M842 127 H 874" stroke="var(--ok)" stroke-width="2" marker-end="url(#ag)"/>
+        <rect x="882" y="102" width="104" height="50" rx="9" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="934" y="126" text-anchor="middle" font-size="14" fill="var(--ink)">เรียบเรียง</text>
+        <text x="934" y="144" text-anchor="middle" font-size="11.5" fill="var(--ink3)">จากที่ค้นเจอ</text>
+        <text x="578" y="196" font-size="14.5" fill="var(--ok)">ข้อดี: ตรวจย้อนได้ว่าอ้างจากเอกสารไหน</text>
+        <text x="578" y="222" font-size="14.5" fill="var(--ok)">ไม่มีในเอกสาร = ไม่ตอบ</text>
+        <text x="578" y="262" font-size="13.5" fill="var(--ink3)">ตอบพร้อมแนบ “ข้อบังคับ หมวด 2 ข้อ 18”</text>
+        <text x="578" y="286" font-size="13.5" fill="var(--ink3)">ให้กดดูต้นทางได้ทุกคำตอบ</text>
+      </g>
+      <defs>
+        <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--bad)"/></marker>
+        <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--ok)"/></marker>
+      </defs>
+    </svg>
+  </div>
+  <span class="no">3</span>
+</section>
+
+<!-- 4 สถาปัตยกรรม -->
+<section class="slide">
+  <p class="eyebrow">03 · สถาปัตยกรรม</p>
+  <h2>โครงสร้างภายในโมดูล 7</h2>
+  <p class="sub">แบ่งเป็น 2 ช่วง — ช่วงเตรียมข้อมูล (ทำครั้งเดียวตอนเริ่ม) และช่วงตอบคำถาม (ทุกครั้งที่มีคนถาม)</p>
+  <div class="fill">
+    <svg viewBox="0 0 1080 372" role="img" aria-label="สถาปัตยกรรมภายในของโมดูล 7">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink3)"/></marker>
+      </defs>
+      <rect x="6" y="8" width="1068" height="140" rx="12" fill="var(--sunken)" stroke="var(--line2)" stroke-dasharray="6 4"/>
+      <text x="26" y="34" font-size="15" font-weight="700" fill="var(--ink2)">ช่วงเตรียมข้อมูล — ทำครั้งเดียวตอนระบบเริ่มทำงาน</text>
+
+      <g font-size="14">
+        <rect x="26" y="52" width="176" height="74" rx="10" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="114" y="80" text-anchor="middle" font-weight="600" fill="var(--ink)">เอกสาร 5 ฉบับ</text>
+        <text x="114" y="100" text-anchor="middle" font-size="12" fill="var(--ink3)">ระเบียบ หลักสูตร ปฏิทิน</text>
+        <text x="114" y="117" text-anchor="middle" font-size="12" fill="var(--ink3)">FAQ คำอธิบายรายวิชา</text>
+        <path d="M210 89 H 246" stroke="var(--ink3)" stroke-width="2" marker-end="url(#a1)"/>
+
+        <rect x="254" y="52" width="176" height="74" rx="10" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="342" y="80" text-anchor="middle" font-weight="600" fill="var(--ink)">หั่นเป็นส่วนย่อย</text>
+        <text x="342" y="100" text-anchor="middle" font-size="12" fill="var(--ink3)">ตามหัวข้อ + พ่วงหัวข้อแม่</text>
+        <text x="342" y="117" text-anchor="middle" font-size="12" class="m" fill="var(--brand)">69 chunks</text>
+        <path d="M438 89 H 474" stroke="var(--ink3)" stroke-width="2" marker-end="url(#a1)"/>
+
+        <rect x="482" y="52" width="176" height="74" rx="10" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="570" y="80" text-anchor="middle" font-weight="600" fill="var(--ink)">ตัดคำภาษาไทย</text>
+        <text x="570" y="100" text-anchor="middle" font-size="12" fill="var(--ink3)">n-gram ขนาด 3 และ 4</text>
+        <text x="570" y="117" text-anchor="middle" font-size="12" fill="var(--ink3)">ไม่ต้องใช้ dictionary</text>
+        <path d="M666 89 H 702" stroke="var(--ink3)" stroke-width="2" marker-end="url(#a1)"/>
+
+        <rect x="710" y="52" width="340" height="74" rx="10" fill="var(--brand-soft)" stroke="var(--brand)" stroke-width="1.8"/>
+        <text x="880" y="80" text-anchor="middle" font-weight="700" fill="var(--brand)">สร้างดัชนี 2 ชุด</text>
+        <text x="880" y="102" text-anchor="middle" font-size="12.5" fill="var(--brand)">BM25 (คำตรงกัน) + TF-IDF (ความหมายใกล้เคียง)</text>
+        <text x="880" y="119" text-anchor="middle" font-size="12" fill="var(--ink3)">เก็บในหน่วยความจำ ไม่ต้องมีฐานข้อมูลแยก</text>
+      </g>
+
+      <rect x="6" y="162" width="1068" height="202" rx="12" fill="var(--sunken)" stroke="var(--line2)" stroke-dasharray="6 4"/>
+      <text x="26" y="188" font-size="15" font-weight="700" fill="var(--ink2)">ช่วงตอบคำถาม — ทุกครั้งที่มีคนถาม</text>
+
+      <g font-size="14">
+        <rect x="26" y="206" width="150" height="66" rx="10" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="101" y="234" text-anchor="middle" font-weight="600" fill="var(--ink)">คำถาม</text>
+        <text x="101" y="254" text-anchor="middle" font-size="12" fill="var(--ink3)">ภาษาไทยธรรมดา</text>
+        <path d="M184 239 H 216" stroke="var(--ink3)" stroke-width="2" marker-end="url(#a1)"/>
+
+        <rect x="224" y="206" width="150" height="66" rx="10" fill="var(--paper)" stroke="var(--line2)"/>
+        <text x="299" y="228" text-anchor="middle" font-weight="600" fill="var(--ink)">ขยายคำถาม</text>
+        <text x="299" y="248" text-anchor="middle" font-size="11.5" fill="var(--ink3)">“ปี 2” → “ชั้นปีที่ 2”</text>
+        <text x="299" y="264" text-anchor="middle" font-size="11.5" fill="var(--ink3)">“เกรด” → “ระดับคะแนน”</text>
+        <path d="M382 239 H 414" stroke="var(--ink3)" stroke-width="2" marker-end="url(#a1)"/>
+
+        <rect x="422" y="196" width="196" height="86" rx="10" fill="var(--paper)" stroke="var(--brand)" stroke-width="1.8"/>
+        <text x="520" y="220" text-anchor="middle" font-weight="700" fill="var(--brand)">ค้นสองวิธีพร้อมกัน</text>
+        <text x="520" y="242" text-anchor="middle" font-size="12.5" fill="var(--ink2)">BM25 + TF-IDF cosine</text>
+        <text x="520" y="262" text-anchor="middle" font-size="12" fill="var(--ink3)">รวมอันดับด้วย RRF</text>
+        <path d="M626 239 H 658" stroke="var(--ink3)" stroke-width="2" marker-end="url(#a1)"/>
+
+        <rect x="666" y="196" width="176" height="86" rx="10" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="1.8"/>
+        <text x="754" y="220" text-anchor="middle" font-weight="700" fill="var(--warn)">ด่านกันตอบมั่ว</text>
+        <text x="754" y="242" text-anchor="middle" font-size="12.5" fill="var(--ink2)">คะแนนถึงเกณฑ์ไหม</text>
+        <text x="754" y="262" text-anchor="middle" font-size="12" class="m" fill="var(--warn)">MIN_SCORE 0.21</text>
+        <path d="M850 239 H 882" stroke="var(--ink3)" stroke-width="2" marker-end="url(#a1)"/>
+
+        <rect x="890" y="196" width="160" height="86" rx="10" fill="var(--ok-soft)" stroke="var(--ok)" stroke-width="1.8"/>
+        <text x="970" y="220" text-anchor="middle" font-weight="700" fill="var(--ok)">คำตอบ</text>
+        <text x="970" y="242" text-anchor="middle" font-size="12.5" fill="var(--ink2)">+ แหล่งอ้างอิง</text>
+        <text x="970" y="262" text-anchor="middle" font-size="12" fill="var(--ink3)">+ คะแนนที่ได้</text>
+
+        <rect x="422" y="298" width="628" height="50" rx="9" fill="var(--paper)" stroke="var(--line2)" stroke-dasharray="5 4"/>
+        <text x="736" y="320" text-anchor="middle" font-size="13.5" fill="var(--ink2)">ถ้าคะแนนไม่ถึงเกณฑ์ หรือเป็นเรื่องที่คลังไม่มีข้อมูล → ตอบว่า “ไม่พบข้อมูล” ทันที</text>
+        <text x="736" y="338" text-anchor="middle" font-size="12.5" fill="var(--ink3)">ไม่เรียกโมเดลภาษาเลย จึงไม่มีทางแต่งคำตอบขึ้นมาเอง</text>
+      </g>
+    </svg>
+  </div>
+  <span class="no">4</span>
+</section>
+
+<!-- 5 มายด์แมป -->
+<section class="slide">
+  <p class="eyebrow">04 · ภาพรวม</p>
+  <h2>มายด์แมปของโมดูล 7</h2>
+  <div class="fill top">
+    <svg viewBox="0 0 1090 420" role="img" aria-label="มายด์แมปโมดูล 7 แสดง 5 กิ่ง">
+      <rect x="10" y="168" width="176" height="84" rx="13" fill="var(--brand)"/>
+      <text x="98" y="200" text-anchor="middle" font-size="17" font-weight="700" fill="#fff">บทที่ 7</text>
+      <text x="98" y="224" text-anchor="middle" font-size="15" font-weight="600" fill="#fff">RAG + LLM</text>
+      <text x="98" y="243" text-anchor="middle" font-size="11.5" fill="#CBDBFF">ตอบคำถามเรื่องระเบียบ</text>
+
+      <g stroke-width="2.2" fill="none">
+        <path d="M186 210 C 228 210, 228 44, 270 44" stroke="var(--brand)"/>
+        <path d="M186 210 C 228 210, 228 132, 270 132" stroke="var(--ok)"/>
+        <path d="M186 210 C 228 210, 228 218, 270 218" stroke="var(--warn)"/>
+        <path d="M186 210 C 228 210, 228 304, 270 304" stroke="var(--bad)"/>
+        <path d="M186 210 C 228 210, 228 386, 270 386" stroke="var(--gold)"/>
+      </g>
+
+      <g font-size="13.5" fill="var(--ink2)">
+        <rect x="270" y="22" width="168" height="44" rx="9" fill="var(--paper)" stroke="var(--brand)" stroke-width="1.8"/>
+        <text x="354" y="49" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--brand)">ข้อมูลที่ใช้</text>
+        <path d="M438 44 H 470" stroke="var(--brand)" stroke-width="1.5"/>
+        <text x="480" y="20">• ข้อบังคับการศึกษาปริญญาตรี</text>
+        <text x="480" y="42">• โครงสร้างหลักสูตร CPE 2566</text>
+        <text x="480" y="64">• ปฏิทินการศึกษา 2569</text>
+        <text x="800" y="20">• คำถามที่พบบ่อย</text>
+        <text x="800" y="42">• คำอธิบายรายวิชา 46 วิชา</text>
+        <text x="800" y="64" fill="var(--ink3)">รวม 5 ไฟล์ → 69 ส่วน</text>
+
+        <rect x="270" y="110" width="168" height="44" rx="9" fill="var(--paper)" stroke="var(--ok)" stroke-width="1.8"/>
+        <text x="354" y="137" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--ok)">วิธีค้นคืน</text>
+        <path d="M438 132 H 470" stroke="var(--ok)" stroke-width="1.5"/>
+        <text x="480" y="110">• ตัดคำไทยด้วย n-gram (3,4)</text>
+        <text x="480" y="132">• BM25 — หาคำที่ตรงกัน</text>
+        <text x="480" y="154">• TF-IDF cosine — ความหมายใกล้เคียง</text>
+        <text x="800" y="110">• RRF รวมอันดับสองวิธี</text>
+        <text x="800" y="132">• ขยายคำถามเป็นคำราชการ</text>
+        <text x="800" y="154">• ถ่วงน้ำหนักรหัสวิชา/ชั้นปี</text>
+
+        <rect x="270" y="196" width="168" height="44" rx="9" fill="var(--paper)" stroke="var(--warn)" stroke-width="1.8"/>
+        <text x="354" y="223" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--warn)">กันตอบมั่ว</text>
+        <path d="M438 218 H 470" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="480" y="196">• รู้ตัวว่าเรื่องไหนไม่มีข้อมูล</text>
+        <text x="480" y="218">• คะแนนต่ำกว่าเกณฑ์ = ไม่ตอบ</text>
+        <text x="480" y="240">• สั่งให้ตอบจากเอกสารเท่านั้น</text>
+        <text x="800" y="218">• แนบแหล่งอ้างอิงทุกคำตอบ</text>
+        <text x="800" y="240" fill="var(--ink3)">ทั้ง 4 ชั้นต้องผ่านหมด</text>
+
+        <rect x="270" y="282" width="168" height="44" rx="9" fill="var(--paper)" stroke="var(--bad)" stroke-width="1.8"/>
+        <text x="354" y="309" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--bad)">วัดคุณภาพ</text>
+        <path d="M438 304 H 470" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="480" y="282">• ชุดคำถามมาตรฐาน 14 ข้อ</text>
+        <text x="480" y="304">• 9 ข้อต้องตอบได้</text>
+        <text x="480" y="326">• 5 ข้อต้องปฏิเสธการตอบ</text>
+        <text x="800" y="304">• เทสอัตโนมัติ 105 เคส</text>
+        <text x="800" y="326">• รันทุกครั้งที่แก้โค้ด</text>
+
+        <rect x="270" y="364" width="168" height="44" rx="9" fill="var(--paper)" stroke="var(--gold)" stroke-width="1.8"/>
+        <text x="354" y="391" text-anchor="middle" font-size="14.5" font-weight="700" fill="var(--gold)">ส่งงานให้ใคร</text>
+        <path d="M438 386 H 470" stroke="var(--gold)" stroke-width="1.5"/>
+        <text x="480" y="378">• โมดูล 02 เรียกผ่าน HTTP</text>
+        <text x="480" y="400">• โมดูล 09 ยกตรรกะไปใช้ในเบราว์เซอร์</text>
+        <text x="800" y="378">• Gemini ใช้เรียบเรียงคำตอบ</text>
+        <text x="800" y="400" fill="var(--ink3)">ไม่มีคีย์ก็ยังทำงานได้</text>
+      </g>
+    </svg>
+  </div>
+  <span class="no">5</span>
+</section>
+
+<!-- 6 use case -->
+<section class="slide">
+  <p class="eyebrow">05 · Use Case</p>
+  <h2>ใครใช้โมดูลนี้ ทำอะไรได้บ้าง</h2>
+  <div class="fill">
+    <svg viewBox="0 0 1020 372" role="img" aria-label="Use case diagram ของโมดูล 7">
+      <defs>
+        <marker id="uc" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="var(--ink3)"/></marker>
+        <marker id="uo" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="9" markerHeight="9" orient="auto"><path d="M0.5 0.5 L9.5 5 L0.5 9.5" fill="none" stroke="var(--brand)" stroke-width="1.5"/></marker>
+      </defs>
+
+      <rect x="216" y="10" width="518" height="352" rx="13" fill="var(--sunken)" stroke="var(--line2)" stroke-width="1.8"/>
+      <text x="475" y="36" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink2)">โมดูล 7 · RAG + LLM Engine</text>
+
+      <g transform="translate(50,96)">
+        <circle cx="26" cy="13" r="11" fill="none" stroke="var(--brand)" stroke-width="2.2"/>
+        <path d="M26 25 v21 M26 31 l-13 8 M26 31 l13 8 M26 46 l-11 17 M26 46 l11 17" fill="none" stroke="var(--brand)" stroke-width="2.2" stroke-linecap="round"/>
+        <text x="26" y="82" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--brand)">นักศึกษา</text>
+        <text x="26" y="99" text-anchor="middle" font-size="11.5" fill="var(--ink3)">ผ่านหน้าเว็บ</text>
+      </g>
+      <g transform="translate(50,244)">
+        <rect x="0" y="0" width="128" height="62" rx="9" fill="var(--paper)" stroke="var(--line2)" stroke-width="1.6"/>
+        <text x="64" y="26" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink2)">โมดูล 02</text>
+        <text x="64" y="45" text-anchor="middle" font-size="11.5" fill="var(--ink3)">เรียกผ่าน HTTP</text>
+      </g>
+
+      <g font-size="13.5" text-anchor="middle">
+        <ellipse cx="400" cy="86" rx="132" ry="27" fill="var(--paper)" stroke="var(--brand)" stroke-width="1.8"/>
+        <text x="400" y="91" fill="var(--ink)">ถามเรื่องระเบียบ</text>
+
+        <ellipse cx="400" cy="160" rx="132" ry="27" fill="var(--paper)" stroke="var(--brand)" stroke-width="1.8"/>
+        <text x="400" y="165" fill="var(--ink)">ขอคำอธิบายแผนการเรียน</text>
+
+        <ellipse cx="400" cy="234" rx="132" ry="27" fill="var(--paper)" stroke="var(--brand)" stroke-width="1.8"/>
+        <text x="400" y="239" fill="var(--ink)">ค้นเอกสารตรง ๆ</text>
+
+        <ellipse cx="400" cy="308" rx="132" ry="27" fill="var(--paper)" stroke="var(--brand)" stroke-width="1.8"/>
+        <text x="400" y="313" fill="var(--ink)">เพิ่มเอกสารเข้าคลัง</text>
+
+        <ellipse cx="628" cy="123" rx="94" ry="29" fill="var(--brand-soft)" stroke="var(--brand)" stroke-width="2.2"/>
+        <text x="628" y="120" font-weight="700" font-size="13" fill="var(--brand)">ค้นคืนเอกสาร</text>
+        <text x="628" y="138" font-size="11" class="m" fill="var(--brand)">BM25+TF-IDF</text>
+
+        <ellipse cx="628" cy="212" rx="94" ry="29" fill="var(--warn-soft)" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="628" y="209" font-weight="700" font-size="13" fill="var(--warn)">ปฏิเสธการตอบ</text>
+        <text x="628" y="227" font-size="11" fill="var(--warn)">เมื่อไม่มีข้อมูล</text>
+      </g>
+
+      <g stroke="var(--ink3)" stroke-width="1.5" fill="none">
+        <path d="M112 128 C 180 100, 200 88, 264 86"/>
+        <path d="M112 140 C 180 150, 200 158, 264 160"/>
+        <path d="M178 272 C 220 260, 230 244, 264 236"/>
+        <path d="M178 282 C 220 296, 230 304, 264 308"/>
+      </g>
+
+      <g stroke="var(--brand)" stroke-width="1.5" fill="none" stroke-dasharray="7 5">
+        <path d="M528 96 C 560 102, 572 110, 536 118" marker-end="url(#uo)"/>
+        <path d="M528 158 C 566 150, 576 140, 538 130" marker-end="url(#uo)"/>
+        <path d="M628 152 V 180" marker-end="url(#uo)"/>
+      </g>
+      <text x="556" y="80" font-size="11" class="m" fill="var(--brand)">«include»</text>
+      <text x="566" y="176" font-size="11" class="m" fill="var(--brand)">«extend»</text>
+
+      <g>
+        <rect x="770" y="272" width="176" height="76" rx="10" fill="var(--paper)" stroke="var(--line2)" stroke-width="1.6" stroke-dasharray="6 4"/>
+        <text x="858" y="300" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink2)">Gemini</text>
+        <text x="858" y="320" text-anchor="middle" font-size="11.5" fill="var(--ink3)">เรียบเรียงคำตอบ</text>
+        <text x="858" y="338" text-anchor="middle" font-size="11" fill="var(--ink3)">ไม่มีก็ยังใช้ได้</text>
+      </g>
+      <path d="M700 130 C 800 160, 840 230, 852 266" stroke="var(--ink3)" stroke-width="1.5" fill="none" marker-end="url(#uc)"/>
+    </svg>
+  </div>
+  <span class="no">6</span>
+</section>
+
+<!-- 7 ขั้นตอน -->
+<section class="slide">
+  <p class="eyebrow">06 · การทำงาน</p>
+  <h2>ถาม 1 คำถาม เกิดอะไรขึ้นบ้าง</h2>
+  <p class="sub">ตัวอย่าง: นักศึกษาถามว่า <strong>“ถอนรายวิชาได้ถึงเมื่อไหร่”</strong></p>
+  <div class="fill top">
+    <div class="steps">
+      <div class="step"><span class="b">1</span><div>
+        <b>ดูก่อนว่าเป็นเรื่องที่เรามีข้อมูลไหม</b>
+        <p>ระบบมีรายการเรื่องที่รู้ตัวว่าไม่มีข้อมูล เช่น ตารางสอน ค่าเทอม ทุนการศึกษา ถ้าถามเรื่องพวกนี้จะตอบทันทีว่าไม่มี พร้อมบอกว่าไปถามที่ไหนได้</p>
+      </div></div>
+      <div class="step"><span class="b">2</span><div>
+        <b>แปลงคำพูดชาวบ้านเป็นคำในเอกสาร</b>
+        <p>“ถอนรายวิชา” เติมคำว่า “สัญลักษณ์ W” และ “กำหนดเวลา” เข้าไปด้วย เพราะเอกสารราชการใช้คำเหล่านั้น ถ้าไม่แปลงจะค้นไม่เจอ</p>
+      </div></div>
+      <div class="step"><span class="b">3</span><div>
+        <b>ค้นสองวิธีพร้อมกันแล้วรวมอันดับ</b>
+        <p>BM25 หาส่วนที่มีคำตรงกัน · TF-IDF หาส่วนที่ความหมายใกล้เคียง · RRF รวมผลทั้งสอง — ส่วนที่ติดอันดับดีทั้งสองวิธีจะชนะ</p>
+      </div></div>
+      <div class="step"><span class="b">4</span><div>
+        <b>เทียบคะแนนกับเกณฑ์</b>
+        <p>ได้ <span class="pill ok">0.3293</span> ซึ่งเกินเกณฑ์ <span class="mono">0.21</span> จึงตอบได้ — ถ้าถามเรื่องนอกหลักสูตรจะได้ราว <span class="pill bad">0.09</span> ซึ่งต่ำกว่าเกณฑ์ ระบบจะปฏิเสธการตอบ</p>
+      </div></div>
+      <div class="step"><span class="b">5</span><div>
+        <b>ตอบพร้อมแหล่งอ้างอิง</b>
+        <p>ได้ “ข้อบังคับฯ — หมวด 2 การเพิ่ม–ถอนรายวิชา &gt; ข้อ 18 กำหนดเวลาการเพิ่มและถอนรายวิชา” ผู้ใช้กดดูต้นทางได้ ถ้าใส่คีย์ Gemini ไว้ โมเดลจะเรียบเรียงให้อ่านง่ายขึ้นโดยห้ามเติมอะไรนอกเอกสาร</p>
+      </div></div>
+    </div>
+  </div>
+  <span class="no">7</span>
+</section>
+
+<!-- 8 กันมั่ว -->
+<section class="slide">
+  <p class="eyebrow">07 · จุดเด่น</p>
+  <h2>ด่านกันตอบมั่ว 4 ชั้น</h2>
+  <p class="sub">สิ่งที่ทำให้ระบบนี้ต่างจากแชตบอททั่วไป — ต้องผ่านครบทั้ง 4 ชั้นถึงจะได้คำตอบ</p>
+  <div class="fill">
+    <div class="cards c4">
+      <div class="card">
+        <span class="n">ชั้นที่ 1</span>
+        <b>รู้ขอบเขตตัวเอง</b>
+        <p>ประกาศไว้ล่วงหน้าว่าไม่มีข้อมูลเรื่องอะไรบ้าง ถามมาตอบตรง ๆ ว่าไม่มี ไม่ยกเอกสารใกล้เคียงมาตอบแทน</p>
+      </div>
+      <div class="card">
+        <span class="n">ชั้นที่ 2</span>
+        <b>เกณฑ์คะแนน</b>
+        <p>คะแนนค้นคืนต่ำกว่า <span class="mono">0.21</span> ถือว่าไม่เกี่ยวข้อง ตอบว่าไม่พบข้อมูลโดยไม่เรียกโมเดลภาษาเลย</p>
+      </div>
+      <div class="card">
+        <span class="n">ชั้นที่ 3</span>
+        <b>สั่งกำกับโมเดล</b>
+        <p>คำสั่งบังคับให้ตอบจากเอกสารที่ให้ไปเท่านั้น ห้ามเติมจากความรู้ทั่วไป และต้องอ้างหมายเลขเอกสาร</p>
+      </div>
+      <div class="card">
+        <span class="n">ชั้นที่ 4</span>
+        <b>แนบต้นทางเสมอ</b>
+        <p>คืนรายการเอกสารที่ใช้สร้างคำตอบจริง ไม่ใช่ผลค้นทั้งหมด ผู้ใช้ตรวจย้อนได้ทุกคำตอบ</p>
+      </div>
+    </div>
+  </div>
+  <div class="note"><b>หลักคิด</b> ระบบที่ยอมบอกว่า “ไม่รู้” เชื่อถือได้มากกว่าระบบที่ตอบทุกคำถาม</div>
+  <span class="no">8</span>
+</section>
+
+<!-- 9 ผลการทดสอบ -->
+<section class="slide">
+  <p class="eyebrow">08 · ผลการทดสอบ</p>
+  <h2>วัดผลอย่างไร</h2>
+  <p class="sub">ใช้ชุดคำถามมาตรฐาน (golden set) แบ่งเป็นสองฝั่ง ต้องผ่านทั้งสองฝั่งถึงจะถือว่าระบบยังทำงานถูก</p>
+  <div class="fill top" style="flex-direction:column; gap:16px">
+    <div class="stats">
+      <div class="stat"><b>105</b><span>เทสอัตโนมัติผ่านทั้งหมด</span></div>
+      <div class="stat"><b>14/14</b><span>ชุดคำถามมาตรฐาน</span></div>
+      <div class="stat"><b>69</b><span>ส่วนเอกสารในคลัง</span></div>
+      <div class="stat"><b>0.21</b><span>เกณฑ์ตัดสินใจ</span></div>
+    </div>
+    <table>
+      <thead><tr><th style="width:42%">คำถาม</th><th style="width:14%">ประเภท</th><th style="width:13%">คะแนน</th><th>ผล</th></tr></thead>
+      <tbody>
+        <tr><td>ได้ F ต้องทำยังไง</td><td>ต้องตอบได้</td><td class="mono">0.5387</td><td><span class="pill ok">ผ่าน</span> เจอข้อบังคับ หมวด 3 ข้อ 23 การเรียนซ้ำ</td></tr>
+        <tr><td>เรียนเกินกี่ปีจะถูกรีไทร์</td><td>ต้องตอบได้</td><td class="mono">0.4934</td><td><span class="pill ok">ผ่าน</span> เจอคำถามที่พบบ่อย</td></tr>
+        <tr><td>ถอนรายวิชาได้ถึงเมื่อไหร่</td><td>ต้องตอบได้</td><td class="mono">0.3293</td><td><span class="pill ok">ผ่าน</span> เจอข้อบังคับ หมวด 2 ข้อ 18</td></tr>
+        <tr><td>แนะนำร้านกาแฟหน่อย</td><td>ต้องไม่ตอบ</td><td class="mono">0.0899</td><td><span class="pill ok">ผ่าน</span> ต่ำกว่าเกณฑ์ จึงปฏิเสธ</td></tr>
+        <tr><td>ราคาข้าวมันไก่เท่าไหร่</td><td>ต้องไม่ตอบ</td><td class="mono">0.0691</td><td><span class="pill ok">ผ่าน</span> ต่ำกว่าเกณฑ์ จึงปฏิเสธ</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <span class="no">9</span>
+</section>
+
+<!-- 10 ทางเลือกเทคนิค -->
+<section class="slide">
+  <p class="eyebrow">09 · เหตุผลเชิงเทคนิค</p>
+  <h2>ทำไมเลือกแบบนี้</h2>
+  <div class="fill top">
+    <table>
+      <thead><tr><th style="width:23%">เรื่อง</th><th style="width:25%">ทางเลือกทั่วไป</th><th style="width:22%">ที่เราเลือก</th><th>เหตุผล</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><b>ตัดคำไทย</b></td><td>pythainlp</td><td>character n-gram (3,4)</td>
+          <td>pythainlp หนัก 250 MB ต้องโหลด dictionary — วัดจริงแล้ว n-gram (3,4) แยกคำถามในเรื่องกับนอกเรื่องได้ห่างที่สุด</td>
+        </tr>
+        <tr>
+          <td><b>ฐานข้อมูลเวกเตอร์</b></td><td>Qdrant + embedding</td><td>TF-IDF ในหน่วยความจำ</td>
+          <td>คลังมีแค่ 69 ส่วน ค้นในหน่วยความจำเร็วพอและไม่ต้องรันบริการเพิ่ม · แยกคลาสไว้แล้ว เปลี่ยนภายหลังได้ทันที</td>
+        </tr>
+        <tr>
+          <td><b>รวมผลค้นสองวิธี</b></td><td>ถ่วงน้ำหนักคะแนนดิบ</td><td>Reciprocal Rank Fusion</td>
+          <td>คะแนนของ BM25 กับ TF-IDF คนละสเกล เอามาบวกกันตรง ๆ ไม่ได้ · RRF ใช้ “อันดับ” จึงเทียบกันได้</td>
+        </tr>
+        <tr>
+          <td><b>ถ่วงน้ำหนักรหัสวิชา</b></td><td>บวกคะแนนคงที่</td><td>คูณคะแนน</td>
+          <td>การบวกดันส่วนที่ไม่เกี่ยวข้องข้ามเกณฑ์ได้ · การคูณขยายเฉพาะส่วนที่เกี่ยวข้องอยู่แล้ว</td>
+        </tr>
+        <tr>
+          <td><b>โมเดลภาษา</b></td><td>บังคับต้องมี API key</td><td>ไม่มีคีย์ก็ทำงานได้</td>
+          <td>ไม่มีคีย์ = ยกข้อความจากเอกสารมาแสดงตรง ๆ ซึ่ง “ไม่มีทางมั่ว” · มีคีย์ = เรียบเรียงให้อ่านง่ายขึ้น</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <span class="no">10</span>
+</section>
+
+<!-- 11 สรุป -->
+<section class="slide">
+  <p class="eyebrow">10 · สรุป</p>
+  <h2>โมดูล 7 ส่งมอบอะไร</h2>
+  <div class="fill top" style="flex-direction:column; gap:15px">
+    <div class="cards c3">
+      <div class="card"><b>6 endpoint พร้อมใช้</b>
+        <p><span class="mono">/generate</span> ตอบคำถาม · <span class="mono">/knowledge/search</span> ค้นเอกสาร · <span class="mono">/explain/plan</span> อธิบายแผนการเรียน · <span class="mono">/ingest</span> เพิ่มเอกสาร</p></div>
+      <div class="card"><b>ตรรกะที่โมดูลอื่นยกไปใช้ได้</b>
+        <p>โมดูล 09 พอร์ตตัวค้นคืนทั้งชุดไปรันในเบราว์เซอร์ ได้คะแนนตรงกับฝั่ง Python ทุกตำแหน่งทศนิยม</p></div>
+      <div class="card"><b>วิธีวัดคุณภาพที่ทำซ้ำได้</b>
+        <p>ชุดคำถามมาตรฐานรันได้ทั้งใน CI และกดรันดูสด ๆ บนหน้าเว็บ ไม่ต้องเชื่อคำบอกเล่า</p></div>
+    </div>
+    <div class="note"><b>ข้อจำกัดที่ต้องบอกให้ชัด</b> เอกสารทั้ง 5 ฉบับเป็นข้อมูลจำลองสำหรับต้นแบบ ต้องแทนที่ด้วยฉบับจริงจากมหาวิทยาลัยก่อนนำไปใช้จริง ตัวระบบไม่ต้องแก้ แค่เปลี่ยนไฟล์ในคลังแล้วสร้างดัชนีใหม่</div>
+  </div>
+  <span class="no">11</span>
+</section>
+
+</div>
+
+</body>
+</html>

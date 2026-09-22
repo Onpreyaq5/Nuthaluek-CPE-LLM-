@@ -22,3 +22,6 @@ node_modules/
 .idea/
 .DS_Store
 Thumbs.db
+
+# ฐานข้อมูล sqlite ที่โมดูล 08 สร้างตอนรัน ไม่ใช่ไฟล์ของโปรเจกต์
+*.db
