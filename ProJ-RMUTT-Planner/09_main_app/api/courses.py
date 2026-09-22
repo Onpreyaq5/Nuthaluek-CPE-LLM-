@@ -34,6 +34,8 @@ class handler(JsonHandler):
         return {
             "ok": True,
             "term": term,
+            "term_start": meta.get("term_start"),
+            "weeks": meta.get("weeks", 16),
             "available_terms": available_terms(),
             "credit_rule": meta["credit_rule"],
             "disclaimer": meta["disclaimer"],

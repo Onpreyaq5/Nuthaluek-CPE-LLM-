@@ -15,6 +15,7 @@ venv/
 # node
 node_modules/
 .next/
+.next-dev.log
 
 # ide / os
 .vscode/

@@ -111,6 +111,8 @@ export type ChatResult = {
 export type CoursesResult = {
   ok: boolean;
   term: string;
+  term_start?: string;   // วันเปิดภาคการศึกษา ใช้คำนวณวันที่จริงตอนส่งออกปฏิทิน
+  weeks?: number;        // จำนวนสัปดาห์ที่เรียน
   available_terms: string[];
   credit_rule: { min_credits: number; max_credits: number; summer_max_credits: number };
   disclaimer: string;

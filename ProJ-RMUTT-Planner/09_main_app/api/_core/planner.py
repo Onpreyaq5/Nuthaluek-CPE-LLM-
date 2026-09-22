@@ -39,6 +39,19 @@ def exams_clash(a: dict, b: dict) -> bool:
     return False
 
 
+def _clamp_credits(value, fallback: int, lo: int, hi: int) -> int:
+    """แปลงค่าหน่วยกิตจากผู้ใช้ให้เป็นจำนวนเต็มในกรอบที่ระเบียบอนุญาต
+
+    ค่าที่แปลงไม่ได้ (ส่ง string หรือ null มา) ให้ใช้ค่าตั้งต้น ไม่ใช่โยน error
+    เพราะเป็นแค่ความชอบส่วนตัว ไม่ควรทำให้จัดตารางไม่ได้ทั้งแผน
+    """
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return fallback
+    return max(lo, min(hi, n))
+
+
 def _section_score(sec: dict, prefs: dict, used_days: set[int]) -> float:
     """คะแนนความเหมาะสมของหมู่เรียน ยิ่งสูงยิ่งดี"""
     score = 0.0
@@ -56,7 +69,8 @@ def _section_score(sec: dict, prefs: dict, used_days: set[int]) -> float:
             score -= 4.0
 
     # วันที่ขอว่าง
-    free = {DAY_INDEX[d] for d in prefs.get("free_days", []) if d in DAY_INDEX}
+    raw_free = prefs.get("free_days")
+    free = {DAY_INDEX[d] for d in (raw_free if isinstance(raw_free, list) else []) if d in DAY_INDEX}
     if free & days:
         score -= 8.0
 
@@ -89,8 +103,14 @@ def generate_plan(
     locked = set(locked_section_ids or [])
 
     is_summer = term.startswith("3/")
-    lo = prefs.get("min_credits") or (0 if is_summer else DEFAULT_MIN_CREDITS)
-    hi = prefs.get("max_credits") or (SUMMER_MAX_CREDITS if is_summer else DEFAULT_MAX_CREDITS)
+    ceiling = SUMMER_MAX_CREDITS if is_summer else DEFAULT_MAX_CREDITS
+    floor = 0 if is_summer else DEFAULT_MIN_CREDITS
+    # ค่าจากผู้ใช้เชื่อตรง ๆ ไม่ได้: ถ้าส่ง max_credits=99 มา ระบบจะจัดแผนเกินเพดานระเบียบให้
+    # ซึ่งค้านกับสิ่งที่แอปรับปากไว้ทั้งหมด จึงบังคับให้อยู่ในกรอบเสมอ
+    lo = _clamp_credits(prefs.get("min_credits"), floor, 0, ceiling)
+    hi = _clamp_credits(prefs.get("max_credits"), ceiling, 1, ceiling)
+    if lo > hi:
+        lo = hi
 
     by_course: dict[str, list[dict]] = {}
     for s in all_sections:

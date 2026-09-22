@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   CalendarDays,
   Download,
   Loader2,
@@ -44,26 +45,61 @@ function toPlanned(courses: Course[], ids: string[]): PlannedSection[] {
   return out;
 }
 
-function downloadIcs(sections: PlannedSection[], term: string) {
-  // ส่งออกเป็นไฟล์ .ics เปิดใน Google Calendar / ปฏิทินมือถือได้
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//RMUTT Study Planner//TH", "CALSCALE:GREGORIAN"];
+/** แปลงวันที่+นาที เป็นรูปแบบเวลาท้องถิ่นของ iCalendar (YYYYMMDDTHHMMSS) */
+function icsStamp(date: Date, minutes: number): string {
+  const d = new Date(date);
+  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
+    `T${p(d.getHours())}${p(d.getMinutes())}00`
+  );
+}
+
+/** ข้อความในไฟล์ .ics ต้อง escape อักขระพิเศษ ไม่งั้นไฟล์เสีย */
+function icsText(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/[;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, "\\n");
+}
+
+function downloadIcs(sections: PlannedSection[], term: string, termStart: string, weeks: number) {
+  // ต้องมี DTSTART/DTEND เสมอ — VEVENT ที่ไม่มีจะถูกปฏิทินปฏิเสธทั้งไฟล์
+  // (เดิมใส่แค่ RRULE กับ X-TIME ทำให้ Google Calendar นำเข้าไม่ได้เลย)
+  const start = new Date(`${termStart}T00:00:00`);
+  if (Number.isNaN(start.getTime())) return;
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//RMUTT Study Planner//TH",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${icsText(`ตารางเรียน ${term}`)}`,
+    "X-WR-TIMEZONE:Asia/Bangkok",
+  ];
   const BYDAY = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+
   for (const s of sections) {
     for (const [i, m] of s.meetings.entries()) {
+      // วันแรกของคาบนี้ = วันเปิดเทอม (จันทร์) + จำนวนวันตาม day
+      const first = new Date(start);
+      first.setDate(first.getDate() + m.day);
+      const kind = m.meeting_type === "lab" ? "ปฏิบัติ" : "บรรยาย";
       lines.push(
         "BEGIN:VEVENT",
         `UID:${s.id}-${i}@rmutt-planner`,
-        `SUMMARY:${s.course_code} ${s.course_name}`,
-        `DESCRIPTION:หมู่ ${s.section} · ${m.meeting_type === "lab" ? "ปฏิบัติ" : "บรรยาย"}`,
-        `LOCATION:${m.room} ${m.building}`,
-        `RRULE:FREQ=WEEKLY;BYDAY=${BYDAY[m.day]};COUNT=16`,
-        `X-TERM:${term}`,
-        `X-TIME:${hhmm(m.start_min)}-${hhmm(m.end_min)}`,
+        `DTSTAMP:${icsStamp(new Date(), new Date().getHours() * 60 + new Date().getMinutes())}`,
+        `DTSTART:${icsStamp(first, m.start_min)}`,
+        `DTEND:${icsStamp(first, m.end_min)}`,
+        `RRULE:FREQ=WEEKLY;BYDAY=${BYDAY[m.day]};COUNT=${weeks}`,
+        `SUMMARY:${icsText(`${s.course_code} ${s.course_name}`)}`,
+        `DESCRIPTION:${icsText(`หมู่ ${s.section} · ${kind} · ${s.credits} หน่วยกิต · ภาคการศึกษา ${term}`)}`,
+        `LOCATION:${icsText(`${m.room} ${m.building}`)}`,
         "END:VEVENT",
       );
     }
   }
   lines.push("END:VCALENDAR");
+
   const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -84,18 +120,22 @@ export default function PlannerPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPrefs, setShowPrefs] = useState(false);
   const [skipped, setSkipped] = useState<{ course_code: string; reason: string }[]>([]);
-  const hydrated = useRef(false);
+  const [termInfo, setTermInfo] = useState({ termStart: "", weeks: 16 });
+  // ต้องเป็น state ไม่ใช่ ref: ถ้าใช้ ref เอฟเฟกต์บันทึกจะเห็น hydrated=true
+  // ตั้งแต่รอบ mount แรก แล้วบันทึกค่าเริ่มต้นทับแผนที่ผู้ใช้เคยเก็บไว้
+  // (เคยเป็นบั๊กจริง: เปิดหน้าใหม่ทีไรแผนหายทุกครั้ง)
+  const [hydrated, setHydrated] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);   // เพิ่มค่าเพื่อสั่งโหลดรายวิชาใหม่
 
   // โหลดสถานะที่เคยบันทึกไว้ในเบราว์เซอร์
   useEffect(() => {
-    const saved = loadState();
-    setState(saved);
-    hydrated.current = true;
+    setState(loadState());
+    setHydrated(true);
   }, []);
 
   // โหลดรายวิชาตามเทอม
   useEffect(() => {
-    if (!hydrated.current) return;
+    if (!hydrated) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -105,17 +145,24 @@ export default function PlannerPage() {
         if (cancelled) return;
         setCourses(d.courses);
         setTerms(d.available_terms);
+        setTermInfo({ termStart: d.term_start ?? "", weeks: d.weeks ?? 16 });
       })
-      .catch((e: Error) => !cancelled && setError(e.message))
+      .catch((e: Error) => {
+        if (cancelled) return;
+        setError(e.message);
+        // ต้องล้างรายวิชาของเทอมก่อนหน้าทิ้ง ไม่งั้นหัวข้อขึ้นเทอมใหม่
+        // แต่รายการวิชายังเป็นของเทอมเก่า ผู้ใช้จะเลือกผิดเทอมโดยไม่รู้ตัว
+        setCourses([]);
+      })
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [state.term]);
+  }, [state.term, hydrated, reloadKey]);
 
   useEffect(() => {
-    if (hydrated.current) saveState(state);
-  }, [state]);
+    if (hydrated) saveState(state);
+  }, [state, hydrated]);
 
   const planned = useMemo(() => toPlanned(courses, state.selectedIds), [courses, state.selectedIds]);
 
@@ -133,7 +180,11 @@ export default function PlannerPage() {
         section_ids: state.selectedIds,
         passed_courses: state.passedCourses,
       })
-      .then((r) => !cancelled && setResult(r))
+      .then((r) => {
+        if (cancelled) return;
+        setResult(r);
+        setError(null);   // สำเร็จแล้วต้องเก็บกล่องแดงเดิมออก ไม่งั้นค้างจนกว่าจะเปลี่ยนเทอม
+      })
       .catch((e: Error) => !cancelled && setError(e.message))
       .finally(() => !cancelled && setChecking(false));
     return () => {
@@ -150,6 +201,7 @@ export default function PlannerPage() {
   }, [result]);
 
   const toggle = useCallback((sectionId: string) => {
+    setSkipped([]);   // ผู้ใช้แก้แผนเองแล้ว รายการเดิมจากการจัดอัตโนมัติไม่ตรงอีกต่อไป
     setState((prev) => ({
       ...prev,
       selectedIds: prev.selectedIds.includes(sectionId)
@@ -159,6 +211,7 @@ export default function PlannerPage() {
   }, []);
 
   const applySuggestion = useCallback((from: string, to: string) => {
+    setSkipped([]);
     setState((prev) => ({
       ...prev,
       selectedIds: prev.selectedIds.map((x) => (x === from ? to : x)),
@@ -201,7 +254,10 @@ export default function PlannerPage() {
               id="term"
               className="input mt-1 w-40"
               value={state.term}
-              onChange={(e) => setState((p) => ({ ...p, term: e.target.value, selectedIds: [] }))}
+              onChange={(e) => {
+                setSkipped([]);
+                setState((p) => ({ ...p, term: e.target.value, selectedIds: [] }));
+              }}
             >
               {(terms.length ? terms : [state.term]).map((t) => (
                 <option key={t} value={t}>{t}</option>
@@ -240,9 +296,10 @@ export default function PlannerPage() {
             <button
               type="button"
               className="btn-ghost"
-              onClick={() => downloadIcs(planned, state.term)}
-              disabled={planned.length === 0}
+              onClick={() => downloadIcs(planned, state.term, termInfo.termStart, termInfo.weeks)}
+              disabled={planned.length === 0 || !termInfo.termStart}
               title="บันทึกเป็นไฟล์ปฏิทิน เปิดใน Google Calendar ได้"
+              aria-label="ส่งออกเป็นไฟล์ปฏิทิน"
             >
               <Download className="h-4 w-4" aria-hidden />
               <span className="hidden sm:inline">ส่งออกปฏิทิน</span>
@@ -252,6 +309,7 @@ export default function PlannerPage() {
               className="btn-danger"
               onClick={() => { setState((p) => ({ ...p, selectedIds: [] })); setSkipped([]); }}
               disabled={planned.length === 0}
+              aria-label="ล้างแผนทั้งหมด"
             >
               <RotateCcw className="h-4 w-4" aria-hidden />
               <span className="hidden sm:inline">ล้างแผน</span>
@@ -324,7 +382,21 @@ export default function PlannerPage() {
       </div>
 
       {error && (
-        <div className="card border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>
+        <div className="card flex flex-wrap items-center justify-between gap-3 border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            {error}
+          </span>
+          {/* ต้องมีทางออกให้ผู้ใช้เสมอ ไม่ใช่บอกว่าพังแล้วจบ */}
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="btn shrink-0 border border-rose-300 bg-white px-3 py-1.5 text-rose-700 hover:bg-rose-100"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden />
+            ลองใหม่
+          </button>
+        </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -346,7 +418,9 @@ export default function PlannerPage() {
               <CalendarDays className="mx-auto h-10 w-10 text-slate-300" aria-hidden />
               <p className="mt-3 font-medium text-slate-700">ยังไม่มีวิชาในตาราง</p>
               <p className="mt-1 text-sm text-slate-500">
-                เลือกวิชาจากรายการด้านขวา หรือกด &ldquo;ให้ระบบจัดตารางให้&rdquo;
+                เลือกวิชาจาก<span className="lg:hidden">รายการด้านล่าง</span>
+                <span className="hidden lg:inline">รายการด้านขวา</span> หรือกด
+                &ldquo;ให้ระบบจัดตารางให้&rdquo;
               </p>
             </div>
           ) : (

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sys
+import traceback
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -15,6 +16,7 @@ from urllib.parse import parse_qs, urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 MAX_BODY = 1_000_000   # 1 MB กันคนยิง payload ใหญ่ผิดปกติ
+INTERNAL_MSG = "ระบบขัดข้องชั่วคราว ลองใหม่อีกครั้งในอีกสักครู่"
 
 
 class JsonHandler(BaseHTTPRequestHandler):
@@ -35,6 +37,15 @@ class JsonHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _send_internal(self, exc: Exception) -> None:
+        """ตอบ 500 แบบไม่หลุดรายละเอียดภายใน
+
+        str(exc) มักมี path เต็มหรือโครงสร้างข้อมูลภายในติดมา ส่งให้ผู้ใช้ไม่ได้
+        แต่ต้องยังเห็นใน log ของ Vercel ไม่งั้นดีบักไม่ได้เลย
+        """
+        traceback.print_exc(file=sys.stderr)
+        self._send(500, {"ok": False, "error": {"code": "INTERNAL", "message": INTERNAL_MSG}})
+
     def do_OPTIONS(self) -> None:          # noqa: N802 - ชื่อตามที่ BaseHTTPRequestHandler กำหนด
         self._send(204, {})
 
@@ -42,15 +53,24 @@ class JsonHandler(BaseHTTPRequestHandler):
         try:
             query = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
             self._send(200, self.get(query))
+        except NotImplementedError:
+            self._send(405, {"ok": False, "error": {"code": "METHOD_NOT_ALLOWED",
+                                                    "message": "endpoint นี้ไม่รองรับ GET"}})
         except FileNotFoundError as exc:
             self._send(404, {"ok": False, "error": {"code": "NOT_FOUND", "message": str(exc)}})
         except Exception as exc:           # noqa: BLE001 - ต้องไม่ให้ 500 หลุดไปแบบไม่มีข้อความ
-            self._send(500, {"ok": False, "error": {"code": "INTERNAL", "message": str(exc)}})
+            self._send_internal(exc)
 
     def do_POST(self) -> None:             # noqa: N802
         try:
-            length = int(self.headers.get("Content-Length") or 0)
-            if length > MAX_BODY:
+            try:
+                length = int(self.headers.get("Content-Length") or 0)
+            except ValueError:
+                # header เพี้ยนต้องตอบ 400 ที่อ่านรู้เรื่อง ไม่ใช่ข้อความ int() ของ Python
+                self._send(400, {"ok": False, "error": {"code": "BAD_REQUEST",
+                                                        "message": "Content-Length ไม่ถูกต้อง"}})
+                return
+            if length < 0 or length > MAX_BODY:
                 self._send(413, {"ok": False, "error": {"code": "TOO_LARGE",
                                                         "message": "ข้อมูลที่ส่งมาใหญ่เกินไป"}})
                 return
@@ -58,6 +78,9 @@ class JsonHandler(BaseHTTPRequestHandler):
             if not isinstance(body, dict):
                 raise ValueError("ต้องส่งข้อมูลเป็น JSON object")
             self._send(200, self.post(body))
+        except NotImplementedError:
+            self._send(405, {"ok": False, "error": {"code": "METHOD_NOT_ALLOWED",
+                                                    "message": "endpoint นี้ไม่รองรับ POST"}})
         except json.JSONDecodeError:
             self._send(400, {"ok": False, "error": {"code": "BAD_JSON",
                                                     "message": "รูปแบบ JSON ไม่ถูกต้อง"}})
@@ -66,7 +89,7 @@ class JsonHandler(BaseHTTPRequestHandler):
         except FileNotFoundError as exc:
             self._send(404, {"ok": False, "error": {"code": "NOT_FOUND", "message": str(exc)}})
         except Exception as exc:           # noqa: BLE001
-            self._send(500, {"ok": False, "error": {"code": "INTERNAL", "message": str(exc)}})
+            self._send_internal(exc)
 
     # ── คลาสลูก override ──────────────────────────────────────
     def get(self, query: dict) -> dict:
