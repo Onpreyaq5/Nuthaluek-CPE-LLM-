@@ -18,7 +18,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from .config import settings
 from .models import RouterRequest, SSEEvent
-from .classifier import classify, missing_slots, SLOT_QUESTIONS
+from .classifier import classify, missing_slots, SLOT_QUESTIONS, resolve_term
 from .planner import run_planner
 
 logging.basicConfig(
@@ -48,17 +48,21 @@ async def chat(req: RouterRequest):
     """
     Stream SSE events back to Module 02 (API/Backend).
     Event types: tool_start | tool_end | sources | router_result | clarify | done | error
-
-    FROM DL-06: decision + routing + logging per request.
-    NOT IN DL-06: SSE streaming format, slot-asking, guardrails emitted as events.
     """
-    request_id = str(uuid.uuid4())[:8]
+    # Support backward compatibility for request_id
+    request_id = req.request_id or str(uuid.uuid4())[:8]
 
     async def event_stream() -> AsyncGenerator[dict, None]:
         t0 = time.perf_counter()
         try:
             # ── Step 1: Intent Classification ─────────────────────────
             classification = classify(req.message, [m.model_dump() for m in req.history])
+            
+            # Resolve term and academic year
+            resolved_term, resolved_year = resolve_term(classification.slots.term, req.term)
+            classification.slots.term = resolved_term
+            if resolved_year:
+                classification.slots.academic_year = resolved_year
 
             yield _sse("router_result", {
                 "request_id": request_id,
@@ -70,37 +74,39 @@ async def chat(req: RouterRequest):
             })
 
             # ── Step 2: Slot check — ask back if required slot missing ─
-            # NOT IN DL-06
             missing = missing_slots(classification.intent, classification.slots)
             if missing:
                 question = SLOT_QUESTIONS.get(missing[0], "ช่วยระบุข้อมูลเพิ่มเติมได้ไหมครับ?")
                 yield _sse("clarify", {"question": question, "missing_slots": missing})
-                yield _sse("done", {"latency_ms": _ms(t0)})
+                yield _sse("done", {"outcome": "clarify", "latency_ms": _ms(t0)})
                 return
 
             # ── Step 3: Planner Loop (tool execution + guardrails) ─────
             router_resp, sse_events = await run_planner(req, classification)
 
+            has_refusal = False
             for event in sse_events:
                 yield _sse(event.type, event.data)
+                if event.type == "refusal":
+                    has_refusal = True
+            
+            if has_refusal:
+                yield _sse("done", {"outcome": "refused", "latency_ms": _ms(t0)})
+                return
 
             # ── Step 4: Forward assembled context to Module 07 ─────────
-            # In the full system, Module 02 receives this and calls Module 07.
-            # Here we emit the context package as a final event so Module 02
-            # can forward it.
             yield _sse("context_ready", {
+                "request_id": request_id,
                 "session_id": router_resp.session_id,
+                "question": req.message,
                 "intent": router_resp.intent,
                 "context": router_resp.context,
             })
 
             # ── Step 5: Observability log ──────────────────────────────
-            # FROM DL-06: log intent, confidence, tools used, latency.
-            # NOT IN DL-06: cost_est, token count.
             total_tokens = router_resp.context.get("token_count", 0)
             logger.info(
-                "[router] request_id=%s intent=%s conf=%.2f tools=%s "
-                "latency=%.0fms tokens=%d",
+                "[router] request_id=%s intent=%s conf=%.2f tools=%s latency=%.0fms tokens=%d",
                 request_id,
                 router_resp.intent,
                 router_resp.confidence,
@@ -109,11 +115,11 @@ async def chat(req: RouterRequest):
                 total_tokens,
             )
 
-            yield _sse("done", {"latency_ms": _ms(t0)})
+            yield _sse("done", {"outcome": "context_ready", "latency_ms": _ms(t0)})
 
         except Exception as exc:
             logger.exception("[router] request_id=%s unhandled error", request_id)
-            yield _sse("error", {"message": str(exc), "request_id": request_id})
+            yield _sse("error", {"code": "ROUTER_ERROR", "message": "ไม่สามารถประมวลผลคำขอได้"})
 
     return EventSourceResponse(event_stream())
 
@@ -126,6 +132,11 @@ async def chat(req: RouterRequest):
 async def classify_only(req: RouterRequest):
     """Return classification result only — useful for testing classifier logic."""
     result = classify(req.message, [m.model_dump() for m in req.history])
+    resolved_term, resolved_year = resolve_term(result.slots.term, req.term)
+    result.slots.term = resolved_term
+    if resolved_year:
+        result.slots.academic_year = resolved_year
+
     missing = missing_slots(result.intent, result.slots)
     return {
         "intent": result.intent,
@@ -143,8 +154,8 @@ async def classify_only(req: RouterRequest):
 
 def _sse(event_type: str, data: dict) -> dict:
     """Format an SSE event as { event, data } for sse-starlette."""
+    # Data is sent as-is without embedding 'type' inside it for internal SSE
     return {"event": event_type, "data": json.dumps(data, ensure_ascii=False)}
-
 
 def _ms(t0: float) -> float:
     return round((time.perf_counter() - t0) * 1000, 1)
