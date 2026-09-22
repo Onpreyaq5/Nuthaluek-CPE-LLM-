@@ -1,0 +1,5 @@
+# ฟังก์ชัน Python บน Vercel ของแอปนี้ใช้ stdlib ล้วน ไม่มี dependency ภายนอก
+# ตั้งใจให้เป็นแบบนี้เพราะ Vercel จำกัดขนาดฟังก์ชันที่ 250 MB
+#   - ortools (โมดูล 06) ~180 MB   -> ใช้ greedy planner แทน CP-SAT
+#   - pythainlp (โมดูล 05) ~250 MB -> ใช้ character n-gram ตัดคำแทน
+# ผลคือ cold start เร็วและ deploy ได้ฟรี

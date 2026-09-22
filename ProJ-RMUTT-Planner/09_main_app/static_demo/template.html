@@ -1,0 +1,1897 @@
+<title>ตารางชนไหม</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#121A2B; --ink2:#4E5A70; --ink3:#8795AB;
+  --paper:#F3F5FA; --surface:#FFFFFF; --sunken:#EDF0F7;
+  --line:#DCE2EC; --line2:#C9D2E0;
+  --brand:#1D4ED8; --brand-deep:#14309B; --brand-soft:#E7EEFF; --on-brand:#FFFFFF;
+  --gold:#C78A16;
+  --ok:#0B8F63; --ok-soft:#E1F5ED; --ok-line:#A9E0C9;
+  --warn:#A96C12; --warn-soft:#FBF1DF; --warn-line:#EBD19B;
+  --bad:#C4374F; --bad-soft:#FBE8EB; --bad-line:#F0BDC6;
+  --cat-major:#1D4ED8; --cat-basic:#0E7C86; --cat-general:#A9761B; --cat-elective:#6D4FC7;
+  --shadow:0 1px 2px rgba(18,26,43,.06), 0 6px 20px -12px rgba(18,26,43,.25);
+  --r:10px;
+  --font-ui:"IBM Plex Sans Thai","Sarabun",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-body:"Sarabun","IBM Plex Sans Thai",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#E7ECF6; --ink2:#A6B2C7; --ink3:#71809A;
+  --paper:#0C1120; --surface:#151D2E; --sunken:#1B2436;
+  --line:#28334A; --line2:#36425C;
+  --brand:#6D93FF; --brand-deep:#8FAcFF; --brand-soft:#1B2747; --on-brand:#0C1120;
+  --gold:#E0AE55;
+  --ok:#43CC9B; --ok-soft:#10301F; --ok-line:#1E5442;
+  --warn:#E0A94F; --warn-soft:#332614; --warn-line:#5A4520;
+  --bad:#F08098; --bad-soft:#331C22; --bad-line:#5C2F39;
+  --cat-major:#5B84F5; --cat-basic:#2BA6AF; --cat-general:#D2A24A; --cat-elective:#9A81E8;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 24px -14px rgba(0,0,0,.8);
+}}
+:root[data-theme="dark"]{
+  --ink:#E7ECF6; --ink2:#A6B2C7; --ink3:#71809A;
+  --paper:#0C1120; --surface:#151D2E; --sunken:#1B2436;
+  --line:#28334A; --line2:#36425C;
+  --brand:#6D93FF; --brand-deep:#8FACFF; --brand-soft:#1B2747; --on-brand:#0C1120;
+  --gold:#E0AE55;
+  --ok:#43CC9B; --ok-soft:#10301F; --ok-line:#1E5442;
+  --warn:#E0A94F; --warn-soft:#332614; --warn-line:#5A4520;
+  --bad:#F08098; --bad-soft:#331C22; --bad-line:#5C2F39;
+  --cat-major:#5B84F5; --cat-basic:#2BA6AF; --cat-general:#D2A24A; --cat-elective:#9A81E8;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 24px -14px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--font-body); font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4{font-family:var(--font-ui); margin:0; text-wrap:balance; line-height:1.3}
+button,select,input{font:inherit; color:inherit}
+.mono{font-family:var(--font-mono); font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+/* ── โครงหน้า ─────────────────────────────── */
+.shell{max-width:1240px; margin:0 auto; padding-inline:16px; padding-block:0 40px}
+
+header.bar{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:30;
+  background:color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.bar-in{max-width:1240px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.mark{display:flex; align-items:center; gap:9px; margin-inline-end:auto}
+.mark .glyph{
+  width:34px; height:34px; border-radius:9px; flex:none;
+  background:linear-gradient(145deg,var(--brand),var(--brand-deep));
+  color:#fff; display:grid; place-items:center;
+}
+.mark b{font-family:var(--font-ui); font-size:15px; font-weight:600; display:block; line-height:1.2}
+.mark span{font-size:11.5px; color:var(--ink3); display:block}
+
+.field{display:flex; flex-direction:column; gap:3px}
+.field label{font-family:var(--font-ui); font-size:10.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3)}
+select, .btn{
+  border:1px solid var(--line2); background:var(--surface); color:var(--ink);
+  border-radius:8px; padding:7px 10px; font-size:14px; cursor:pointer;
+}
+select{padding-inline-end:26px; appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink3) 50%),linear-gradient(135deg,var(--ink3) 50%,transparent 50%);
+  background-position:calc(100% - 15px) 55%, calc(100% - 10px) 55%;
+  background-size:5px 5px,5px 5px; background-repeat:no-repeat}
+.btn{display:inline-flex; align-items:center; gap:6px; font-family:var(--font-ui); font-weight:500; white-space:nowrap}
+.btn:hover{border-color:var(--ink3)}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+.btn-primary{background:var(--brand); border-color:var(--brand); color:var(--on-brand); font-weight:600}
+.btn-primary:hover{background:var(--brand-deep); border-color:var(--brand-deep)}
+:where(button,select,a,input):focus-visible{outline:2px solid var(--brand); outline-offset:2px}
+svg{flex:none}
+
+/* ── การ์ด ─────────────────────────────── */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
+.card>h2{
+  font-size:14.5px; font-weight:600; padding:11px 14px;
+  border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px;
+}
+.card>h2 .right{margin-inline-start:auto; font-family:var(--font-body); font-weight:400; font-size:13px; color:var(--ink2)}
+
+/* ── แถบสรุป ─────────────────────────────── */
+.stats{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 14px}
+.stat{
+  background:var(--surface); border:1px solid var(--line); border-radius:9px;
+  padding:8px 13px; display:flex; align-items:baseline; gap:7px; box-shadow:var(--shadow);
+}
+.stat dt{font-size:12px; color:var(--ink3); margin:0}
+.stat dd{margin:0; font-family:var(--font-ui); font-weight:600; font-size:17px; font-variant-numeric:tabular-nums}
+.stat.is-over dd{color:var(--bad)} .stat.is-under dd{color:var(--warn)} .stat.is-ok dd{color:var(--ok)}
+
+.grid2{display:grid; gap:14px; grid-template-columns:minmax(0,1fr)}
+@media (min-width:1000px){.grid2{grid-template-columns:minmax(0,1fr) 384px; align-items:start}}
+
+/* ── ตารางกริด ─────────────────────────────── */
+.tt-scroll{overflow-x:auto; display:none}
+@media (min-width:760px){.tt-scroll{display:block} .tt-days{display:none}}
+.tt{min-width:700px}
+.tt-head{display:grid; border-bottom:1px solid var(--line)}
+.tt-head div{padding:7px 4px; text-align:center; font-family:var(--font-ui); font-size:13px; font-weight:600}
+.tt-head .free{display:block; font-size:10.5px; font-weight:500; color:var(--ok)}
+.tt-body{display:grid; position:relative}
+.tt-hours{position:relative; border-inline-end:1px solid var(--line)}
+.tt-hours span{position:absolute; inset-inline-end:7px; transform:translateY(-50%); font-size:10.5px; color:var(--ink3)}
+.tt-col{position:relative; border-inline-end:1px solid var(--line)}
+.tt-col:last-child{border-inline-end:0}
+.tt-line{position:absolute; inset-inline:0; border-top:1px solid var(--line)}
+.blk{
+  position:absolute; border-radius:7px; padding:3px 6px; overflow:hidden;
+  color:#fff; border:1px solid rgba(0,0,0,.14); cursor:pointer; text-align:start;
+  display:block; width:100%; font-family:var(--font-ui);
+}
+.blk b{display:block; font-size:11px; font-weight:600; font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.blk i{display:block; font-style:normal; font-size:10px; opacity:.92; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.blk.clash{outline:2px solid var(--bad); outline-offset:-2px; box-shadow:0 0 0 3px var(--bad-soft)}
+.cat-major{background:var(--cat-major)} .cat-basic{background:var(--cat-basic)}
+.cat-general{background:var(--cat-general)} .cat-elective{background:var(--cat-elective)}
+
+/* ── ตารางแบบรายวัน (มือถือ) ─────────────── */
+.tt-days>div{border-bottom:1px solid var(--line)}
+.tt-days>div:last-child{border-bottom:0}
+.day-empty{display:flex; justify-content:space-between; align-items:center; padding:9px 14px}
+.day-empty b{font-family:var(--font-ui); font-size:13.5px; font-weight:500; color:var(--ink2)}
+.day-empty span{font-size:12px; color:var(--ok); font-weight:600}
+.day-full{padding:11px 14px}
+.day-full>b{font-family:var(--font-ui); font-size:13.5px; font-weight:600; display:block; margin-bottom:7px}
+.slot{display:flex; gap:9px; align-items:flex-start; border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:7px; background:var(--surface)}
+.slot:last-child{margin-bottom:0}
+.slot.clash{border-color:var(--bad-line); background:var(--bad-soft)}
+.slot .dot{width:9px; height:9px; border-radius:50%; margin-top:6px}
+.slot .m{flex:1; min-width:0}
+.slot .m b{font-family:var(--font-mono); font-size:13px; font-weight:500; display:block}
+.slot .m em{font-style:normal; font-size:12.5px; color:var(--ink2); display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.slot .m span{font-size:12px; color:var(--ink3); font-variant-numeric:tabular-nums}
+.x{border:0; background:none; color:var(--ink3); cursor:pointer; padding:2px 5px; border-radius:5px; line-height:1}
+.x:hover{background:var(--sunken); color:var(--ink)}
+
+.legend{display:flex; flex-wrap:wrap; gap:4px 14px; padding:9px 14px; border-top:1px solid var(--line); font-size:12px; color:var(--ink2)}
+.legend span{display:flex; align-items:center; gap:5px}
+.legend i{width:9px; height:9px; border-radius:2.5px; display:block}
+
+.empty{padding:48px 20px; text-align:center; color:var(--ink3)}
+.empty b{display:block; font-family:var(--font-ui); font-size:14.5px; color:var(--ink2); margin-bottom:3px}
+
+/* ── แผงปัญหา ─────────────────────────────── */
+.verdict{display:flex; gap:10px; padding:13px 14px; border-radius:var(--r); border:1px solid; align-items:flex-start}
+.verdict.good{background:var(--ok-soft); border-color:var(--ok-line); color:var(--ok)}
+.verdict.bad{background:var(--bad-soft); border-color:var(--bad-line); color:var(--bad)}
+.verdict b{font-family:var(--font-ui); font-size:14.5px; display:block}
+.verdict p{margin:2px 0 0; font-size:13px; color:var(--ink2)}
+
+.issue{display:flex; gap:9px; padding:11px 14px; border-top:1px solid var(--line)}
+.issue:first-child{border-top:0}
+.code{
+  font-family:var(--font-mono); font-size:10.5px; font-weight:500; padding:1px 5px;
+  border-radius:4px; height:fit-content; letter-spacing:.02em;
+}
+.code.err{background:var(--bad-soft); color:var(--bad); border:1px solid var(--bad-line)}
+.code.warn{background:var(--warn-soft); color:var(--warn); border:1px solid var(--warn-line)}
+.issue .t{flex:1; min-width:0}
+.issue .t b{font-family:var(--font-ui); font-size:13.5px; font-weight:600; display:block}
+.issue .t p{margin:1px 0 0; font-size:13px; color:var(--ink2)}
+.issue .t small{display:block; margin-top:2px; font-size:12px; color:var(--ink3)}
+.fix{margin-top:6px; font-size:12.5px; padding:4px 9px; border-radius:7px;
+  border:1px solid var(--brand); background:var(--brand-soft); color:var(--brand); cursor:pointer;
+  font-family:var(--font-ui); font-weight:500}
+.fix:hover{background:var(--brand); color:var(--on-brand)}
+
+/* ── ตัวเลือกวิชา ─────────────────────────── */
+.pick-top{padding:11px 14px; border-bottom:1px solid var(--line)}
+input[type=search]{
+  width:100%; border:1px solid var(--line2); border-radius:8px; padding:7px 11px;
+  background:var(--sunken);
+}
+.chips{display:flex; gap:5px; flex-wrap:wrap; margin-top:9px}
+.chip{border:1px solid var(--line2); background:var(--surface); border-radius:99px; padding:3px 11px; font-size:12.5px; cursor:pointer; font-family:var(--font-ui)}
+.chip[aria-pressed=true]{background:var(--brand); border-color:var(--brand); color:var(--on-brand); font-weight:500}
+.pick-list{max-height:560px; overflow-y:auto}
+.course{border-top:1px solid var(--line)}
+.course:first-child{border-top:0}
+.course>button{
+  width:100%; display:flex; gap:9px; align-items:flex-start; text-align:start;
+  background:none; border:0; padding:10px 14px; cursor:pointer;
+}
+.course>button:hover{background:var(--sunken)}
+.course .dot{width:9px; height:9px; border-radius:50%; margin-top:6px; flex:none}
+.course .info{flex:1; min-width:0}
+.course .info b{font-family:var(--font-mono); font-size:12.5px; font-weight:500; color:var(--ink2); display:block}
+.course .info em{font-style:normal; font-family:var(--font-ui); font-size:13.5px; font-weight:600; display:block}
+.course .info small{font-size:12px; color:var(--ink3)}
+.course .cnt{font-size:12px; color:var(--ink3); white-space:nowrap; padding-top:2px}
+.secs{padding:0 14px 11px 32px; display:flex; flex-direction:column; gap:5px}
+.sec{
+  display:flex; gap:9px; align-items:center; text-align:start; width:100%;
+  border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:6px 9px; cursor:pointer;
+}
+.sec:hover{border-color:var(--brand)}
+.sec[aria-pressed=true]{border-color:var(--brand); background:var(--brand-soft)}
+.sec .s{font-family:var(--font-mono); font-size:12.5px; font-weight:500; flex:none}
+.sec .w{flex:1; min-width:0; font-size:12px; color:var(--ink2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums}
+.sec .seat{font-size:11.5px; color:var(--ink3); white-space:nowrap}
+.sec .seat.full{color:var(--bad); font-weight:600}
+.tick{color:var(--brand); flex:none}
+
+/* ── แท็บหลัก ─────────────────────────────── */
+.tabs{display:flex; gap:3px; padding:0 16px; max-width:1240px; margin:0 auto; overflow-x:auto}
+.tabs button{
+  border:0; background:none; padding:9px 13px 10px; cursor:pointer; white-space:nowrap;
+  font-family:var(--ui); font-size:14px; font-weight:500; color:var(--ink2);
+  border-bottom:2.5px solid transparent; display:flex; align-items:center; gap:6px;
+}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected=true]{color:var(--brand); border-bottom-color:var(--brand); font-weight:600}
+
+/* ── แชต ─────────────────────────────── */
+.ask{display:grid; gap:14px; grid-template-columns:minmax(0,1fr)}
+@media (min-width:1000px){.ask{grid-template-columns:minmax(0,1fr) 320px; align-items:start}}
+.msgs{display:flex; flex-direction:column; gap:11px; min-height:120px}
+.bubble-me{align-self:flex-end; max-width:86%; background:var(--brand); color:var(--on-brand);
+  padding:9px 14px; border-radius:16px 16px 4px 16px; font-size:14.5px}
+.bubble-bot{background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:14px 16px; box-shadow:var(--shadow)}
+.bubble-bot .ans{white-space:pre-wrap; font-size:14.5px; line-height:1.66}
+.srcs{margin-top:12px; border-top:1px solid var(--line); padding-top:10px}
+.srcs>p{font-family:var(--ui); font-size:10.5px; font-weight:600; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--ink3); margin:0 0 6px}
+.src{display:flex; gap:8px; font-size:12.5px; padding:3px 0; align-items:baseline}
+.src .n{font-family:var(--mono); color:var(--ink3); flex:none}
+.src .w{min-width:0; flex:1}
+.src .w b{display:block; font-weight:600; font-family:var(--ui); font-size:13px}
+.src .w span{display:block; color:var(--ink3)}
+.src .sc{font-family:var(--mono); font-size:11px; color:var(--ink3); flex:none}
+.badge{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-family:var(--ui);
+  font-weight:600; padding:2px 9px; border-radius:99px; margin-top:10px}
+.badge.grounded{background:var(--ok-soft); color:var(--ok)}
+.badge.nogr{background:var(--warn-soft); color:var(--warn)}
+.askbar{position:sticky; bottom:12px; display:flex; gap:8px; background:var(--surface);
+  border:1px solid var(--line2); border-radius:12px; padding:7px; box-shadow:var(--shadow); margin-top:14px}
+.askbar input{flex:1; border:0; background:none; padding:6px 8px; font-size:15px; min-width:0}
+.askbar input:focus{outline:none}
+.examples{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+.side h3{font-family:var(--ui); font-size:13.5px; font-weight:600; margin:0 0 8px}
+.side ul{margin:0; padding-inline-start:17px; font-size:13px; color:var(--ink2); line-height:1.75}
+.side .miss{color:var(--ink3)}
+.keyrow{margin-top:11px; display:flex; gap:7px}
+.keyrow input{flex:1; min-width:0; border:1px solid var(--line2); border-radius:8px;
+  padding:6px 10px; background:var(--sunken); font-size:13px; font-family:var(--mono)}
+
+/* ── แผงตรวจคุณภาพ ─────────────────────────── */
+.ev-sum{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px}
+.ev-line{display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:11px; align-items:center;
+  padding:9px 14px; border-top:1px solid var(--line); font-size:14px}
+.ev-line:first-child{border-top:0}
+.ev-tag{font-family:var(--mono); font-size:10.5px; font-weight:600; padding:2px 6px;
+  border-radius:5px; text-align:center}
+.ev-tag.pass{background:var(--ok-soft); color:var(--ok)}
+.ev-tag.fail{background:var(--bad-soft); color:var(--bad)}
+.ev-line .q{min-width:0}
+.ev-line .q small{display:block; color:var(--ink3); font-size:12px}
+.ev-line .sc{font-family:var(--mono); font-size:12px; color:var(--ink3); white-space:nowrap}
+
+/* ── กล่องตั้งค่า ─────────────────────────── */
+.prefs{padding:13px 14px; display:grid; gap:11px}
+.row{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.row>label{font-size:13.5px}
+input[type=range]{accent-color:var(--brand); flex:1; min-width:130px}
+.days-pick{display:flex; gap:4px; flex-wrap:wrap}
+
+.note{
+  margin-top:18px; display:flex; gap:10px; align-items:flex-start;
+  background:var(--warn-soft); border:1px solid var(--warn-line); border-radius:var(--r); padding:12px 14px;
+}
+.note b{font-family:var(--font-ui); font-size:13.5px; color:var(--warn); display:block}
+.note p{margin:2px 0 0; font-size:13px; color:var(--ink2)}
+.note a{color:var(--brand)}
+footer{margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink3); display:flex; gap:10px; flex-wrap:wrap; justify-content:space-between}
+
+@media (max-width:640px){.hide-sm{display:none}}
+.toast{
+  position:fixed; inset-inline:0; bottom:calc(18px + env(safe-area-inset-bottom,0px)); margin-inline:auto;
+  width:fit-content; max-width:calc(100% - 32px); z-index:50;
+  background:var(--ink); color:var(--paper); padding:9px 16px; border-radius:99px;
+  font-family:var(--font-ui); font-size:13.5px; box-shadow:var(--shadow);
+}
+@media (prefers-reduced-motion:no-preference){
+  .toast{animation:pop .22s ease-out}
+  @keyframes pop{from{opacity:0; transform:translateY(7px)}}
+}
+</style>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="mark">
+      <span class="glyph" aria-hidden="true">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      </span>
+      <span>
+        <b>ตารางชนไหม</b>
+        <span>วิศวกรรมคอมพิวเตอร์ · มทร.ธัญบุรี</span>
+      </span>
+    </div>
+
+    <span id="plan-controls" style="display:contents">
+    <div class="field">
+      <label for="term">ภาคการศึกษา</label>
+      <select id="term"></select>
+    </div>
+    <div class="field">
+      <label for="year">ชั้นปี</label>
+      <select id="year">
+        <option value="">ไม่ระบุ</option>
+        <option value="1">ปี 1</option>
+        <option value="2">ปี 2</option>
+        <option value="3">ปี 3</option>
+        <option value="4">ปี 4</option>
+      </select>
+    </div>
+    <button class="btn" id="btn-prefs" aria-expanded="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="7" cy="18" r="2" fill="currentColor"/></svg>
+      เงื่อนไข
+    </button>
+    <button class="btn btn-primary" id="btn-auto">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+      จัดตารางให้เลย
+    </button>
+    <button class="btn" id="btn-copy" title="คัดลอกตารางเป็นข้อความ">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      <span class="hide-sm">คัดลอก</span>
+    </button>
+    <button class="btn" id="btn-clear" title="ล้างแผนทั้งหมด">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    </button>
+    </span>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="เลือกส่วนที่จะใช้">
+    <button role="tab" data-tab="plan" aria-selected="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      จัดตารางเรียน
+    </button>
+    <button role="tab" data-tab="ask" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9.2 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.8-2.8 2.8M12 17v.01"/></svg>
+      ถามเรื่องระเบียบ
+    </button>
+    <button role="tab" data-tab="eval" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2.5 2.5L16 8"/><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4"/></svg>
+      ตรวจคุณภาพระบบ
+    </button>
+  </nav>
+</header>
+
+<div class="shell">
+  <div class="card" id="prefs-card" hidden>
+    <h2>เงื่อนไขของฉัน</h2>
+    <div class="prefs">
+      <div class="row">
+        <input type="checkbox" id="pref-passed">
+        <label for="pref-passed">ถือว่าผ่านวิชาของชั้นปีก่อนหน้ามาแล้ว <b id="passed-note" style="color:var(--ink3); font-weight:400"></b></label>
+      </div>
+      <div class="row">
+        <input type="checkbox" id="pref-morning">
+        <label for="pref-morning">ไม่เอาคาบก่อน 09:00</label>
+      </div>
+      <div class="row">
+        <span style="font-size:13.5px">อยากให้ว่างวัน</span>
+        <span class="days-pick" id="pref-days"></span>
+      </div>
+      <div class="row">
+        <label for="pref-max">หน่วยกิตสูงสุด <b class="num" id="pref-max-val">21</b></label>
+        <input type="range" id="pref-max" min="9" max="21" step="1" value="21">
+      </div>
+      <p style="margin:0; font-size:12.5px; color:var(--ink3)">ระเบียบกำหนด 9–21 หน่วยกิตต่อภาคปกติ ระบบจะไม่จัดให้เกินกรอบนี้ไม่ว่าตั้งค่าอย่างไร · วันว่างกับคาบเช้าเป็นความชอบ ระบบจะพยายามเลี่ยงให้ แต่ถ้าเลี่ยงแล้วลงวิชาไม่ครบก็จะยอมลง</p>
+    </div>
+  </div>
+
+  <div id="tab-plan">
+  <dl class="stats" id="stats"></dl>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+        ตารางเรียน <span id="tt-term"></span>
+        <span class="right" id="tt-count"></span>
+      </h2>
+      <div id="tt-mount"></div>
+      <div class="legend">
+        <span><i style="background:var(--cat-major)"></i>วิชาชีพบังคับ</span>
+        <span><i style="background:var(--cat-basic)"></i>พื้นฐานวิชาชีพ</span>
+        <span><i style="background:var(--cat-general)"></i>ศึกษาทั่วไป</span>
+        <span><i style="background:var(--cat-elective)"></i>วิชาชีพเลือก</span>
+        <span style="color:var(--bad)">▨ ชนกัน</span>
+      </div>
+    </section>
+
+    <div style="display:grid; gap:14px">
+      <div id="verdict-mount"></div>
+      <section class="card" id="issues-card" hidden>
+        <h2>รายการที่ต้องแก้</h2>
+        <div id="issues-mount"></div>
+      </section>
+      <section class="card" id="skipped-card" hidden>
+        <h2>วิชาที่ระบบไม่ได้ลงให้</h2>
+        <div id="skipped-mount" style="padding:10px 14px; font-size:12.5px; color:var(--ink2)"></div>
+      </section>
+
+      <section class="card">
+        <h2>เลือกรายวิชา <span class="right" id="pick-count"></span></h2>
+        <div class="pick-top">
+          <input type="search" id="q" placeholder="ค้นรหัสวิชา หรือชื่อวิชา" aria-label="ค้นหารายวิชา">
+          <div class="chips" id="year-chips"></div>
+        </div>
+        <div class="pick-list" id="pick-mount"></div>
+      </section>
+    </div>
+  </div>
+
+  </div><!-- /tab-plan -->
+
+  <!-- ══ แท็บถามเรื่องระเบียบ (RAG) ══ -->
+  <div id="tab-ask" hidden>
+    <div class="ask">
+      <div>
+        <div class="card" style="padding:16px">
+          <h2 style="font-family:var(--ui); font-size:17px; margin:0 0 4px">ถามเรื่องระเบียบและหลักสูตร</h2>
+          <p style="margin:0; font-size:13.5px; color:var(--ink2)">
+            ค้นจากเอกสารก่อน แล้วค่อยตอบจากสิ่งที่ค้นเจอเท่านั้น <strong>พร้อมบอกทุกครั้งว่าอ้างจากเอกสารไหน ข้อไหน</strong>
+            ถ้าคลังไม่มีข้อมูลเรื่องนั้น จะบอกตรง ๆ ว่าไม่รู้ ไม่เดาให้
+          </p>
+          <p id="kb-stat" style="margin:9px 0 0; font-size:12px; color:var(--ink3)" class="mono"></p>
+        </div>
+
+        <div class="examples" id="examples"></div>
+        <div class="msgs" id="msgs" style="margin-top:14px"></div>
+
+        <form class="askbar" id="askform">
+          <input id="q-ask" placeholder="เช่น ถอนรายวิชาได้ถึงเมื่อไหร่" aria-label="คำถาม" autocomplete="off">
+          <button type="submit" class="btn btn-primary" id="ask-send">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 16-2.5-6z"/></svg>
+            ถาม
+          </button>
+        </form>
+      </div>
+
+      <aside class="card side" style="padding:16px">
+        <h3>ระบบรู้อะไรบ้าง</h3>
+        <ul id="cov-has"></ul>
+        <h3 style="margin-top:14px">เรื่องที่ยังไม่มีข้อมูล</h3>
+        <ul id="cov-miss" class="miss"></ul>
+        <h3 style="margin-top:16px">โหมดตอบคำถาม</h3>
+        <p style="margin:0; font-size:13px; color:var(--ink2)" id="mode-txt"></p>
+        <details id="devbox" style="margin-top:10px">
+          <summary style="cursor:pointer; font-size:12px; color:var(--ink3); font-family:var(--ui)">สำหรับผู้พัฒนา</summary>
+          <div class="keyrow">
+            <input id="gkey" type="password" placeholder="Gemini API key ของคุณเอง" aria-label="Gemini API key" autocomplete="off">
+            <button class="btn" id="gsave" type="button">บันทึก</button>
+          </div>
+          <p style="margin:7px 0 0; font-size:11.5px; color:var(--ink3)">
+            ช่องนี้ไว้ทดสอบในเครื่องตัวเองเท่านั้น คีย์เก็บใน localStorage ของเบราว์เซอร์คุณ
+            ยิงตรงไป Google ไม่ถูกส่งไปที่อื่นและไม่ถูกบันทึกไว้ที่ไหน
+          </p>
+        </details>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ══ แท็บตรวจคุณภาพระบบ (golden set) ══ -->
+  <div id="tab-eval" hidden>
+    <div class="card" style="padding:16px">
+      <h2 style="font-family:var(--ui); font-size:17px; margin:0 0 4px">ชุดคำถามมาตรฐาน (golden set)</h2>
+      <p style="margin:0; font-size:13.5px; color:var(--ink2)">
+        ชุดคำถามที่ใช้วัดว่าระบบค้นคืนยังทำงานถูกอยู่ไหม แบ่งเป็นสองฝั่ง —
+        <strong>คำถามที่ต้องตอบได้</strong> ต้องมีคะแนนเกินเกณฑ์ และ
+        <strong>คำถามนอกเรื่อง</strong> ต้องมีคะแนนต่ำกว่าเกณฑ์ เพื่อให้ระบบปฏิเสธการตอบ
+        ชุดเดียวกับที่ใช้ใน <span class="mono">pytest</span> ของโมดูล 07
+      </p>
+      <p style="margin:9px 0 0; font-size:12.5px; color:var(--ink3)">
+        เกณฑ์ตัด <span class="mono" id="ev-min"></span> — ค่านี้เลือกจากการวัดจริง
+        ไม่ได้ตั้งลอย ๆ (ดูเหตุผลใน <span class="mono">api/_core/text.py</span>)
+      </p>
+      <button class="btn btn-primary" id="run-eval" style="margin-top:13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"/></svg>
+        รันชุดทดสอบเดี๋ยวนี้
+      </button>
+    </div>
+    <div id="ev-out" style="margin-top:14px"></div>
+  </div>
+
+  <div class="note">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--warn)" stroke-width="2" stroke-linecap="round" style="margin-top:2px"><path d="M12 9v5M12 17.5v.5"/><path d="M10.3 3.9 2.4 17.4A2 2 0 0 0 4.1 20.4h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <div>
+      <b>ข้อมูลในหน้านี้เป็นชุดจำลองสำหรับต้นแบบ</b>
+      <p>ตารางสอน เวลาสอบ และที่นั่ง เป็นข้อมูลตัวอย่างที่สร้างขึ้นเพื่อสาธิตระบบ ไม่ใช่ข้อมูลจริงจากมหาวิทยาลัย <b style="display:inline; color:var(--ink)">โปรดตรวจสอบกับระบบทะเบียนและอาจารย์ที่ปรึกษาก่อนลงทะเบียนจริง</b> ส่วนการตรวจตารางชน หน่วยกิต และวิชาบังคับก่อน เป็นตรรกะชุดเดียวกับระบบจริง</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>ตรวจให้ 6 อย่าง: เวลาเรียนชน · เวลาสอบชน · วิชาบังคับก่อน · หน่วยกิตเกิน/ขาด · ลงซ้ำ · ที่นั่งเต็ม</span>
+    <span>แผนที่จัดไว้ถูกจำในเครื่องคุณเอง ไม่ถูกส่งไปที่ไหน</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+const DATA = "__TIMETABLE_DATA__";
+
+/* ═══ ส่วนตรรกะ: พอร์ตจาก api/_core/conflicts.py และ planner.py ═══ */
+const SLOT_MIN = 30, DAY_START = 480, DAY_END = 1260;
+const SLOTS_PER_DAY = (DAY_END - DAY_START) / SLOT_MIN;           // 26
+const DAY_TH = ["จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์","อาทิตย์"];
+const MIN_CREDITS = 9, MAX_CREDITS = 21, SUMMER_MAX = 9;
+const CAT_TH = {major:"วิชาชีพบังคับ", basic:"พื้นฐานวิชาชีพ", general:"ศึกษาทั่วไป", elective:"วิชาชีพเลือก"};
+
+const hhmm = m => String(Math.floor(m/60)).padStart(2,"0") + ":" + String(m%60).padStart(2,"0");
+
+/* ใช้ BigInt เพราะ bitmask กว้าง 182 บิต เกินที่ตัวดำเนินการบิตของ JS รองรับ (32 บิต) */
+function rangeMask(day, start, end){
+  if (day < 0 || day > 6) return 0n;
+  const s = Math.max(start, DAY_START), e = Math.min(end, DAY_END);
+  if (s >= e) return 0n;
+  const from = Math.floor((s - DAY_START) / SLOT_MIN);
+  const to = Math.min(Math.ceil((e - DAY_START) / SLOT_MIN), SLOTS_PER_DAY);
+  let mask = 0n;
+  for (let slot = from; slot < to; slot++) mask |= 1n << BigInt(day * SLOTS_PER_DAY + slot);
+  return mask;
+}
+// คีย์ด้วยตัวอ็อบเจกต์ ไม่ใช่ sec.id เพราะมี 12 หมู่ที่ id ซ้ำกันข้ามเทอม
+// ถ้าคีย์ด้วย id จะหยิบ mask ของอีกเทอทมาใช้แล้วตรวจชนผิด
+const _maskCache = new WeakMap();
+function secMask(sec){
+  const hit = _maskCache.get(sec);
+  if (hit !== undefined) return hit;
+  // คำนวณจาก meetings เสมอ ไม่ใช้ slots_mask ที่มากับ JSON
+  // เพราะ mask กว้าง 182 บิต พอ JSON.parse อ่านเป็น Number (ที่แม่นแค่ 53 บิต)
+  // บิตล่างจะหายเงียบ ๆ แล้วตรวจชนผิดโดยไม่มีอะไรฟ้อง
+  let mask = 0n;
+  if (!sec.is_online)
+    for (const m of sec.meetings || []) mask |= rangeMask(m.day, m.start_min, m.end_min);
+  _maskCache.set(sec, mask);
+  return mask;
+}
+function overlapWindow(a, b){
+  for (const ma of a.meetings || []) for (const mb of b.meetings || []){
+    if (ma.day !== mb.day) continue;
+    const s = Math.max(ma.start_min, mb.start_min), e = Math.min(ma.end_min, mb.end_min);
+    if (s < e) return [ma.day, s, e];
+  }
+  return null;
+}
+function examsClash(a, b){
+  for (const ea of a.exams || []) for (const eb of b.exams || []){
+    if (ea.exam_type !== eb.exam_type || ea.exam_date !== eb.exam_date) continue;
+    if (ea.start_min < eb.end_min && eb.start_min < ea.end_min) return true;
+  }
+  return false;
+}
+const issue = (code, key, th, subjects=[], detail={}, severity="ERROR", suggestions=[]) =>
+  ({code, severity, message_key:key, message_th:th, subjects, detail, suggestions});
+
+function whenText(sec){
+  return (sec.meetings || []).filter(m => m.day >= 0 && m.day < 7)
+    .map(m => DAY_TH[m.day] + " " + hhmm(m.start_min) + "-" + hhmm(m.end_min)).join(" / ");
+}
+/** หาหมู่อื่นของวิชาเดียวกันที่ไม่ชนกับที่เลือกไว้ — ให้ผู้ใช้กดแก้ได้ทันที */
+function altSections(a, b, chosen, pool){
+  const out = [];
+  for (const target of [a, b].filter(Boolean)){
+    let keep = 0n;
+    for (const s of chosen) if (s.course_code !== target.course_code) keep |= secMask(s);
+    const alt = pool.find(s =>
+      s.course_code === target.course_code && s.id !== target.id &&
+      !(secMask(s) & keep) &&
+      !(s.seat_total != null && (s.seat_taken || 0) >= s.seat_total));
+    if (alt) out.push({action:"change_section", from:target.id, to:alt.id, when:whenText(alt)});
+  }
+  return out;
+}
+
+function qualityWarnings(sections){
+  const out = [], byDay = new Map();
+  for (const s of sections) for (const m of s.meetings || []){
+    if (m.day == null || m.day < 0 || m.day > 6) continue;
+    if (!byDay.has(m.day)) byDay.set(m.day, []);
+    byDay.get(m.day).push([m.start_min, m.end_min, s.id]);
+  }
+  for (const day of [...byDay.keys()].sort((x,y) => x-y)){
+    const slots = byDay.get(day).sort((x,y) => x[0]-y[0] || x[1]-y[1]);
+    const span = slots[slots.length-1][1] - slots[0][0];
+    if (span >= 360) out.push(issue("W1","long_stretch",
+      "วัน"+DAY_TH[day]+"อยู่มหาวิทยาลัยยาว "+Math.floor(span/60)+" ชั่วโมง ("+hhmm(slots[0][0])+"-"+hhmm(slots[slots.length-1][1])+")",
+      slots.map(s=>s[2]), {day, span_minutes:span}, "WARNING"));
+    for (let i = 0; i < slots.length-1; i++){
+      const gap = slots[i+1][0] - slots[i][1];
+      if (gap >= 240) out.push(issue("W2","large_gap",
+        "วัน"+DAY_TH[day]+"มีช่องว่าง "+Math.floor(gap/60)+" ชั่วโมง ระหว่าง "+hhmm(slots[i][1])+" ถึง "+hhmm(slots[i+1][0]),
+        [slots[i][2], slots[i+1][2]], {day, gap_minutes:gap}, "WARNING"));
+    }
+    if (slots[0][0] < 540) out.push(issue("W3","early_class",
+      "วัน"+DAY_TH[day]+"มีคาบเรียนตั้งแต่ "+hhmm(slots[0][0]),
+      [slots[0][2]], {day}, "WARNING"));
+  }
+  if (byDay.size >= 6) out.push(issue("W5","heavy_days",
+    "ต้องมามหาวิทยาลัย "+byDay.size+" วันต่อสัปดาห์", [], {days:byDay.size}, "WARNING"));
+  return out;
+}
+
+function detectConflicts(sections, {passed=[], assumedPassed=[], term="", minCredits=null, maxCredits=null, pool=[]} = {}){
+  const passedSet = new Set(passed);
+  const prereqOk = new Set([...passed, ...assumedPassed]);
+  const isSummer = term.startsWith("3/");
+  const lo = minCredits != null ? minCredits : (isSummer ? 0 : MIN_CREDITS);
+  const hi = maxCredits != null ? maxCredits : (isSummer ? SUMMER_MAX : MAX_CREDITS);
+  const conflicts = [];
+
+  for (let i = 0; i < sections.length; i++) for (let j = i+1; j < sections.length; j++){
+    const a = sections[i], b = sections[j];
+    if (secMask(a) & secMask(b)){
+      const win = overlapWindow(a, b);
+      const when = win ? "วัน"+DAY_TH[win[0]]+" เวลา "+hhmm(win[1])+"-"+hhmm(win[2]) : "";
+      conflicts.push(issue("C1","time_clash",
+        ("เวลาเรียนวิชา "+a.id+" ชนกับ "+b.id+" "+when).trim(),
+        [a.id, b.id], win ? {day:win[0], day_th:DAY_TH[win[0]], overlap_start:win[1], overlap_end:win[2]} : {},
+        "ERROR", altSections(a, b, sections, pool)));
+    }
+    for (const ea of a.exams || []) for (const eb of b.exams || []){
+      if (ea.exam_type !== eb.exam_type || ea.exam_date !== eb.exam_date) continue;
+      if (ea.start_min < eb.end_min && eb.start_min < ea.end_min){
+        const kind = ea.exam_type === "midterm" ? "กลางภาค" : "ปลายภาค";
+        conflicts.push(issue("C2","exam_clash",
+          "สอบ"+kind+"ของ "+a.course_code+" ชนกับ "+b.course_code+" วันที่ "+ea.exam_date+" เวลา "+hhmm(ea.start_min)+"-"+hhmm(ea.end_min),
+          [a.id, b.id], {exam_type:ea.exam_type, exam_date:ea.exam_date}));
+      }
+    }
+  }
+
+  for (const sec of sections){
+    const missing = (sec.prerequisites || []).filter(p => !prereqOk.has(p));
+    if (missing.length) conflicts.push(issue("C3","prereq_fail",
+      "ยังไม่ผ่านวิชาบังคับก่อน ("+missing.join(", ")+") ของวิชา "+sec.course_code,
+      [sec.id], {missing}));
+  }
+
+  const total = sections.reduce((n, s) => n + (s.credits|0), 0);
+  if (total > hi) conflicts.push(issue("C4","credit_limit_exceeded",
+    "หน่วยกิตรวม ("+total+") เกินเพดานสูงสุดที่กำหนด ("+hi+" หน่วยกิต)", [], {total_credits:total, max:hi}));
+  else if (sections.length && total < lo) conflicts.push(issue("C4","credit_limit_under",
+    "หน่วยกิตรวม ("+total+") ต่ำกว่าเกณฑ์ขั้นต่ำของมหาวิทยาลัย ("+lo+" หน่วยกิต)", [], {total_credits:total, min:lo}));
+
+  const byCourse = new Map();
+  for (const sec of sections){
+    if (!byCourse.has(sec.course_code)) byCourse.set(sec.course_code, []);
+    byCourse.get(sec.course_code).push(sec.id);
+  }
+  for (const [code, ids] of byCourse){
+    if (ids.length > 1) conflicts.push(issue("C5","duplicate_section",
+      "ลงทะเบียนวิชาเดียวกันซ้ำกันมากกว่าหนึ่งกลุ่ม: "+code+" ("+ids.join(", ")+")", ids, {course_code:code}));
+    if (passedSet.has(code)) conflicts.push(issue("C5","already_passed",
+      "เคยสอบผ่านรายวิชา "+code+" แล้ว ไม่สามารถลงทะเบียนซ้ำได้", ids, {course_code:code}));
+  }
+
+  for (const sec of sections){
+    if (sec.seat_total != null && sec.seat_taken != null && sec.seat_taken >= sec.seat_total)
+      conflicts.push(issue("C6","seat_full",
+        "ที่นั่งในกลุ่ม "+sec.id+" เต็มแล้ว ("+sec.seat_taken+"/"+sec.seat_total+" ที่นั่ง)",
+        [sec.id], {seat_total:sec.seat_total}, "ERROR", altSections(sec, null, sections, pool)));
+  }
+
+  const days = [...new Set(sections.flatMap(s => (s.meetings||[]).map(m => m.day)))]
+    .filter(d => d >= 0 && d < 7).sort();
+  return {
+    has_conflict: conflicts.some(c => c.severity === "ERROR"),
+    conflicts,
+    warnings: qualityWarnings(sections),
+    summary: {
+      total_courses: new Set(sections.map(s => s.course_code)).size,
+      total_credits: total, min_credits: lo, max_credits: hi,
+      credit_status: total > hi ? "over" : (total < lo ? "under" : "ok"),
+      days_on_campus: days.length,
+      free_days: [0,1,2,3,4,5,6].filter(d => !days.includes(d)).map(d => DAY_TH[d]),
+    },
+  };
+}
+
+/* ค่าจากผู้ใช้เชื่อตรง ๆ ไม่ได้ ต้องบีบให้อยู่ในกรอบระเบียบเสมอ */
+const clampCredits = (v, fallback, lo, hi) => {
+  const n = parseInt(v, 10);
+  return Number.isNaN(n) ? fallback : Math.max(lo, Math.min(hi, n));
+};
+
+function sectionScore(sec, prefs, usedDays){
+  let score = 0;
+  const days = new Set((sec.meetings||[]).map(m => m.day).filter(d => d >= 0 && d < 7));
+  if (sec.seat_total) score += 2 * ((sec.seat_total - (sec.seat_taken||0)) / sec.seat_total);
+  if (prefs.avoidMorning){
+    const earliest = Math.min(...(sec.meetings||[]).map(m => m.start_min), 540);
+    if (earliest < 540) score -= 4;
+  }
+  const free = new Set(prefs.freeDays || []);
+  if ([...days].some(d => free.has(d))) score -= 8;
+  if ([...days].some(d => usedDays.has(d))) score += 1.5;
+  return score;
+}
+
+function generatePlan(pool, {term, studentYear=null, passed=[], assumedPassed=[], prefs={}} = {}){
+  const passedSet = new Set(passed);
+  const prereqOk = new Set([...passed, ...assumedPassed]);
+  const assumedSet = new Set(assumedPassed);
+  const isSummer = term.startsWith("3/");
+  const ceiling = isSummer ? SUMMER_MAX : MAX_CREDITS;
+  const floor = isSummer ? 0 : MIN_CREDITS;
+  const lo0 = clampCredits(prefs.minCredits, floor, 0, ceiling);
+  const hi = clampCredits(prefs.maxCredits, ceiling, 1, ceiling);
+  const lo = Math.min(lo0, hi);
+
+  const byCourse = new Map();
+  for (const s of pool){
+    if (!byCourse.has(s.course_code)) byCourse.set(s.course_code, []);
+    byCourse.get(s.course_code).push(s);
+  }
+  const rank = code => {
+    const secs = byCourse.get(code);
+    const year = secs[0].suggested_year;
+    const priority = Math.max(...secs.map(s => s.priority_score || 0));
+    // ลำดับ: วิชาของชั้นปีตัวเอง > วิชาชีพเลือก (ไม่ระบุชั้นปี ใครลงก็ได้) > ที่เหลือ
+    // ถ้าไม่แยกชั้นที่สอง นักศึกษาปี 1 จะได้วิชาปี 3 มาถมให้ครบหน่วยกิต ซึ่งไม่สมจริง
+    const tier = !studentYear ? 1 : year === studentYear ? 0 : year == null ? 1 : 2;
+    return [tier, -priority, code];
+  };
+  const codes = [...byCourse.keys()].sort((a, b) => {
+    const ra = rank(a), rb = rank(b);
+    return ra[0]-rb[0] || ra[1]-rb[1] || (ra[2] < rb[2] ? -1 : 1);
+  });
+
+  const chosen = [], skipped = [];
+  let usedMask = 0n, credits = 0;
+  const usedDays = new Set();
+
+  for (const code of codes){
+    if (passedSet.has(code)) continue;
+    // ถ้าถือว่าผ่านชั้นปีก่อนหน้ามาแล้ว ก็ไม่ควรจัดวิชาเหล่านั้นให้อีก
+    // (วิชาชีพเลือกที่ไม่ระบุชั้นปีไม่โดนกรอง ใครก็ลงได้)
+    if (assumedSet.has(code)){
+      skipped.push({course_code:code, reason:"ถือว่าผ่านมาแล้วตามชั้นปีที่เลือก"});
+      continue;
+    }
+    const cost = byCourse.get(code)[0].credits | 0;
+    if (credits + cost > hi){ skipped.push({course_code:code, reason:"ลงแล้วจะเกิน "+hi+" หน่วยกิต"}); continue; }
+    const missing = (byCourse.get(code)[0].prerequisites || []).filter(p => !prereqOk.has(p));
+    if (missing.length){ skipped.push({course_code:code, reason:"ยังไม่ผ่านวิชาบังคับก่อน "+missing.join(", ")}); continue; }
+
+    const options = byCourse.get(code).filter(s =>
+      !(usedMask & secMask(s)) &&
+      !(s.seat_total != null && (s.seat_taken||0) >= s.seat_total) &&
+      !chosen.some(p => examsClash(s, p)));
+    if (!options.length){
+      skipped.push({course_code:code, reason:"ทุกหมู่ชนกับวิชาที่เลือกไว้ (เวลาเรียนหรือเวลาสอบ) หรือที่นั่งเต็ม"});
+      continue;
+    }
+    let best = options[0], bestScore = -Infinity;
+    for (const o of options){
+      const sc = sectionScore(o, prefs, usedDays);
+      if (sc > bestScore){ bestScore = sc; best = o; }
+    }
+    chosen.push(best);
+    usedMask |= secMask(best);
+    for (const m of best.meetings || []) usedDays.add(m.day);
+    credits += cost;
+    if (credits >= hi) break;
+  }
+
+  const result = detectConflicts(chosen, {passed, assumedPassed, term, minCredits:lo, maxCredits:hi, pool});
+  result.plan = chosen;
+  result.skipped = skipped;
+  result.reached_minimum = credits >= lo;
+  return result;
+}
+
+/* ═══ สถานะ ═══ */
+const TERMS = Object.keys(DATA).sort();
+const KEY = "rmutt-planner-v1";
+let state = {term:TERMS[0], year:2, ids:[], prefs:{avoidMorning:false, freeDays:[], maxCredits:21, assumePassed:true}};
+let skipped = [], query = "", yearFilter = "", openCode = null, result = null;
+
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+}
+function load(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (!s || !DATA[s.term]) return false;
+    state = {term:s.term, year:s.year ?? null, ids:Array.isArray(s.ids) ? s.ids : [],
+             prefs:{avoidMorning:!!s.prefs?.avoidMorning,
+                    freeDays:Array.isArray(s.prefs?.freeDays) ? s.prefs.freeDays : [],
+                    maxCredits:clampCredits(s.prefs?.maxCredits, 21, 9, 21),
+                    assumePassed:s.prefs?.assumePassed !== false}};
+    return true;
+  } catch { return false; }
+}
+
+const pool = () => DATA[state.term].sections;
+const picked = () => pool().filter(s => state.ids.includes(s.id));
+
+/** วิชาที่ถือว่าผ่านมาแล้ว อนุมานจากชั้นปีที่เลือก
+ *
+ * ถ้าไม่มีส่วนนี้ ระบบจะคิดว่าทุกคนยังไม่ผ่านอะไรเลย นักศึกษาปี 4 กดจัดตาราง
+ * แล้วจะได้วิชาปี 1 เต็มไปหมด เพราะวิชาปี 3-4 ติด "ยังไม่ผ่านวิชาบังคับก่อน" ทั้งแถบ
+ *
+ * ใช้เพื่อ "ปลดล็อกวิชาบังคับก่อน" อย่างเดียว ไม่เอาไปห้ามลงวิชา
+ * และไม่เอาไปขึ้น C5 ว่าเคยผ่านแล้ว เพราะนี่เป็นการเดาจากชั้นปี ไม่ใช่ข้อมูลจริงจากทะเบียน
+ */
+function assumedPassedCourses(){
+  if (!state.prefs.assumePassed || !state.year) return [];
+  const out = new Set();
+  for (const term of Object.keys(DATA))
+    for (const sec of DATA[term].sections)
+      if (sec.suggested_year != null && sec.suggested_year < state.year) out.add(sec.course_code);
+  return [...out];
+}
+
+function recompute(){
+  const secs = picked();
+  result = secs.length ? detectConflicts(secs, {term:state.term, pool:pool(), assumedPassed:assumedPassedCourses()}) : null;
+}
+
+/* ═══ การแสดงผล ═══ */
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderStats(){
+  const secs = picked();
+  const credits = secs.reduce((n,s) => n + (s.credits|0), 0);
+  const status = !secs.length ? "" : credits > state.prefs.maxCredits ? "is-over"
+               : credits < MIN_CREDITS ? "is-under" : "is-ok";
+  const days = new Set(secs.flatMap(s => (s.meetings||[]).map(m => m.day)));
+  const free = [0,1,2,3,4,5,6].filter(d => !days.has(d)).map(d => DAY_TH[d]);
+  el("stats").innerHTML =
+    '<div class="stat"><dt>วิชา</dt><dd>'+new Set(secs.map(s=>s.course_code)).size+'</dd></div>' +
+    '<div class="stat '+status+'"><dt>หน่วยกิต</dt><dd>'+credits+'<span style="font-size:12px;font-weight:400;color:var(--ink3)"> / '+state.prefs.maxCredits+'</span></dd></div>' +
+    '<div class="stat"><dt>มามหาวิทยาลัย</dt><dd>'+days.size+'<span style="font-size:12px;font-weight:400;color:var(--ink3)"> วัน</span></dd></div>' +
+    (free.length ? '<div class="stat"><dt>วันว่าง</dt><dd style="font-size:14px">'+esc(free.join(" "))+'</dd></div>' : "");
+}
+
+/** แบ่งคอลัมน์ย่อยให้คาบที่ทับกัน ไม่งั้นบล็อกจะวางทับกันสนิทจนเห็นแค่อันบนสุด */
+function assignLanes(blocks){
+  for (let day = 0; day <= 6; day++){
+    const ofDay = blocks.filter(b => b.day === day).sort((a,b) => a.start-b.start || a.end-b.end);
+    let group = [], groupEnd = -1;
+    const flush = () => {
+      if (!group.length) return;
+      const laneEnds = [];
+      for (const b of group){
+        let lane = laneEnds.findIndex(e => e <= b.start);
+        if (lane === -1){ lane = laneEnds.length; laneEnds.push(b.end); } else laneEnds[lane] = b.end;
+        b.lane = lane;
+      }
+      for (const b of group) b.lanes = laneEnds.length;
+      group = []; groupEnd = -1;
+    };
+    for (const b of ofDay){
+      if (group.length && b.start >= groupEnd) flush();
+      group.push(b); groupEnd = Math.max(groupEnd, b.end);
+    }
+    flush();
+  }
+  return blocks;
+}
+
+function buildBlocks(){
+  const clash = new Set();
+  for (const c of result?.conflicts || []) if (c.severity === "ERROR") c.subjects.forEach(s => clash.add(s));
+  const out = [];
+  for (const s of picked()) (s.meetings||[]).forEach((m, i) => {
+    if (m.day < 0 || m.day > 6) return;
+    out.push({key:s.id+"-"+i, id:s.id, day:m.day, start:m.start_min, end:m.end_min,
+      code:s.course_code, section:s.section, name:s.course_name, room:m.room,
+      kind:m.meeting_type === "lab" ? "ปฏิบัติ" : "บรรยาย",
+      cat:s.category, clash:clash.has(s.id), lane:0, lanes:1});
+  });
+  return assignLanes(out);
+}
+
+function renderTimetable(){
+  const blocks = buildBlocks();
+  el("tt-term").textContent = state.term;
+  const secs = picked();
+  el("tt-count").textContent = secs.length
+    ? new Set(secs.map(s=>s.course_code)).size+" วิชา · "+secs.reduce((n,s)=>n+(s.credits|0),0)+" หน่วยกิต"
+    : "";
+
+  if (!blocks.length){
+    el("tt-mount").innerHTML =
+      '<div class="empty"><b>ยังไม่มีวิชาในตาราง</b>กดปุ่ม “จัดตารางให้เลย” ด้านบน หรือเลือกวิชาเองจากรายการ</div>';
+    return;
+  }
+
+  const used = new Set(blocks.map(b => b.day));
+  const days = [0,1,2,3,4,5,6].filter(d => d !== 6 || used.has(6));
+  const HOURS = []; for (let h = 8; h < 21; h++) HOURS.push(h*60);
+  const ROW = 54, COLS = "56px repeat("+days.length+", minmax(0,1fr))";
+
+  let grid = '<div class="tt-scroll"><div class="tt">' +
+    '<div class="tt-head" style="grid-template-columns:'+COLS+'"><div></div>' +
+    days.map(d => '<div>'+DAY_TH[d]+(used.has(d) ? "" : '<span class="free">ว่าง</span>')+'</div>').join("") +
+    '</div><div class="tt-body" style="grid-template-columns:'+COLS+'; height:'+(HOURS.length*ROW)+'px">' +
+    '<div class="tt-hours">' + HOURS.map((h,i) => '<span style="top:'+(i*ROW)+'px">'+hhmm(h)+'</span>').join("") + '</div>';
+
+  for (const d of days){
+    grid += '<div class="tt-col">' + HOURS.map((h,i) => '<div class="tt-line" style="top:'+(i*ROW)+'px"></div>').join("");
+    for (const b of blocks.filter(x => x.day === d)){
+      const top = ((b.start - DAY_START)/60)*ROW;
+      const height = Math.max(((b.end - b.start)/60)*ROW - 3, 26);
+      // เหลื่อมทีละ 22% แทนการหารความกว้างเท่ากัน หารครึ่งแล้วแคบจนอ่านไม่ออก
+      const width = 100 - (b.lanes-1)*22, left = b.lane*22;
+      grid += '<button class="blk cat-'+b.cat+(b.clash ? " clash":"")+'" data-id="'+b.id+'"' +
+        ' style="top:'+top+'px; height:'+height+'px; left:calc('+left+'% + 3px); width:calc('+width+'% - 6px); z-index:'+(10+b.lane)+'"' +
+        ' title="'+esc(b.code+" หมู่ "+b.section+" · "+b.name+"\n"+hhmm(b.start)+"-"+hhmm(b.end)+" · "+b.kind+" "+b.room)+'">' +
+        '<b>'+(b.clash ? "⚠ " : "")+esc(b.code)+'</b>' +
+        '<i>ม.'+esc(b.section)+' · '+hhmm(b.start)+'-'+hhmm(b.end)+'</i>' +
+        (height > 42 ? '<i>'+esc(b.kind+" "+b.room)+'</i>' : "") +
+        '</button>';
+    }
+    grid += '</div>';
+  }
+  grid += '</div></div></div>';
+
+  // มือถือ: กริดกว้าง 700px ต้องเลื่อนแนวนอนซึ่งผู้ใช้ไม่รู้ว่าเลื่อนได้ จึงแสดงเป็นรายวันแทน
+  let list = '<div class="tt-days">';
+  for (const d of days){
+    const ofDay = blocks.filter(b => b.day === d).sort((a,b) => a.start-b.start);
+    if (!ofDay.length){
+      list += '<div><div class="day-empty"><b>'+DAY_TH[d]+'</b><span>ว่างทั้งวัน</span></div></div>';
+      continue;
+    }
+    list += '<div><div class="day-full"><b>'+DAY_TH[d]+'</b>' + ofDay.map(b =>
+      '<div class="slot'+(b.clash ? " clash":"")+'">' +
+        '<span class="dot" style="background:var(--cat-'+b.cat+')"></span>' +
+        '<span class="m"><b>'+(b.clash ? "⚠ " : "")+esc(b.code)+' <span style="color:var(--ink3)">ม.'+esc(b.section)+'</span></b>' +
+        '<em>'+esc(b.name)+'</em>' +
+        '<span>'+hhmm(b.start)+'-'+hhmm(b.end)+' · '+esc(b.kind+" "+b.room)+'</span></span>' +
+        '<button class="x" data-id="'+b.id+'" aria-label="เอา '+esc(b.code)+' ออก">✕</button>' +
+      '</div>').join("") + '</div></div>';
+  }
+  list += '</div>';
+
+  el("tt-mount").innerHTML = grid + list;
+}
+
+const ISSUE_META = {
+  C1:{label:"เวลาเรียนชนกัน", hint:"เปลี่ยนหมู่เรียนของวิชาใดวิชาหนึ่ง"},
+  C2:{label:"เวลาสอบชนกัน", hint:"เปลี่ยนหมู่เรียน หรือแจ้งฝ่ายวิชาการล่วงหน้า 1 สัปดาห์"},
+  C3:{label:"ยังไม่ผ่านวิชาบังคับก่อน", hint:"ต้องสอบผ่านวิชาบังคับก่อนให้เรียบร้อยก่อน"},
+  C4:{label:"หน่วยกิตไม่อยู่ในเกณฑ์", hint:"ปรับให้อยู่ระหว่าง 9–21 หน่วยกิต"},
+  C5:{label:"ลงวิชาซ้ำ", hint:"เอาวิชาที่ซ้ำออก เหลือไว้หมู่เดียว"},
+  "C5:already_passed":{label:"วิชานี้ถือว่าผ่านแล้ว", hint:"ถ้ายังไม่ผ่านจริง ให้ปิด “ถือว่าผ่านวิชาของชั้นปีก่อนหน้า” ในเงื่อนไข"},
+  "C3:prereq_fail":{label:"ยังไม่ผ่านวิชาบังคับก่อน", hint:"ถ้าผ่านมาแล้ว ให้ตั้งชั้นปีของคุณให้ตรงที่มุมขวาบน"},
+  C6:{label:"ที่นั่งเต็ม", hint:"เลือกหมู่อื่น หรือยื่นคำร้องขอเพิ่มที่นั่ง"},
+  W1:{label:"อยู่มหาวิทยาลัยทั้งวัน", hint:"ถ้าไม่ไหว ลองสลับหมู่ให้เลิกเร็วขึ้น"},
+  W2:{label:"มีช่องว่างนาน", hint:"เลือกหมู่ที่คาบอยู่ติดกันมากขึ้น"},
+  W3:{label:"มีคาบเรียนเช้า", hint:"เลือกหมู่ที่ไม่มีคาบก่อน 09:00"},
+  W5:{label:"มามหาวิทยาลัยหลายวัน", hint:"รวมวิชาให้อยู่ในวันน้อยลง"},
+};
+
+function renderIssues(){
+  if (!result){
+    el("verdict-mount").innerHTML = "";
+    el("issues-card").hidden = true;
+    return;
+  }
+  const errs = result.conflicts.filter(c => c.severity === "ERROR");
+  const warns = result.warnings;
+  const s = result.summary;
+
+  el("verdict-mount").innerHTML = errs.length
+    ? '<div class="verdict bad"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>' +
+      '<span><b>ยังลงทะเบียนไม่ได้ — ติด '+errs.length+' เรื่อง</b><p>แก้ตามรายการด้านล่างแล้วตารางจะผ่านทันที</p></span></div>'
+    : '<div class="verdict good"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.3 2.4 2.4 4.6-4.9"/></svg>' +
+      '<span><b>แผนนี้ลงทะเบียนได้</b><p>'+s.total_courses+' วิชา · '+s.total_credits+' หน่วยกิต (อยู่ในเกณฑ์ '+s.min_credits+'–'+s.max_credits+')' +
+      (s.free_days.length ? ' · ว่าง'+esc(s.free_days.join(" ")) : "") + '</p></span></div>';
+
+  const all = [...errs, ...warns];
+  el("issues-card").hidden = !all.length;
+  el("issues-card").querySelector("h2").textContent = errs.length ? "รายการที่ต้องแก้" : "ข้อสังเกต (ลงได้ แต่ควรรู้)";
+  el("issues-mount").innerHTML = all.map(c => {
+    const meta = ISSUE_META[c.code + ":" + c.message_key] || ISSUE_META[c.code] || {label:c.code, hint:""};
+    const fix = (c.suggestions || []).map(sg =>
+      '<button class="fix" data-from="'+sg.from+'" data-to="'+sg.to+'">เปลี่ยนเป็น '+esc(sg.to)+(sg.when ? " ("+esc(sg.when)+")" : "")+'</button>').join(" ");
+    return '<div class="issue"><span class="code '+(c.severity === "ERROR" ? "err" : "warn")+'">'+c.code+'</span>' +
+      '<span class="t"><b>'+esc(meta.label)+'</b><p>'+esc(c.message_th)+'</p>' +
+      (meta.hint ? '<small>แนะนำ: '+esc(meta.hint)+'</small>' : "") + fix + '</span></div>';
+  }).join("");
+}
+
+function renderSkipped(){
+  el("skipped-card").hidden = !skipped.length;
+  if (!skipped.length) return;
+  // จัดกลุ่มตามเหตุผล ไม่งั้นรายการยาวเป็นพืดจนไม่รู้ว่าติดอะไรกันแน่
+  const PREREQ = "ยังไม่ผ่านวิชาบังคับก่อน";
+  const groups = new Map();
+  for (const item of skipped){
+    const key = item.reason.startsWith(PREREQ) ? PREREQ : item.reason;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item.course_code);
+  }
+  const SHOW = 5;
+  el("skipped-mount").innerHTML = [...groups].map(([reason, codes]) =>
+    '<div style="padding:4px 0"><b style="font-family:var(--font-ui); font-weight:600; color:var(--ink)">' +
+    esc(reason) + '</b> (' + codes.length + ' วิชา)<br>' +
+    codes.slice(0, SHOW).map(c => '<span class="mono">'+esc(c)+'</span>').join(", ") +
+    (codes.length > SHOW ? " และอีก " + (codes.length-SHOW) + " วิชา" : "") + '</div>').join("");
+}
+
+function renderPicker(){
+  const q = query.trim().toLowerCase();
+  const byCourse = new Map();
+  for (const s of pool()){
+    if (!byCourse.has(s.course_code)) byCourse.set(s.course_code, []);
+    byCourse.get(s.course_code).push(s);
+  }
+  const courses = [...byCourse.entries()]
+    .filter(([code, secs]) => {
+      if (yearFilter && String(secs[0].suggested_year ?? "") !== yearFilter) return false;
+      if (!q) return true;
+      return code.toLowerCase().includes(q) || secs[0].course_name.toLowerCase().includes(q);
+    })
+    .sort((a, b) => a[0] < b[0] ? -1 : 1);
+
+  el("pick-count").textContent = "พบ " + courses.length + " วิชา";
+  if (!courses.length){
+    el("pick-mount").innerHTML = '<div class="empty"><b>ไม่พบรายวิชาที่ตรงกับคำค้น</b>ลองพิมพ์รหัสวิชาหรือชื่อวิชาแบบสั้นลง</div>';
+    return;
+  }
+
+  el("pick-mount").innerHTML = courses.map(([code, secs]) => {
+    const c = secs[0];
+    const chosen = secs.filter(s => state.ids.includes(s.id)).length;
+    const open = openCode === code;
+    return '<div class="course">' +
+      '<button data-code="'+esc(code)+'" aria-expanded="'+open+'">' +
+        '<span class="dot" style="background:var(--cat-'+c.category+')"></span>' +
+        '<span class="info"><b>'+esc(code)+'</b><em>'+esc(c.course_name)+'</em>' +
+        '<small>'+esc(CAT_TH[c.category] || c.category)+' · '+c.credits+' นก.' +
+        (c.suggested_year ? ' · แนะนำปี '+c.suggested_year : "") +
+        ((c.prerequisites||[]).length ? ' · ต้องผ่าน '+esc(c.prerequisites.join(", ")) : "") + '</small></span>' +
+        '<span class="cnt">'+(chosen ? '<span class="tick">✓ เลือกแล้ว</span>' : secs.length+" หมู่")+'</span>' +
+      '</button>' +
+      (open ? '<div class="secs">' + secs.map(s => {
+        const left = s.seat_total != null ? s.seat_total - (s.seat_taken||0) : null;
+        const full = left != null && left <= 0;
+        return '<button class="sec" data-sec="'+s.id+'" aria-pressed="'+state.ids.includes(s.id)+'">' +
+          '<span class="s">ม.'+esc(s.section)+'</span>' +
+          '<span class="w">'+esc(whenText(s) || "ไม่ระบุเวลา")+'</span>' +
+          '<span class="seat'+(full ? " full":"")+'">'+(full ? "เต็ม" : (left != null ? left+" ที่" : ""))+'</span>' +
+          '</button>';
+      }).join("") + '</div>' : "") +
+      '</div>';
+  }).join("");
+}
+
+function renderPassedNote(){
+  const n = assumedPassedCourses().length;
+  el("passed-note").textContent = !state.year ? "(เลือกชั้นปีก่อน)"
+    : state.year === 1 ? "(ปี 1 ยังไม่มีวิชาก่อนหน้า)"
+    : state.prefs.assumePassed
+      ? "(" + (state.year === 2 ? "ปี 1" : "ปี 1–" + (state.year-1)) + " รวม " + n + " วิชา)"
+    : "(ปิดอยู่)";
+}
+
+function render(){
+  recompute();
+  renderPassedNote();
+  renderStats(); renderTimetable(); renderIssues(); renderSkipped(); renderPicker();
+  save();
+}
+
+/* ═══ การโต้ตอบ ═══ */
+let toastTimer;
+window.toast = toast;   // ให้สคริปต์ของแท็บถาม-ตอบเรียกใช้ได้
+function toast(msg){
+  const old = document.querySelector(".toast");
+  if (old) old.remove();
+  const n = document.createElement("div");
+  n.className = "toast"; n.textContent = msg; n.setAttribute("role", "status");
+  document.body.appendChild(n);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => n.remove(), 2600);
+}
+
+function toggleSection(id){
+  skipped = [];   // ผู้ใช้แก้เอง รายการจากการจัดอัตโนมัติไม่ตรงอีกต่อไป
+  state.ids = state.ids.includes(id) ? state.ids.filter(x => x !== id) : [...state.ids, id];
+  render();
+}
+
+function autoPlan(){
+  const r = generatePlan(pool(), {
+    term: state.term,
+    studentYear: state.year ? Number(state.year) : null,
+    assumedPassed: assumedPassedCourses(),
+    prefs: {avoidMorning:state.prefs.avoidMorning, freeDays:state.prefs.freeDays,
+            maxCredits:state.prefs.maxCredits},
+  });
+  state.ids = r.plan.map(s => s.id);
+  skipped = r.skipped;
+  render();
+  const s = r.summary;
+  toast(r.has_conflict ? "จัดแล้วแต่ยังติดปัญหา ดูรายการด้านขวา"
+        : "จัดให้แล้ว "+s.total_courses+" วิชา "+s.total_credits+" หน่วยกิต");
+}
+
+function planAsText(){
+  const secs = picked();
+  if (!secs.length) return "";
+  const byDay = new Map();
+  for (const s of secs) for (const m of s.meetings || []){
+    if (!byDay.has(m.day)) byDay.set(m.day, []);
+    byDay.get(m.day).push(hhmm(m.start_min)+"-"+hhmm(m.end_min)+"  "+s.course_code+" ม."+s.section+"  "+s.course_name+"  ("+m.room+")");
+  }
+  const lines = ["ตารางเรียน "+state.term+" — วิศวกรรมคอมพิวเตอร์ มทร.ธัญบุรี", ""];
+  for (const d of [...byDay.keys()].sort((a,b)=>a-b)){
+    lines.push(DAY_TH[d]);
+    byDay.get(d).sort().forEach(t => lines.push("  "+t));
+    lines.push("");
+  }
+  lines.push("รวม "+new Set(secs.map(s=>s.course_code)).size+" วิชา "+secs.reduce((n,s)=>n+(s.credits|0),0)+" หน่วยกิต");
+  lines.push("(ข้อมูลจำลองสำหรับต้นแบบ ตรวจสอบกับระบบทะเบียนก่อนลงทะเบียนจริง)");
+  return lines.join("\n");
+}
+
+el("term").innerHTML = TERMS.map(t => '<option value="'+t+'">'+t+'</option>').join("");
+el("year-chips").innerHTML = '<button class="chip" data-year="" aria-pressed="true">ทุกชั้นปี</button>' +
+  [1,2,3,4].map(y => '<button class="chip" data-year="'+y+'" aria-pressed="false">ปี '+y+'</button>').join("");
+el("pref-days").innerHTML = DAY_TH.slice(0,6).map((d,i) =>
+  '<button class="chip" data-day="'+i+'" aria-pressed="false">'+d+'</button>').join("");
+
+el("term").addEventListener("change", e => {
+  state.term = e.target.value; state.ids = []; skipped = []; openCode = null; render();
+});
+el("year").addEventListener("change", e => {
+  state.year = e.target.value ? Number(e.target.value) : null;
+  renderPassedNote(); render();   // ชุดวิชาที่ถือว่าผ่านเปลี่ยนตามชั้นปี ต้องตรวจใหม่ทั้งแผน
+});
+el("btn-auto").addEventListener("click", autoPlan);
+el("btn-clear").addEventListener("click", () => { state.ids = []; skipped = []; render(); toast("ล้างแผนแล้ว"); });
+el("btn-copy").addEventListener("click", async () => {
+  const text = planAsText();
+  if (!text) return toast("ยังไม่มีวิชาในตาราง");
+  try { await navigator.clipboard.writeText(text); toast("คัดลอกตารางแล้ว วางในแชตหรือโน้ตได้เลย"); }
+  catch { toast("เบราว์เซอร์ไม่ให้คัดลอก ลองเลือกข้อความเอง"); }
+});
+el("btn-prefs").addEventListener("click", e => {
+  const card = el("prefs-card");
+  card.hidden = !card.hidden;
+  e.currentTarget.setAttribute("aria-expanded", String(!card.hidden));
+});
+el("pref-morning").addEventListener("change", e => { state.prefs.avoidMorning = e.target.checked; save(); });
+el("pref-passed").addEventListener("change", e => { state.prefs.assumePassed = e.target.checked; render(); });
+el("pref-max").addEventListener("input", e => {
+  state.prefs.maxCredits = clampCredits(e.target.value, 21, 9, 21);
+  el("pref-max-val").textContent = state.prefs.maxCredits;
+  renderStats(); save();
+});
+el("pref-days").addEventListener("click", e => {
+  const b = e.target.closest("[data-day]"); if (!b) return;
+  const d = Number(b.dataset.day);
+  const on = state.prefs.freeDays.includes(d);
+  state.prefs.freeDays = on ? state.prefs.freeDays.filter(x => x !== d) : [...state.prefs.freeDays, d];
+  b.setAttribute("aria-pressed", String(!on));
+  save();
+});
+el("q").addEventListener("input", e => { query = e.target.value; renderPicker(); });
+el("year-chips").addEventListener("click", e => {
+  const b = e.target.closest("[data-year]"); if (!b) return;
+  yearFilter = b.dataset.year;
+  [...el("year-chips").children].forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+  renderPicker();
+});
+el("pick-mount").addEventListener("click", e => {
+  const sec = e.target.closest("[data-sec]");
+  if (sec) return toggleSection(sec.dataset.sec);
+  const course = e.target.closest("[data-code]");
+  if (course){ openCode = openCode === course.dataset.code ? null : course.dataset.code; renderPicker(); }
+});
+el("tt-mount").addEventListener("click", e => {
+  const b = e.target.closest("[data-id]");
+  if (b) toggleSection(b.dataset.id);
+});
+el("issues-mount").addEventListener("click", e => {
+  const fix = e.target.closest("[data-to]"); if (!fix) return;
+  state.ids = state.ids.map(id => id === fix.dataset.from ? fix.dataset.to : id);
+  skipped = [];
+  render();
+  toast("เปลี่ยนเป็นหมู่ "+fix.dataset.to+" แล้ว");
+});
+
+/* ═══ เริ่มทำงาน ═══ */
+const restored = load();
+el("term").value = state.term;
+el("year").value = state.year ?? "";
+el("pref-morning").checked = state.prefs.avoidMorning;
+el("pref-passed").checked = state.prefs.assumePassed;
+el("pref-max").value = state.prefs.maxCredits;
+el("pref-max-val").textContent = state.prefs.maxCredits;
+[...el("pref-days").children].forEach(b =>
+  b.setAttribute("aria-pressed", String(state.prefs.freeDays.includes(Number(b.dataset.day)))));
+
+// เปิดมาต้องเห็นตารางที่ใช้งานได้จริงเลย ไม่ใช่กรอบเปล่า ๆ รอให้กดก่อน
+if (restored && state.ids.length) render();
+else autoPlan();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   RAG ในเบราว์เซอร์ — พอร์ตจาก 09_main_app/api/_core/
+     text.py       -> ตัดคำ / หั่น chunk / ขยายคำถาม
+     retrieval.py  -> BM25 + TF-IDF cosine + Reciprocal Rank Fusion
+     coverage.py   -> ประกาศขอบเขตที่ระบบไม่มีข้อมูล
+     llm.py        -> เรียบเรียงคำตอบ (Gemini ถ้ามีคีย์ ไม่มีก็ยกเอกสารมาตรง ๆ)
+
+   ตัวเลขทุกตัว (MIN_SCORE, ตัวคูณ, ขนาด n-gram) ตรงกับฝั่ง Python
+   ถ้าแก้ที่ Python ต้องตามมาแก้ที่นี่ ไม่งั้นสองฝั่งจะตอบไม่เหมือนกัน
+   ═══════════════════════════════════════════════════════════════ */
+"use strict";
+
+const LLM_PROXY = "__LLM_PROXY_URL__";   // ตั้งใน static_demo/config.json
+const KB_FILES = "__KNOWLEDGE_DATA__";
+const GOLDEN = "__GOLDEN_SET__";
+
+const CHUNK_CHARS = 900, CHUNK_OVERLAP = 150;
+const TOP_K_BM25 = 20, TOP_K_VECTOR = 20, RRF_K = 60;
+const MIN_SCORE = 0.21;
+const CODE_MATCH_MULTIPLIER = 2.2;
+const SECTION_HINT_MULTIPLIER = 2.0;
+const RULE_BASED_MAX_CHUNKS = 3;
+
+/* ── ตัดคำ ───────────────────────────────────────────────── */
+const THAI_RE = /[฀-๿]+/g;
+const ASCII_WORD_RE = /[A-Za-z0-9][A-Za-z0-9_.+\-]*/g;
+const COURSE_CODE_RE = /\b\d{8}-\d{2}\b/g;
+const THAI_STOPWORDS = new Set(["และ","หรือ","ของ","ที่","ใน","การ","ความ","เป็น","ให้","ได้",
+  "กับ","จาก","โดย","ต้อง","จะ","ไม่","มี","นี้","นั้น","แล้ว"]);
+
+const normalize = t => (t || "").normalize("NFC").replace(/[\s ]+/g, " ").trim();
+
+/** ภาษาไทยเขียนติดกันไม่มีช่องว่าง จึงใช้ n-gram ขนาด 3 และ 4
+ *  ขนาดนี้เลือกจากการวัดจริง ให้ช่องว่างระหว่างคำถามในเรื่อง/นอกเรื่องกว้างที่สุด */
+function thaiNgrams(word, sizes = [3, 4]){
+  const out = [];
+  for (const n of sizes){
+    if (word.length < n){ if (word.length >= 2) out.push(word); continue; }
+    for (let i = 0; i <= word.length - n; i++) out.push(word.slice(i, i + n));
+  }
+  return out;
+}
+
+function tokenize(text){
+  text = normalize(text).toLowerCase();
+  const tokens = [];
+  for (const code of text.match(COURSE_CODE_RE) || []){
+    tokens.push(code, code.split("-")[0]);     // ค้นแบบไม่ระบุปีหลักสูตรก็ต้องเจอ
+  }
+  tokens.push(...(text.match(ASCII_WORD_RE) || []));
+  for (const run of text.match(THAI_RE) || []){
+    if (THAI_STOPWORDS.has(run)) continue;
+    for (const t of thaiNgrams(run)) if (!THAI_STOPWORDS.has(t)) tokens.push(t);
+  }
+  return tokens;
+}
+
+/* ── หั่นเอกสาร ──────────────────────────────────────────── */
+function parseFrontmatter(raw){
+  const m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
+  if (!m) return [{}, raw];
+  const meta = {};
+  for (const line of m[1].split("\n")){
+    const i = line.indexOf(":");
+    if (i === -1) continue;
+    meta[line.slice(0, i).trim()] = line.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+  }
+  return [meta, raw.slice(m[0].length)];
+}
+
+/** แบ่งตามหัวข้อ markdown แล้วพ่วงหัวข้อแม่มาด้วยเป็น breadcrumb
+ *  จำเป็นเพราะแผนการศึกษามีหัวข้อ "ภาคการศึกษาที่ 1" ซ้ำกัน 4 ครั้ง (ปี 1-4)
+ *  ถ้าเก็บแค่หัวข้อสุดท้าย chunk ทั้งสี่จะหน้าตาเหมือนกันจนแยกไม่ออก */
+function splitByHeading(body){
+  const re = /^(#{1,6})[ \t]+(.+)$/gm;
+  const matches = [...body.matchAll(re)];
+  if (!matches.length) return [["", body.trim()]];
+  const parts = [];
+  const lead = body.slice(0, matches[0].index).trim();
+  if (lead) parts.push(["", lead]);
+  const trail = [];
+  matches.forEach((m, i) => {
+    const level = m[1].length, title = m[2].trim();
+    while (trail.length && trail[trail.length-1][0] >= level) trail.pop();
+    trail.push([level, title]);
+    const start = m.index + m[0].length;
+    const end = i + 1 < matches.length ? matches[i+1].index : body.length;
+    parts.push([trail.map(t => t[1]).join(" > "), body.slice(start, end).trim()]);
+  });
+  return parts;
+}
+
+function chunkText(text, maxChars, overlap){
+  text = text.trim();
+  if (text.length <= maxChars) return text ? [text] : [];
+  const chunks = [];
+  let start = 0;
+  while (start < text.length){
+    let end = Math.min(start + maxChars, text.length);
+    if (end < text.length){
+      const from = start + Math.floor(maxChars / 2);
+      let cut = text.lastIndexOf("\n", end);
+      if (cut < from) cut = text.lastIndexOf(" ", end);
+      if (cut > start && cut >= from) end = cut;
+    }
+    const piece = text.slice(start, end).trim();
+    if (piece) chunks.push(piece);
+    if (end >= text.length) break;
+    start = Math.max(end - overlap, start + 1);
+  }
+  return chunks;
+}
+
+/* ── ขยายคำถาม ──────────────────────────────────────────── */
+// คำถามนักศึกษาใช้คำพูดชาวบ้าน เอกสารใช้คำราชการ ไม่แปลงให้ก็ค้นไม่เจอ
+// หนึ่งหัวข้อเติมได้ครั้งเดียว ไม่งั้นข้อความขยายจะกลบคำถามเดิม
+const EXPANSION_TOPICS = [
+  ["graduate", ["ถึงจะจบ","จะจบ","เรียนจบ","สำเร็จการศึกษา","จบการศึกษา","ตลอดหลักสูตร"],
+   "เกณฑ์สำเร็จการศึกษา จำนวนหน่วยกิตรวมตลอดหลักสูตร โครงสร้างหลักสูตร"],
+  ["term_credits", ["กี่หน่วยกิตต่อเทอม","หน่วยกิตต่อเทอม","หน่วยกิตต่อภาค","ลงได้กี่หน่วยกิต"],
+   "จำนวนหน่วยกิตต่อภาคการศึกษา ขั้นต่ำ สูงสุด"],
+  ["credits", ["หน่วยกิต"], "หน่วยกิต"],
+  ["withdraw", ["ถอนรายวิชา","ถอนวิชา"], "ถอนรายวิชา สัญลักษณ์ W กำหนดเวลา"],
+  ["add_course", ["เพิ่มรายวิชา","เพิ่มวิชา"], "เพิ่มรายวิชา กำหนดเวลา"],
+  ["clash", ["ตารางชน","เรียนชน","ชนกัน","ซ้ำซ้อน"], "เวลาเรียนซ้ำซ้อน เวลาสอบตรงกัน"],
+  ["retire", ["รีไทร์","พ้นสภาพ"], "พ้นสภาพนักศึกษา ระยะเวลาศึกษา GPAX"],
+  ["prereq", ["บังคับก่อน","ต้องผ่านอะไรก่อน","ต้องเรียนอะไรก่อน"],
+   "รายวิชาบังคับก่อน prerequisite แผนการศึกษา"],
+  ["seat_full", ["ที่นั่งเต็ม"], "ที่นั่งเต็ม ขอเพิ่มที่นั่ง หมู่เรียน"],
+  ["exam", ["ตารางสอบ","สอบกลางภาค","สอบปลายภาค"], "ตารางสอบ ปฏิทินการศึกษา"],
+  ["plan", ["เรียนวิชาอะไร","ต้องเรียนอะไร","วิชาอะไรบ้าง","แผนการเรียน"],
+   "แผนการศึกษาแนะนำ รายวิชา"],
+  ["grade", ["เกรด","กี่แต้ม","ค่าระดับ","เกรดเฉลี่ย"],
+   "ระดับคะแนน ค่าระดับคะแนน การวัดและประเมินผล"],
+  ["leave", ["ลาพัก","พักการเรียน","ดรอป"], "ลาพักการศึกษา สถานภาพนักศึกษา"],
+  ["retake", ["ได้ F","ติด F","สอบตก","เรียนซ้ำ"], "การเรียนซ้ำ ลงทะเบียนเรียนซ้ำ ระดับคะแนน"],
+  ["elective", ["วิชาเลือก","เลือกเสรี","วิชาชีพเลือก"],
+   "กลุ่มวิชาชีพเลือก รายวิชาที่ภาควิชาเปิดให้เลือก"],
+  ["syllabus", ["เรียนอะไรบ้าง","เนื้อหาวิชา","คืออะไร","สอนอะไร","เรียนเกี่ยวกับ"],
+   "คำอธิบายรายวิชา"],
+];
+const YEAR_RE = /(?:ชั้น)?ปี(?:ที่)?\s*([1-8])(?![0-9])/;
+const TERM_RE = /(?:เทอม|ภาคเรียน|ภาคการศึกษา)(?:ที่)?\s*([1-3])(?![0-9])/;
+
+function expandQuery(question){
+  const q = (question || "").trim();
+  const extra = [];
+  let m = q.match(YEAR_RE); if (m) extra.push("ชั้นปีที่ " + m[1]);
+  m = q.match(TERM_RE); if (m) extra.push("ภาคการศึกษาที่ " + m[1]);
+  const matched = new Set();
+  for (const [topic, keys, expansion] of EXPANSION_TOPICS){
+    if (matched.has(topic)) continue;
+    // หัวข้อ credits แบบกว้าง ใช้ต่อเมื่อไม่มีหัวข้อหน่วยกิตที่เจาะจงกว่าติดมาก่อน
+    if (topic === "credits" && (matched.has("graduate") || matched.has("term_credits"))) continue;
+    if (keys.some(k => q.includes(k))){ matched.add(topic); extra.push(expansion); }
+  }
+  return extra.length ? (q + " " + [...new Set(extra)].join(" ")).trim() : q;
+}
+
+function sectionHints(question){
+  const hints = [];
+  let m = (question || "").match(YEAR_RE); if (m) hints.push("ชั้นปีที่ " + m[1]);
+  m = (question || "").match(TERM_RE); if (m) hints.push("ภาคการศึกษาที่ " + m[1]);
+  return hints;
+}
+
+/* ── BM25 ───────────────────────────────────────────────── */
+class BM25Index {
+  constructor(k1 = 1.5, b = 0.75){ this.k1 = k1; this.b = b; }
+  fit(docs){
+    this.docs = docs;
+    this.tf = docs.map(d => { const c = new Map();
+      for (const t of d.tokens) c.set(t, (c.get(t) || 0) + 1); return c; });
+    this.docLen = docs.map(d => d.tokens.length);
+    this.avgLen = this.docLen.length
+      ? this.docLen.reduce((a, b) => a + b, 0) / this.docLen.length : 0;
+    this.df = new Map();
+    for (const c of this.tf) for (const t of c.keys()) this.df.set(t, (this.df.get(t) || 0) + 1);
+    // ดัชนีผกผัน: วนเฉพาะเอกสารที่มีคำนั้นจริง เร็วกว่าวนทุกเอกสารทุกคำมาก
+    this.postings = new Map();
+    this.tf.forEach((c, i) => { for (const [t, f] of c){
+      if (!this.postings.has(t)) this.postings.set(t, []);
+      this.postings.get(t).push([i, f]);
+    }});
+  }
+  idf(term){
+    const n = this.docs.length, df = this.df.get(term) || 0;
+    return df === 0 ? 0 : Math.log(1 + (n - df + 0.5) / (df + 0.5));
+  }
+  search(query, topK){
+    const q = tokenize(query);
+    if (!q.length || !this.docs.length) return [];
+    const scores = new Float64Array(this.docs.length);
+    for (const term of new Set(q)){
+      const idf = this.idf(term);
+      if (idf === 0) continue;
+      for (const [i, freq] of this.postings.get(term) || []){
+        const denom = freq + this.k1 * (1 - this.b + this.b * (this.docLen[i] / (this.avgLen || 1)));
+        scores[i] += idf * (freq * (this.k1 + 1)) / denom;
+      }
+    }
+    return [...scores].map((s, i) => [i, s]).filter(x => x[1] > 0)
+      .sort((a, b) => b[1] - a[1]).slice(0, topK);
+  }
+}
+
+/* ── TF-IDF cosine ──────────────────────────────────────── */
+class VectorIndex {
+  fit(docs){
+    this.docs = docs;
+    const n = docs.length, df = new Map();
+    for (const d of docs) for (const t of new Set(d.tokens)) df.set(t, (df.get(t) || 0) + 1);
+    this.idf = new Map([...df].map(([t, c]) => [t, Math.log((n + 1) / (c + 1)) + 1]));
+    this.vectors = docs.map(d => this.vectorize(d.tokens));
+  }
+  vectorize(tokens){
+    const vec = new Map();
+    if (!tokens.length) return vec;
+    const counts = new Map();
+    for (const t of tokens) counts.set(t, (counts.get(t) || 0) + 1);
+    let norm = 0;
+    for (const [t, c] of counts){
+      const v = (c / tokens.length) * (this.idf.get(t) ?? 1);
+      vec.set(t, v); norm += v * v;
+    }
+    norm = Math.sqrt(norm) || 1;
+    for (const [t, v] of vec) vec.set(t, v / norm);
+    return vec;
+  }
+  search(query, topK){
+    const qv = this.vectorize(tokenize(query));
+    if (!qv.size || !this.vectors?.length) return [];
+    const out = [];
+    this.vectors.forEach((vec, i) => {
+      const [small, large] = qv.size < vec.size ? [qv, vec] : [vec, qv];
+      let s = 0;
+      for (const [t, w] of small) s += w * (large.get(t) || 0);
+      if (s > 0) out.push([i, s]);
+    });
+    return out.sort((a, b) => b[1] - a[1]).slice(0, topK);
+  }
+}
+
+/** RRF: อันดับที่ดีในหลายวิธี ย่อมชนะคะแนนดิบสูงในวิธีเดียว */
+function reciprocalRankFusion(rankings, k = RRF_K){
+  const fused = new Map();
+  for (const ranking of rankings)
+    ranking.forEach(([idx], rank) => fused.set(idx, (fused.get(idx) || 0) + 1 / (k + rank + 1)));
+  return [...fused].sort((a, b) => b[1] - a[1]);
+}
+
+class HybridRetriever {
+  constructor(){ this.bm25 = new BM25Index(); this.vector = new VectorIndex(); this.docs = []; }
+  fit(docs){ this.docs = docs; this.bm25.fit(docs); this.vector.fit(docs); }
+  /** คืนคะแนน cosine (คูณตัวคูณ) ไม่ใช่คะแนน RRF
+   *  เพราะ RRF ให้คะแนนตามลำดับ อันดับ 1 ได้เท่ากันเสมอไม่ว่าคำถามจะเกี่ยวข้องจริงไหม
+   *  ใช้เป็นเกณฑ์ตัด "ไม่พบข้อมูล" ไม่ได้ */
+  search(query, topK, hints){
+    if (!this.docs.length) return [];
+    const bm = this.bm25.search(query, TOP_K_BM25);
+    const vec = this.vector.search(query, TOP_K_VECTOR);
+    const relevance = new Map(vec);
+    const codes = [...new Set(query.match(COURSE_CODE_RE) || [])];
+    const scored = [];
+    for (const [idx] of reciprocalRankFusion([bm, vec])){
+      const d = this.docs[idx];
+      let score = relevance.get(idx) || 0;
+      if (codes.length && codes.some(c => d.text.includes(c))) score *= CODE_MATCH_MULTIPLIER;
+      if (hints?.length && hints.every(h => d.section.includes(h))) score *= SECTION_HINT_MULTIPLIER;
+      scored.push([d, Math.min(score, 1)]);
+    }
+    scored.sort((a, b) => b[1] - a[1]);
+    return scored.slice(0, topK);
+  }
+}
+
+/* ── ขอบเขตที่ระบบไม่มีข้อมูล ───────────────────────────── */
+// การค้นคืนวัดได้แค่ "เอกสารเกี่ยวข้องไหม" ไม่ได้วัดว่า "มีคำตอบไหม"
+// เรื่องที่คลังไม่มีตั้งแต่แรก ต้องบอกตรง ๆ ไม่ใช่ยกเอกสารใกล้เคียงมาให้
+const COVERAGE_GAPS = [
+  {topic:"timetable", keywords:["เรียนวันไหน","เรียนวันอะไร","สอนวันไหน","เรียนกี่โมง","สอนกี่โมง",
+    "ตารางสอน","คาบไหน","หมู่ไหนว่าง","เรียนห้องไหน","เวลาเรียน"],
+   message:"ระบบยังไม่มีตารางสอน (วัน-เวลา-ห้องเรียน) อยู่ในคลังเอกสาร — แต่หน้า “จัดตารางเรียน” มีตารางจำลองของ 1/2569 และ 2/2569 ให้ลองใช้ได้ สำหรับตารางสอนจริงให้ตรวจสอบที่ระบบทะเบียน oreg3.rmutt.ac.th"},
+  {topic:"advisor", keywords:["อาจารย์ที่ปรึกษา","ที่ปรึกษาของ","อาจารย์ประจำ"],
+   message:"ระบบยังไม่มีข้อมูลอาจารย์ที่ปรึกษา ดูได้ที่ระบบทะเบียน หรือสอบถามที่ภาควิชาวิศวกรรมคอมพิวเตอร์"},
+  {topic:"fees", keywords:["ค่าเทอม","ค่าธรรมเนียม","ค่าหน่วยกิต","จ่ายเงิน","ผ่อนค่าเทอม"],
+   message:"ระบบยังไม่มีข้อมูลค่าเล่าเรียนและค่าธรรมเนียม ติดต่อกองคลังของมหาวิทยาลัย"},
+  {topic:"facility", keywords:["หอพัก","ที่จอดรถ","โรงอาหาร","ห้องสมุด","รถรับส่ง"],
+   message:"ระบบครอบคลุมเฉพาะเรื่องการลงทะเบียนและการวางแผนการเรียน ไม่มีข้อมูลด้านสวัสดิการ"},
+  {topic:"scholarship", keywords:["ทุนการศึกษา","กยศ","กู้ยืม","ทุนเรียนดี"],
+   message:"ระบบยังไม่มีข้อมูลทุนการศึกษาและเงินกู้ยืม ติดต่อกองพัฒนานักศึกษา"},
+];
+const findGap = q => COVERAGE_GAPS.find(g => g.keywords.some(k => (q || "").includes(k))) || null;
+
+const COVERAGE_HAS = [
+  "ข้อบังคับการศึกษาระดับปริญญาตรี (หน่วยกิต เพิ่ม-ถอน เกรด เกณฑ์จบ)",
+  "โครงสร้างหลักสูตรวิศวกรรมคอมพิวเตอร์ + แผนการศึกษา 4 ปี",
+  "ปฏิทินการศึกษา 3 ภาคเรียน",
+  "คำถามที่พบบ่อยเรื่องการลงทะเบียน",
+  "คำอธิบายรายวิชา CPE ครบทุกวิชา รวมวิชาชีพเลือก",
+];
+
+/* ── สร้างดัชนีครั้งเดียวตอนเปิดหน้า ────────────────────── */
+let RETRIEVER = null, KB_STATS = {chunks:0, files:[]};
+function buildIndex(){
+  if (RETRIEVER) return RETRIEVER;
+  const docs = [];
+  const files = [];
+  for (const [name, raw] of Object.entries(KB_FILES)){
+    files.push(name);
+    const [meta, body] = parseFrontmatter(raw);
+    const year = meta.effective_year || "";
+    for (const [heading, text] of splitByHeading(body)){
+      chunkText(text, CHUNK_CHARS, CHUNK_OVERLAP).forEach((piece, i) => {
+        const title = meta.title || name.replace(/\.md$/, "");
+        const section = heading;
+        docs.push({
+          doc_id: `${name.replace(/\.md$/,"")}#${heading || "intro"}#${i}`,
+          title, section,
+          doc_type: meta.doc_type || "unknown",
+          effective_year: /^\d+$/.test(year) ? Number(year) : null,
+          text: piece,
+          tokens: tokenize(`${title} ${section} ${piece}`),
+        });
+      });
+    }
+  }
+  RETRIEVER = new HybridRetriever();
+  RETRIEVER.fit(docs);
+  KB_STATS = {chunks: docs.length, files};
+  return RETRIEVER;
+}
+
+function ragSearch(question, topK = 6){
+  const r = buildIndex();
+  return r.search(expandQuery(question), topK, sectionHints(question))
+          .map(([d, score]) => ({...d, score}));
+}
+
+/* ── เรียบเรียงคำตอบ ────────────────────────────────────── */
+const DISCLAIMER = "ข้อมูลนี้เป็นคำแนะนำเบื้องต้นจากระบบ ไม่ใช่การยืนยันจากมหาวิทยาลัย " +
+  "โปรดตรวจสอบกับระบบทะเบียนและอาจารย์ที่ปรึกษาก่อนลงทะเบียนจริง";
+const NOT_FOUND = "ไม่พบข้อมูลเรื่องนี้ในระเบียบและเอกสารหลักสูตรที่ระบบมีอยู่ " +
+  "แนะนำให้ติดต่อสำนักส่งเสริมวิชาการและงานทะเบียน (สวท.) หรืออาจารย์ที่ปรึกษาโดยตรง";
+const SYSTEM_PROMPT =
+  "คุณเป็นผู้ช่วยตอบคำถามเรื่องระเบียบและหลักสูตรของมหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี\n" +
+  "กติกาที่ห้ามฝ่าฝืน:\n" +
+  "1. ตอบจากเอกสารอ้างอิงที่ให้มาเท่านั้น ห้ามเติมความรู้นอกเอกสาร\n" +
+  "2. อ้างหมายเลขเอกสารในวงเล็บเหลี่ยม เช่น [1] ทุกครั้งที่ยกข้อมูลมา\n" +
+  "3. ถ้าเอกสารไม่มีคำตอบ ให้บอกตรง ๆ ว่าไม่มีข้อมูล ห้ามเดา\n" +
+  "4. ตอบเป็นภาษาไทย กระชับ ตรงคำถาม";
+
+function ruleBasedAnswer(chunks){
+  if (!chunks.length) return "";
+  const lines = ["จากเอกสารของมหาวิทยาลัยที่เกี่ยวข้องกับคำถามนี้:", ""];
+  chunks.forEach((c, i) => {
+    const where = c.title + (c.section ? " — " + c.section : "");
+    let text = c.text.trim();
+    if (text.length > 600){
+      const cut = text.slice(0, 600);
+      text = cut.slice(0, cut.lastIndexOf("\n") + 1 || 600) + " ...";
+    }
+    lines.push(`[${i+1}] ${where}`, text, "");
+  });
+  return lines.join("\n").trim();
+}
+
+function buildPrompt(question, chunks){
+  const refs = chunks.map((c, i) =>
+    `[${i+1}] ${c.title} — ${c.section || "เนื้อหาทั่วไป"}\n${c.text}`).join("\n\n");
+  return `${SYSTEM_PROMPT}\n\n=== เอกสารอ้างอิง ===\n${refs}\n\n=== คำถาม ===\n${question}\n\nคำตอบ:`;
+}
+
+const KEY_STORE = "rmutt-gemini-key";
+const getKey = () => { try { return localStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
+
+async function callGemini(prompt, key){
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+              "gemini-2.0-flash:generateContent?key=" + encodeURIComponent(key);
+  const r = await fetch(url, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({contents:[{parts:[{text: prompt}]}],
+                          generationConfig:{temperature: 0.2, maxOutputTokens: 800}}),
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!r.ok) throw new Error("gemini " + r.status);
+  const data = await r.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("no text");
+  return text.trim();
+}
+
+/** ถามผ่านตัวกลางที่ถือคีย์ไว้ฝั่งเซิร์ฟเวอร์
+ *
+ * ผู้ใช้ไม่ต้องรู้จักคีย์เลย และคีย์ไม่เคยถูกส่งมาถึงเบราว์เซอร์
+ * ตัวกลางคือ /api/chat ของ 09_main_app ที่ deploy บน Vercel
+ * ซึ่งค้นเอกสารเองฝั่งนั้น คำตอบจึงเหมือนกับเวอร์ชันเต็มทุกอย่าง
+ */
+async function askProxy(question){
+  const r = await fetch(LLM_PROXY + "/api/chat", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({question}),
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!r.ok) throw new Error("proxy " + r.status);
+  const d = await r.json();
+  if (!d || typeof d.answer !== "string") throw new Error("proxy bad json");
+  return {answer: d.answer, sources: (d.sources || []).map(s => ({...s, score: s.score ?? 0})),
+          grounded: !!d.grounded, provider: d.provider || "proxy",
+          disclaimer: d.disclaimer || DISCLAIMER,
+          topScore: d.sources?.[0]?.score};
+}
+
+/** ถามตัวกลางว่าเปิดโหมด Gemini อยู่ไหม — ใช้บอกสถานะ ไม่ได้ส่งคีย์มา */
+async function proxyStatus(){
+  if (!LLM_PROXY) return null;
+  try {
+    const r = await fetch(LLM_PROXY + "/api/chat", {signal: AbortSignal.timeout(8000)});
+    if (!r.ok) return null;
+    const d = await r.json();
+    return {llm: d.llm, chunks: d.knowledge?.chunks};
+  } catch { return null; }
+}
+
+/** ด่านกันตอบมั่ว 4 ชั้น เหมือนฝั่ง Python ทุกชั้น */
+async function ragAnswer(question){
+  // ชั้น 0: รู้ตัวว่าคลังไม่มีข้อมูลเรื่องนี้ตั้งแต่แรก
+  const gap = findGap(question);
+  if (gap) return {answer: gap.message, sources: [], grounded: false,
+                   provider: "coverage_gap", disclaimer: DISCLAIMER};
+
+  const chunks = ragSearch(question, 6);
+  // ชั้น 1: คะแนนต่ำกว่าเกณฑ์ -> ไม่เรียกโมเดลเลย
+  if (!chunks.length || chunks[0].score < MIN_SCORE)
+    return {answer: NOT_FOUND, sources: [], grounded: false,
+            provider: "none", disclaimer: DISCLAIMER,
+            topScore: chunks[0]?.score ?? 0};
+
+  const used = chunks.slice(0, RULE_BASED_MAX_CHUNKS);
+
+  // ลำดับความสำคัญ: ตัวกลางของเจ้าของระบบ > คีย์ที่ผู้ใช้ใส่เอง > ยกเอกสารตรง ๆ
+  // ทุกทางล้มเหลวก็ยังตอบจากเอกสารได้เสมอ หน้าเว็บจึงไม่มีทางใช้ไม่ได้
+  if (LLM_PROXY){
+    try { return await askProxy(question); }
+    catch { /* ตัวกลางล่มก็ค้นเองในเครื่องต่อ ไม่ต้องบอกผู้ใช้ว่าอะไรพัง */ }
+  }
+
+  const key = getKey();
+  if (!key)
+    return {answer: ruleBasedAnswer(used), sources: used, grounded: true,
+            provider: "rule_based", disclaimer: DISCLAIMER, topScore: chunks[0].score};
+  try {
+    // ชั้น 2: prompt บังคับให้ตอบจากเอกสารและอ้างหมายเลขเท่านั้น
+    const text = await callGemini(buildPrompt(question, chunks), key);
+    // ชั้น 3: sources ที่คืนต้องเป็นเอกสารที่ถูกใช้จริง
+    return {answer: text, sources: chunks, grounded: true,
+            provider: "gemini", disclaimer: DISCLAIMER, topScore: chunks[0].score};
+  } catch {
+    // เรียกโมเดลไม่ได้ก็ยังต้องตอบผู้ใช้ได้ ไม่ปล่อยให้ค้าง
+    return {answer: ruleBasedAnswer(used), sources: used, grounded: true,
+            provider: "rule_based_fallback", disclaimer: DISCLAIMER, topScore: chunks[0].score};
+  }
+}
+
+</script>
+
+<script>
+/* ═══ หน้าจอของแท็บถามเรื่องระเบียบ และแท็บตรวจคุณภาพระบบ ═══ */
+(function(){
+"use strict";
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ── สลับแท็บ ──────────────────────────────── */
+const PANELS = {plan: el("tab-plan"), ask: el("tab-ask"), eval: el("tab-eval")};
+let indexReady = false;
+
+function showTab(name){
+  for (const [k, node] of Object.entries(PANELS)) node.hidden = k !== name;
+  document.querySelectorAll(".tabs [data-tab]").forEach(b =>
+    b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  // ปุ่มบนแถบหัว (เลือกเทอม/จัดตารางให้) ใช้ได้เฉพาะหน้าจัดตาราง
+  el("plan-controls").style.display = name === "plan" ? "contents" : "none";
+  if ((name === "ask" || name === "eval") && !indexReady){
+    buildIndex();
+    indexReady = true;
+    el("kb-stat").textContent =
+      `คลังเอกสาร ${KB_STATS.files.length} ไฟล์ · แบ่งเป็น ${KB_STATS.chunks} ส่วน · ` +
+      `ค้นด้วย BM25 + TF-IDF cosine รวมอันดับด้วย RRF`;
+  }
+  try { localStorage.setItem("rmutt-tab", name); } catch {}
+}
+document.querySelector(".tabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]");
+  if (b) showTab(b.dataset.tab);
+});
+
+/* ── แชต ───────────────────────────────────── */
+const EXAMPLES = [
+  "ลงทะเบียนได้กี่หน่วยกิตต่อเทอม",
+  "ถอนรายวิชาได้ถึงเมื่อไหร่",
+  "ปี 2 เทอม 1 ต้องเรียนวิชาอะไรบ้าง",
+  "ได้ F ต้องทำยังไง",
+  "วิชา 04100203-66 ต้องผ่านอะไรก่อน",
+  "เรียนจบต้องได้กี่หน่วยกิต",
+];
+el("examples").innerHTML = EXAMPLES.map(q =>
+  `<button class="chip" type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("");
+el("cov-has").innerHTML = COVERAGE_HAS.map(t => `<li>${esc(t)}</li>`).join("");
+el("cov-miss").innerHTML = COVERAGE_GAPS.map(g =>
+  `<li>${esc(g.message.split(" ").slice(0, 6).join(" ")).replace("ระบบยังไม่มี", "")}…</li>`).join("");
+
+const MODE_HTML = {
+  gemini_proxy: '<b style="color:var(--ok)">Gemini (เปิดอยู่)</b> — โมเดลเรียบเรียงคำตอบจากเอกสารที่ค้นเจอให้ ' +
+                'คีย์อยู่ฝั่งเซิร์ฟเวอร์ ผู้ใช้ไม่ต้องกรอกอะไร',
+  proxy_rule:   '<b>อ้างเอกสารตรง ๆ</b> — ต่อกับเซิร์ฟเวอร์ได้แล้ว แต่ยังไม่ได้ใส่คีย์ Gemini ไว้ที่นั่น',
+  own_key:      '<b style="color:var(--ok)">Gemini (คีย์ของคุณเอง)</b> — ใช้คีย์ที่ใส่ไว้ในเบราว์เซอร์เครื่องนี้',
+  local:        '<b>อ้างเอกสารตรง ๆ</b> — ค้นเอกสารในเบราว์เซอร์แล้วยกข้อความมาแสดง ' +
+                'ไม่ผ่านโมเดลภาษา จึงไม่มีทางแต่งเติมเกินเอกสาร',
+};
+
+async function modeText(){
+  el("gkey").value = getKey() ? "••••••••••••" : "";
+  // ทายไม่ได้ว่าฝั่งเซิร์ฟเวอร์ใส่คีย์ไว้หรือยัง ต้องถามจริง ไม่งั้นจะโชว์สถานะหลอกผู้ใช้
+  if (LLM_PROXY){
+    el("mode-txt").innerHTML = '<span style="color:var(--ink3)">กำลังตรวจสอบ…</span>';
+    const st = await proxyStatus();
+    el("mode-txt").innerHTML = MODE_HTML[st ? (st.llm === "gemini" ? "gemini_proxy" : "proxy_rule")
+                                            : (getKey() ? "own_key" : "local")];
+    return;
+  }
+  el("mode-txt").innerHTML = MODE_HTML[getKey() ? "own_key" : "local"];
+}
+modeText();
+
+el("gsave").addEventListener("click", () => {
+  const v = el("gkey").value.trim();
+  try {
+    if (!v || v.startsWith("•")) localStorage.removeItem(KEY_STORE);
+    else localStorage.setItem(KEY_STORE, v);
+  } catch {}
+  modeText();
+  toast(getKey() ? "บันทึกคีย์แล้ว" : "ลบคีย์แล้ว กลับไปโหมดอ้างเอกสารตรง");
+});
+
+let busy = false;
+function push(html){
+  el("msgs").insertAdjacentHTML("beforeend", html);
+  el("msgs").lastElementChild.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+const PROVIDER_TH = {
+  gemini: "เรียบเรียงโดย Gemini จากเอกสารที่ค้นเจอ",
+  rule_based: "ยกจากเอกสารโดยตรง ไม่ผ่านโมเดลภาษา",
+  rule_based_fallback: "เรียก Gemini ไม่สำเร็จ จึงยกจากเอกสารโดยตรงแทน",
+  coverage_gap: "ระบบประกาศเองว่าไม่มีข้อมูลเรื่องนี้",
+  none: "ค้นแล้วคะแนนต่ำกว่าเกณฑ์ จึงไม่ตอบ",
+};
+
+async function ask(question){
+  const q = (question || "").trim();
+  if (!q || busy) return;
+  busy = true;
+  el("ask-send").disabled = true;
+  el("examples").hidden = true;
+  push(`<div class="bubble-me">${esc(q)}</div>`);
+  el("q-ask").value = "";
+  push('<div class="bubble-bot" id="pending"><div class="ans" style="color:var(--ink3)">กำลังค้นเอกสาร…</div></div>');
+
+  let r;
+  try { r = await ragAnswer(q); }
+  catch (e) { r = {answer:"เกิดข้อผิดพลาด: " + e.message, sources:[], grounded:false, provider:"none"}; }
+
+  const srcs = r.sources.length ? `
+    <div class="srcs"><p>แหล่งอ้างอิง</p>${r.sources.map((s, i) => `
+      <div class="src">
+        <span class="n">[${i+1}]</span>
+        <span class="w"><b>${esc(s.title)}</b>${s.section ? `<span>${esc(s.section)}</span>` : ""}</span>
+        <span class="sc">${s.score.toFixed(3)}</span>
+      </div>`).join("")}</div>` : "";
+
+  el("pending").outerHTML = `
+    <div class="bubble-bot">
+      <div class="ans">${esc(r.answer)}</div>
+      ${srcs}
+      <span class="badge ${r.grounded ? "grounded" : "nogr"}">
+        ${r.grounded ? "✓ อ้างจากเอกสารจริง" : "! ไม่มีข้อมูล จึงไม่ตอบ"}
+      </span>
+      <p style="margin:8px 0 0; font-size:11.5px; color:var(--ink3)">
+        ${esc(PROVIDER_TH[r.provider] || r.provider)}${r.topScore != null ? ` · คะแนนค้นคืนสูงสุด ${r.topScore.toFixed(4)} (เกณฑ์ ${MIN_SCORE})` : ""}
+      </p>
+      <p style="margin:5px 0 0; font-size:11px; color:var(--ink3)">${esc(r.disclaimer || "")}</p>
+    </div>`;
+  busy = false;
+  el("ask-send").disabled = false;
+}
+
+el("askform").addEventListener("submit", e => { e.preventDefault(); ask(el("q-ask").value); });
+el("examples").addEventListener("click", e => {
+  const b = e.target.closest("[data-q]");
+  if (b) ask(b.dataset.q);
+});
+
+/* ── แผงตรวจคุณภาพ: รัน golden set จริงให้ดูกับตา ────────── */
+el("ev-min").textContent = "MIN_SCORE = " + MIN_SCORE;
+
+el("run-eval").addEventListener("click", () => {
+  buildIndex();
+  const rows = [];
+  let pass = 0;
+
+  for (const q of GOLDEN.on_topic){
+    // คำถามที่ต้องตอบได้ = คะแนนอันดับ 1 ต้องเกินเกณฑ์
+    const hits = ragSearch(q, 1);
+    const score = hits[0]?.score ?? 0;
+    const ok = score >= MIN_SCORE;
+    if (ok) pass++;
+    rows.push({ok, kind:"ต้องตอบได้", q, score, where: hits[0] ? (hits[0].title + (hits[0].section ? " — " + hits[0].section : "")) : "ไม่เจอเอกสาร"});
+  }
+  for (const q of GOLDEN.off_topic){
+    // คำถามนอกเรื่อง = ต้องต่ำกว่าเกณฑ์ หรือถูกดักด้วย coverage gap
+    const gap = findGap(q);
+    const hits = gap ? [] : ragSearch(q, 1);
+    const score = hits[0]?.score ?? 0;
+    const ok = gap ? true : score < MIN_SCORE;
+    if (ok) pass++;
+    rows.push({ok, kind:"ต้องไม่ตอบ", q, score,
+               where: gap ? "ถูกดักด้วยการประกาศขอบเขต" : "คะแนนต่ำกว่าเกณฑ์จึงปฏิเสธ"});
+  }
+
+  const total = rows.length;
+  const allPass = pass === total;
+  el("ev-out").innerHTML = `
+    <div class="ev-sum">
+      <div class="stat ${allPass ? "is-ok" : "is-over"}"><dt>ผ่าน</dt><dd>${pass}/${total}</dd></div>
+      <div class="stat"><dt>คำถามที่ต้องตอบได้</dt><dd>${GOLDEN.on_topic.length}</dd></div>
+      <div class="stat"><dt>คำถามนอกเรื่อง</dt><dd>${GOLDEN.off_topic.length}</dd></div>
+      <div class="stat"><dt>เอกสารในคลัง</dt><dd>${KB_STATS.chunks}<span style="font-size:12px;font-weight:400;color:var(--ink3)"> ส่วน</span></dd></div>
+    </div>
+    <div class="card" style="padding:0">
+      ${rows.map(r => `
+        <div class="ev-line">
+          <span class="ev-tag ${r.ok ? "pass" : "fail"}">${r.ok ? "ผ่าน" : "ตก"}</span>
+          <span class="q">${esc(r.q)}<small>${esc(r.kind)} · ${esc(r.where)}</small></span>
+          <span class="sc">${r.score.toFixed(4)}</span>
+        </div>`).join("")}
+    </div>
+    <p style="margin:11px 2px 0; font-size:12.5px; color:var(--ink3)">
+      คะแนนคือ cosine similarity ของเอกสารอันดับ 1 หลังคูณตัวคูณรหัสวิชา/ชั้นปีแล้ว ·
+      ชุดคำถามนี้ดึงมาจาก <span class="mono">07_rag_llm_engine/tests/test_retrieval.py</span> ตอน build
+      จึงตรงกับที่ CI รันเสมอ
+    </p>`;
+  toast(allPass ? `ผ่านครบ ${pass}/${total}` : `ผ่าน ${pass}/${total} — มีข้อที่ตก`);
+});
+
+// ต่อตัวกลางไว้แล้ว ผู้ใช้ไม่ต้องยุ่งกับคีย์เลย ซ่อนกล่องผู้พัฒนาไปเลย
+if (LLM_PROXY) el("devbox").hidden = true;
+
+/* ── เปิดแท็บที่ค้างไว้ ─────────────────────── */
+try {
+  const saved = localStorage.getItem("rmutt-tab");
+  if (saved && PANELS[saved]) showTab(saved);
+} catch {}
+})();
+
+</script>

@@ -1,26 +1,62 @@
-[07_rag_llm_engine] 03_process.txt  —  RAG Process / คุณภาพคำตอบ
+[07_rag_llm_engine] 03_process.txt  —  สถาปัตยกรรมภายใน / Contract / ข้อควรระวัง
 ==================================================================
-FLOW
+โครงสร้างไฟล์
+  src/config.py              ค่าตั้งทั้งหมดอ่านจาก env
+  src/core/text.py           ตัดคำไทย/อังกฤษ + แบ่ง chunk
+  src/core/retrieval.py      BM25Index / VectorIndex / HybridRetriever
+  src/llm/client.py          เรียก LLM (rule_based + 3 provider) + prompt
+  src/services/knowledge.py  โหลดเอกสารเข้า index + ค้นหา
+  src/services/generator.py  RAG ตอบคำถาม + ด่านกันมั่ว
+  src/services/explainer.py  แปลงผลจาก 06 เป็นภาษาคน + ตรวจหน่วยกิต
+  src/api/routes.py          endpoint
+  data/knowledge/*.md        คลังความรู้
+  data/seed/*.json           ตารางสอนจำลองวิศวะคอม
+  demo_plan.py               เดโม่จัดตารางครบวงจร
+
+ลำดับการทำงาน: ตอบคำถาม (POST /generate)
   question
-   → (05) ดึง context นักศึกษา
-   → rewrite query (ขยายคำย่อ "ถอนวิชา" → "การถอนรายวิชา ระเบียบการศึกษา")
-   → hybrid retrieve → filter ปีหลักสูตร → rerank
-   → ถ้า score สูงสุด < threshold(0.35) → ตอบว่าไม่พบข้อมูล (ห้ามมั่ว)
-   → build prompt → LLM stream
-   → post-process: แนบ sources[] {title, section, page}
+   -> _expand_query()  ขยายคำถามสั้นให้ค้นเจอง่ายขึ้น
+   -> hybrid search (BM25 + TF-IDF) -> RRF -> กรอง doc_type/ปีหลักสูตร/program
+   -> ถ้า top score < MIN_SCORE  ==> ตอบ "ไม่พบข้อมูล" จบเลย ไม่เรียก LLM
+   -> build prompt (เอกสาร + context จากระบบ + คำถาม)
+   -> LLM generate
+   -> แนบ sources[] + disclaimer
 
-ANTI-HALLUCINATION
-  1. ทุกประโยคที่อ้างระเบียบต้องมี citation
-  2. ตัวเลขวัน/เวลา/หน่วยกิต → เอาจาก 05/06 เท่านั้น ไม่ให้ LLM แต่ง
-  3. self-check pass: ถามโมเดลซ้ำว่า "คำตอบนี้มีส่วนไหนที่ไม่มีใน context บ้าง"
-     (เปิดเฉพาะคำถามสำคัญ เพราะเปลือง token)
+ลำดับการทำงาน: อธิบายแผน (POST /explain/plan)
+  รับ {term, plan[], conflicts[], warnings[], total_credits}
+   -> แยก ERROR ออกจาก WARNING
+   -> ตรวจหน่วยกิตตามเทอม (ปกติ 9-21 / ฤดูร้อน <=9)
+   -> เรียบเรียงทีละข้อ: ชื่อปัญหา + รายละเอียดที่ 06 ส่งมา + คำแนะนำ + ตัวเลือก
+   -> ดึงระเบียบที่เกี่ยวข้องมาแนบเป็น sources
+   -> คืน verdict: ok | warning | blocked
 
-EVALUATION (ต้องทำก่อนส่งงาน)
-  สร้างชุดคำถาม 50 ข้อ พร้อมเฉลย (golden set) เช่น
-    - "ลงทะเบียนได้สูงสุดกี่หน่วยกิตต่อเทอม"
-    - "ถอนรายวิชาแล้วได้ W เมื่อไหร่"
-    - "วิชา X ต้องผ่านอะไรก่อน"
-  วัด: retrieval recall@6, answer accuracy, citation ถูกต้อง %, latency
+CONTRACT ที่ต้องไม่เปลี่ยนโดยไม่บอกทีม
+  โมดูล 03 เรียก 2 อันนี้ (ดู 03/src/tools.py)
+    POST /knowledge/search  {query, top_k}
+        -> {ok, query, found, chunks[{doc_id,title,section,doc_type,score,text}], top_score}
+    POST /generate          {question, context}
+        -> {ok, answer, sources[], grounded, provider, disclaimer}
+  ถ้าจะแก้ ต้องแจ้งเจ้าของ 03 (Automatic28m) และ 02 (fffalafair) ก่อน
 
-CACHE
-  redis: hash(query+filters) → คำตอบ TTL 24 ชม. (คำถามระเบียบซ้ำกันเยอะ)
+กฎเหล็ก
+  1. โมดูลนี้ห้ามคำนวณเวลาหรือหน่วยกิตเอง ตัวเลขทุกตัวมาจาก 05 และ 06
+     (มีเทส test_never_invents_numbers กันการถดถอย)
+  2. ไม่มีหลักฐาน = ไม่ตอบ ห้ามให้ LLM เดาจากความรู้ทั่วไป
+  3. ทุกคำตอบที่อ้างระเบียบต้องมี sources
+  4. ทุกคำตอบต้องมี disclaimer ว่าไม่ใช่การยืนยันจากมหาวิทยาลัย
+
+ข้อควรระวังที่เจอมาแล้ว (อย่าทำซ้ำ)
+  - อย่าใช้คะแนน RRF เป็นเกณฑ์ "พบ/ไม่พบ" เพราะอันดับ 1 ได้คะแนนเท่ากันเสมอ
+    ให้ใช้ cosine similarity แทน
+  - คำที่ใช้ขยายคำถามต้องยาวพอ ห้ามใช้คำสั้นอย่าง "ชน" เพราะไปพ้องกับ "ชนะ"
+    ทำให้คำถามนอกเรื่องถูกดันคะแนนจนผ่านเกณฑ์ (มีเทสกันไว้แล้ว)
+  - เอกสารคนละปีหลักสูตรมีกฎต่างกัน ต้องกรองด้วย effective_year เสมอ
+
+PRIVACY
+  - โมดูลนี้ไม่เก็บข้อมูลนักศึกษาลงดิสก์ รับ context มาใช้แล้วจบใน request
+  - ก่อนส่ง context ให้ LLM บนคลาวด์ ผู้เรียก (02/03) ต้อง mask ชื่อ-รหัสจริงมาก่อน
+
+ที่ต้องทำต่อ
+  - แทนเอกสารจำลองด้วยระเบียบ/มคอ.2 ฉบับจริง แล้วรัน POST /ingest
+  - ทำชุดคำถามวัดผล 50 ข้อพร้อมเฉลย วัด recall@6 และความถูกต้องของ citation
+  - ถ้าคลังโตมาก เปลี่ยน VectorIndex เป็น Qdrant + bge-m3
