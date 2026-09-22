@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Noto Sans Thai", "Sarabun", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  @apply bg-slate-50 text-slate-800 antialiased;
+  font-family: var(--font-sans);
+}
+
+/* แถบเลื่อนให้บางลง ไม่บังตารางเรียน */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300; }
+::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+
+@layer components {
+  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5
+           text-sm font-medium transition focus:outline-none focus:ring-2
+           focus:ring-brand-400 focus:ring-offset-2 disabled:cursor-not-allowed
+           disabled:opacity-50;
+  }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800; }
+  .btn-ghost   { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn-danger  { @apply btn border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100; }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-1
+           text-xs font-medium;
+  }
+  .label { @apply block text-sm font-medium text-slate-700; }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm
+           placeholder:text-slate-400 focus:border-brand-500 focus:outline-none
+           focus:ring-1 focus:ring-brand-500;
+  }
+}
+
+/* ผู้ใช้ที่ตั้งค่าลดการเคลื่อนไหว */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

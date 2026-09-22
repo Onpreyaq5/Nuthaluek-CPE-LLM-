@@ -1,0 +1,79 @@
+"""ตัวช่วยเขียน Vercel Python serverless function
+
+Vercel มองไฟล์ api/*.py เป็นฟังก์ชันคนละตัว ไฟล์ที่ขึ้นต้นด้วย _ ไม่ถูก route
+แต่ยัง bundle ไปด้วย จึงใช้เก็บโค้ดที่ใช้ร่วมกันได้
+"""
+from __future__ import annotations
+
+import json
+import sys
+from http.server import BaseHTTPRequestHandler
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+# ให้ import _core ได้ไม่ว่าจะถูกเรียกจากที่ไหน
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+MAX_BODY = 1_000_000   # 1 MB กันคนยิง payload ใหญ่ผิดปกติ
+
+
+class JsonHandler(BaseHTTPRequestHandler):
+    """รับ-ส่ง JSON พร้อมจัดการ CORS และ error ให้เรียบร้อย
+
+    คลาสลูกทำแค่ implement get(query) หรือ post(body)
+    """
+
+    def _send(self, status: int, payload: dict) -> None:
+        raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(raw)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(raw)
+
+    def do_OPTIONS(self) -> None:          # noqa: N802 - ชื่อตามที่ BaseHTTPRequestHandler กำหนด
+        self._send(204, {})
+
+    def do_GET(self) -> None:              # noqa: N802
+        try:
+            query = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+            self._send(200, self.get(query))
+        except FileNotFoundError as exc:
+            self._send(404, {"ok": False, "error": {"code": "NOT_FOUND", "message": str(exc)}})
+        except Exception as exc:           # noqa: BLE001 - ต้องไม่ให้ 500 หลุดไปแบบไม่มีข้อความ
+            self._send(500, {"ok": False, "error": {"code": "INTERNAL", "message": str(exc)}})
+
+    def do_POST(self) -> None:             # noqa: N802
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            if length > MAX_BODY:
+                self._send(413, {"ok": False, "error": {"code": "TOO_LARGE",
+                                                        "message": "ข้อมูลที่ส่งมาใหญ่เกินไป"}})
+                return
+            body = json.loads(self.rfile.read(length) or b"{}") if length else {}
+            if not isinstance(body, dict):
+                raise ValueError("ต้องส่งข้อมูลเป็น JSON object")
+            self._send(200, self.post(body))
+        except json.JSONDecodeError:
+            self._send(400, {"ok": False, "error": {"code": "BAD_JSON",
+                                                    "message": "รูปแบบ JSON ไม่ถูกต้อง"}})
+        except ValueError as exc:
+            self._send(400, {"ok": False, "error": {"code": "VALIDATION", "message": str(exc)}})
+        except FileNotFoundError as exc:
+            self._send(404, {"ok": False, "error": {"code": "NOT_FOUND", "message": str(exc)}})
+        except Exception as exc:           # noqa: BLE001
+            self._send(500, {"ok": False, "error": {"code": "INTERNAL", "message": str(exc)}})
+
+    # ── คลาสลูก override ──────────────────────────────────────
+    def get(self, query: dict) -> dict:
+        raise NotImplementedError
+
+    def post(self, body: dict) -> dict:
+        raise NotImplementedError
+
+    def log_message(self, *args) -> None:  # ปิด log ของ stdlib ไม่ให้รก
+        pass
