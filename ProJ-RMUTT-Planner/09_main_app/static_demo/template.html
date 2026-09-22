@@ -221,6 +221,63 @@ input[type=search]{
 .sec .seat.full{color:var(--bad); font-weight:600}
 .tick{color:var(--brand); flex:none}
 
+/* ── แท็บหลัก ─────────────────────────────── */
+.tabs{display:flex; gap:3px; padding:0 16px; max-width:1240px; margin:0 auto; overflow-x:auto}
+.tabs button{
+  border:0; background:none; padding:9px 13px 10px; cursor:pointer; white-space:nowrap;
+  font-family:var(--ui); font-size:14px; font-weight:500; color:var(--ink2);
+  border-bottom:2.5px solid transparent; display:flex; align-items:center; gap:6px;
+}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected=true]{color:var(--brand); border-bottom-color:var(--brand); font-weight:600}
+
+/* ── แชต ─────────────────────────────── */
+.ask{display:grid; gap:14px; grid-template-columns:minmax(0,1fr)}
+@media (min-width:1000px){.ask{grid-template-columns:minmax(0,1fr) 320px; align-items:start}}
+.msgs{display:flex; flex-direction:column; gap:11px; min-height:120px}
+.bubble-me{align-self:flex-end; max-width:86%; background:var(--brand); color:var(--on-brand);
+  padding:9px 14px; border-radius:16px 16px 4px 16px; font-size:14.5px}
+.bubble-bot{background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  padding:14px 16px; box-shadow:var(--shadow)}
+.bubble-bot .ans{white-space:pre-wrap; font-size:14.5px; line-height:1.66}
+.srcs{margin-top:12px; border-top:1px solid var(--line); padding-top:10px}
+.srcs>p{font-family:var(--ui); font-size:10.5px; font-weight:600; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--ink3); margin:0 0 6px}
+.src{display:flex; gap:8px; font-size:12.5px; padding:3px 0; align-items:baseline}
+.src .n{font-family:var(--mono); color:var(--ink3); flex:none}
+.src .w{min-width:0; flex:1}
+.src .w b{display:block; font-weight:600; font-family:var(--ui); font-size:13px}
+.src .w span{display:block; color:var(--ink3)}
+.src .sc{font-family:var(--mono); font-size:11px; color:var(--ink3); flex:none}
+.badge{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-family:var(--ui);
+  font-weight:600; padding:2px 9px; border-radius:99px; margin-top:10px}
+.badge.grounded{background:var(--ok-soft); color:var(--ok)}
+.badge.nogr{background:var(--warn-soft); color:var(--warn)}
+.askbar{position:sticky; bottom:12px; display:flex; gap:8px; background:var(--surface);
+  border:1px solid var(--line2); border-radius:12px; padding:7px; box-shadow:var(--shadow); margin-top:14px}
+.askbar input{flex:1; border:0; background:none; padding:6px 8px; font-size:15px; min-width:0}
+.askbar input:focus{outline:none}
+.examples{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+.side h3{font-family:var(--ui); font-size:13.5px; font-weight:600; margin:0 0 8px}
+.side ul{margin:0; padding-inline-start:17px; font-size:13px; color:var(--ink2); line-height:1.75}
+.side .miss{color:var(--ink3)}
+.keyrow{margin-top:11px; display:flex; gap:7px}
+.keyrow input{flex:1; min-width:0; border:1px solid var(--line2); border-radius:8px;
+  padding:6px 10px; background:var(--sunken); font-size:13px; font-family:var(--mono)}
+
+/* ── แผงตรวจคุณภาพ ─────────────────────────── */
+.ev-sum{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px}
+.ev-line{display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:11px; align-items:center;
+  padding:9px 14px; border-top:1px solid var(--line); font-size:14px}
+.ev-line:first-child{border-top:0}
+.ev-tag{font-family:var(--mono); font-size:10.5px; font-weight:600; padding:2px 6px;
+  border-radius:5px; text-align:center}
+.ev-tag.pass{background:var(--ok-soft); color:var(--ok)}
+.ev-tag.fail{background:var(--bad-soft); color:var(--bad)}
+.ev-line .q{min-width:0}
+.ev-line .q small{display:block; color:var(--ink3); font-size:12px}
+.ev-line .sc{font-family:var(--mono); font-size:12px; color:var(--ink3); white-space:nowrap}
+
 /* ── กล่องตั้งค่า ─────────────────────────── */
 .prefs{padding:13px 14px; display:grid; gap:11px}
 .row{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
@@ -262,6 +319,7 @@ footer{margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font
       </span>
     </div>
 
+    <span id="plan-controls" style="display:contents">
     <div class="field">
       <label for="term">ภาคการศึกษา</label>
       <select id="term"></select>
@@ -291,7 +349,22 @@ footer{margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font
     <button class="btn" id="btn-clear" title="ล้างแผนทั้งหมด">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
     </button>
+    </span>
   </div>
+  <nav class="tabs" role="tablist" aria-label="เลือกส่วนที่จะใช้">
+    <button role="tab" data-tab="plan" aria-selected="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      จัดตารางเรียน
+    </button>
+    <button role="tab" data-tab="ask" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M9.2 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.8-2.8 2.8M12 17v.01"/></svg>
+      ถามเรื่องระเบียบ
+    </button>
+    <button role="tab" data-tab="eval" aria-selected="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2.5 2.5L16 8"/><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4"/></svg>
+      ตรวจคุณภาพระบบ
+    </button>
+  </nav>
 </header>
 
 <div class="shell">
@@ -318,6 +391,7 @@ footer{margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font
     </div>
   </div>
 
+  <div id="tab-plan">
   <dl class="stats" id="stats"></dl>
 
   <div class="grid2">
@@ -357,6 +431,74 @@ footer{margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font
         <div class="pick-list" id="pick-mount"></div>
       </section>
     </div>
+  </div>
+
+  </div><!-- /tab-plan -->
+
+  <!-- ══ แท็บถามเรื่องระเบียบ (RAG) ══ -->
+  <div id="tab-ask" hidden>
+    <div class="ask">
+      <div>
+        <div class="card" style="padding:16px">
+          <h2 style="font-family:var(--ui); font-size:17px; margin:0 0 4px">ถามเรื่องระเบียบและหลักสูตร</h2>
+          <p style="margin:0; font-size:13.5px; color:var(--ink2)">
+            ค้นจากเอกสารก่อน แล้วค่อยตอบจากสิ่งที่ค้นเจอเท่านั้น <strong>พร้อมบอกทุกครั้งว่าอ้างจากเอกสารไหน ข้อไหน</strong>
+            ถ้าคลังไม่มีข้อมูลเรื่องนั้น จะบอกตรง ๆ ว่าไม่รู้ ไม่เดาให้
+          </p>
+          <p id="kb-stat" style="margin:9px 0 0; font-size:12px; color:var(--ink3)" class="mono"></p>
+        </div>
+
+        <div class="examples" id="examples"></div>
+        <div class="msgs" id="msgs" style="margin-top:14px"></div>
+
+        <form class="askbar" id="askform">
+          <input id="q-ask" placeholder="เช่น ถอนรายวิชาได้ถึงเมื่อไหร่" aria-label="คำถาม" autocomplete="off">
+          <button type="submit" class="btn btn-primary" id="ask-send">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 16-2.5-6z"/></svg>
+            ถาม
+          </button>
+        </form>
+      </div>
+
+      <aside class="card side" style="padding:16px">
+        <h3>ระบบรู้อะไรบ้าง</h3>
+        <ul id="cov-has"></ul>
+        <h3 style="margin-top:14px">เรื่องที่ยังไม่มีข้อมูล</h3>
+        <ul id="cov-miss" class="miss"></ul>
+        <h3 style="margin-top:16px">โหมดตอบคำถาม</h3>
+        <p style="margin:0; font-size:13px; color:var(--ink2)" id="mode-txt"></p>
+        <div class="keyrow">
+          <input id="gkey" type="password" placeholder="วาง Gemini API key (ถ้ามี)" aria-label="Gemini API key" autocomplete="off">
+          <button class="btn" id="gsave" type="button">บันทึก</button>
+        </div>
+        <p style="margin:7px 0 0; font-size:11.5px; color:var(--ink3)">
+          ไม่ใส่ก็ใช้ได้ ระบบจะยกข้อความจากเอกสารมาตอบตรง ๆ แทน ·
+          คีย์ถูกเก็บในเบราว์เซอร์ของคุณเครื่องเดียว ส่งตรงไป Google ไม่ผ่านเซิร์ฟเวอร์ของเรา
+        </p>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ══ แท็บตรวจคุณภาพระบบ (golden set) ══ -->
+  <div id="tab-eval" hidden>
+    <div class="card" style="padding:16px">
+      <h2 style="font-family:var(--ui); font-size:17px; margin:0 0 4px">ชุดคำถามมาตรฐาน (golden set)</h2>
+      <p style="margin:0; font-size:13.5px; color:var(--ink2)">
+        ชุดคำถามที่ใช้วัดว่าระบบค้นคืนยังทำงานถูกอยู่ไหม แบ่งเป็นสองฝั่ง —
+        <strong>คำถามที่ต้องตอบได้</strong> ต้องมีคะแนนเกินเกณฑ์ และ
+        <strong>คำถามนอกเรื่อง</strong> ต้องมีคะแนนต่ำกว่าเกณฑ์ เพื่อให้ระบบปฏิเสธการตอบ
+        ชุดเดียวกับที่ใช้ใน <span class="mono">pytest</span> ของโมดูล 07
+      </p>
+      <p style="margin:9px 0 0; font-size:12.5px; color:var(--ink3)">
+        เกณฑ์ตัด <span class="mono" id="ev-min"></span> — ค่านี้เลือกจากการวัดจริง
+        ไม่ได้ตั้งลอย ๆ (ดูเหตุผลใน <span class="mono">api/_core/text.py</span>)
+      </p>
+      <button class="btn btn-primary" id="run-eval" style="margin-top:13px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9z"/></svg>
+        รันชุดทดสอบเดี๋ยวนี้
+      </button>
+    </div>
+    <div id="ev-out" style="margin-top:14px"></div>
   </div>
 
   <div class="note">
@@ -949,6 +1091,7 @@ function render(){
 
 /* ═══ การโต้ตอบ ═══ */
 let toastTimer;
+window.toast = toast;   // ให้สคริปต์ของแท็บถาม-ตอบเรียกใช้ได้
 function toast(msg){
   const old = document.querySelector(".toast");
   if (old) old.remove();
@@ -1080,4 +1223,614 @@ el("pref-max-val").textContent = state.prefs.maxCredits;
 // เปิดมาต้องเห็นตารางที่ใช้งานได้จริงเลย ไม่ใช่กรอบเปล่า ๆ รอให้กดก่อน
 if (restored && state.ids.length) render();
 else autoPlan();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   RAG ในเบราว์เซอร์ — พอร์ตจาก 09_main_app/api/_core/
+     text.py       -> ตัดคำ / หั่น chunk / ขยายคำถาม
+     retrieval.py  -> BM25 + TF-IDF cosine + Reciprocal Rank Fusion
+     coverage.py   -> ประกาศขอบเขตที่ระบบไม่มีข้อมูล
+     llm.py        -> เรียบเรียงคำตอบ (Gemini ถ้ามีคีย์ ไม่มีก็ยกเอกสารมาตรง ๆ)
+
+   ตัวเลขทุกตัว (MIN_SCORE, ตัวคูณ, ขนาด n-gram) ตรงกับฝั่ง Python
+   ถ้าแก้ที่ Python ต้องตามมาแก้ที่นี่ ไม่งั้นสองฝั่งจะตอบไม่เหมือนกัน
+   ═══════════════════════════════════════════════════════════════ */
+"use strict";
+
+const KB_FILES = "__KNOWLEDGE_DATA__";
+const GOLDEN = "__GOLDEN_SET__";
+
+const CHUNK_CHARS = 900, CHUNK_OVERLAP = 150;
+const TOP_K_BM25 = 20, TOP_K_VECTOR = 20, RRF_K = 60;
+const MIN_SCORE = 0.21;
+const CODE_MATCH_MULTIPLIER = 2.2;
+const SECTION_HINT_MULTIPLIER = 2.0;
+const RULE_BASED_MAX_CHUNKS = 3;
+
+/* ── ตัดคำ ───────────────────────────────────────────────── */
+const THAI_RE = /[฀-๿]+/g;
+const ASCII_WORD_RE = /[A-Za-z0-9][A-Za-z0-9_.+\-]*/g;
+const COURSE_CODE_RE = /\b\d{8}-\d{2}\b/g;
+const THAI_STOPWORDS = new Set(["และ","หรือ","ของ","ที่","ใน","การ","ความ","เป็น","ให้","ได้",
+  "กับ","จาก","โดย","ต้อง","จะ","ไม่","มี","นี้","นั้น","แล้ว"]);
+
+const normalize = t => (t || "").normalize("NFC").replace(/[\s ]+/g, " ").trim();
+
+/** ภาษาไทยเขียนติดกันไม่มีช่องว่าง จึงใช้ n-gram ขนาด 3 และ 4
+ *  ขนาดนี้เลือกจากการวัดจริง ให้ช่องว่างระหว่างคำถามในเรื่อง/นอกเรื่องกว้างที่สุด */
+function thaiNgrams(word, sizes = [3, 4]){
+  const out = [];
+  for (const n of sizes){
+    if (word.length < n){ if (word.length >= 2) out.push(word); continue; }
+    for (let i = 0; i <= word.length - n; i++) out.push(word.slice(i, i + n));
+  }
+  return out;
+}
+
+function tokenize(text){
+  text = normalize(text).toLowerCase();
+  const tokens = [];
+  for (const code of text.match(COURSE_CODE_RE) || []){
+    tokens.push(code, code.split("-")[0]);     // ค้นแบบไม่ระบุปีหลักสูตรก็ต้องเจอ
+  }
+  tokens.push(...(text.match(ASCII_WORD_RE) || []));
+  for (const run of text.match(THAI_RE) || []){
+    if (THAI_STOPWORDS.has(run)) continue;
+    for (const t of thaiNgrams(run)) if (!THAI_STOPWORDS.has(t)) tokens.push(t);
+  }
+  return tokens;
+}
+
+/* ── หั่นเอกสาร ──────────────────────────────────────────── */
+function parseFrontmatter(raw){
+  const m = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
+  if (!m) return [{}, raw];
+  const meta = {};
+  for (const line of m[1].split("\n")){
+    const i = line.indexOf(":");
+    if (i === -1) continue;
+    meta[line.slice(0, i).trim()] = line.slice(i + 1).trim().replace(/^["']|["']$/g, "");
+  }
+  return [meta, raw.slice(m[0].length)];
+}
+
+/** แบ่งตามหัวข้อ markdown แล้วพ่วงหัวข้อแม่มาด้วยเป็น breadcrumb
+ *  จำเป็นเพราะแผนการศึกษามีหัวข้อ "ภาคการศึกษาที่ 1" ซ้ำกัน 4 ครั้ง (ปี 1-4)
+ *  ถ้าเก็บแค่หัวข้อสุดท้าย chunk ทั้งสี่จะหน้าตาเหมือนกันจนแยกไม่ออก */
+function splitByHeading(body){
+  const re = /^(#{1,6})[ \t]+(.+)$/gm;
+  const matches = [...body.matchAll(re)];
+  if (!matches.length) return [["", body.trim()]];
+  const parts = [];
+  const lead = body.slice(0, matches[0].index).trim();
+  if (lead) parts.push(["", lead]);
+  const trail = [];
+  matches.forEach((m, i) => {
+    const level = m[1].length, title = m[2].trim();
+    while (trail.length && trail[trail.length-1][0] >= level) trail.pop();
+    trail.push([level, title]);
+    const start = m.index + m[0].length;
+    const end = i + 1 < matches.length ? matches[i+1].index : body.length;
+    parts.push([trail.map(t => t[1]).join(" > "), body.slice(start, end).trim()]);
+  });
+  return parts;
+}
+
+function chunkText(text, maxChars, overlap){
+  text = text.trim();
+  if (text.length <= maxChars) return text ? [text] : [];
+  const chunks = [];
+  let start = 0;
+  while (start < text.length){
+    let end = Math.min(start + maxChars, text.length);
+    if (end < text.length){
+      const from = start + Math.floor(maxChars / 2);
+      let cut = text.lastIndexOf("\n", end);
+      if (cut < from) cut = text.lastIndexOf(" ", end);
+      if (cut > start && cut >= from) end = cut;
+    }
+    const piece = text.slice(start, end).trim();
+    if (piece) chunks.push(piece);
+    if (end >= text.length) break;
+    start = Math.max(end - overlap, start + 1);
+  }
+  return chunks;
+}
+
+/* ── ขยายคำถาม ──────────────────────────────────────────── */
+// คำถามนักศึกษาใช้คำพูดชาวบ้าน เอกสารใช้คำราชการ ไม่แปลงให้ก็ค้นไม่เจอ
+// หนึ่งหัวข้อเติมได้ครั้งเดียว ไม่งั้นข้อความขยายจะกลบคำถามเดิม
+const EXPANSION_TOPICS = [
+  ["graduate", ["ถึงจะจบ","จะจบ","เรียนจบ","สำเร็จการศึกษา","จบการศึกษา","ตลอดหลักสูตร"],
+   "เกณฑ์สำเร็จการศึกษา จำนวนหน่วยกิตรวมตลอดหลักสูตร โครงสร้างหลักสูตร"],
+  ["term_credits", ["กี่หน่วยกิตต่อเทอม","หน่วยกิตต่อเทอม","หน่วยกิตต่อภาค","ลงได้กี่หน่วยกิต"],
+   "จำนวนหน่วยกิตต่อภาคการศึกษา ขั้นต่ำ สูงสุด"],
+  ["credits", ["หน่วยกิต"], "หน่วยกิต"],
+  ["withdraw", ["ถอนรายวิชา","ถอนวิชา"], "ถอนรายวิชา สัญลักษณ์ W กำหนดเวลา"],
+  ["add_course", ["เพิ่มรายวิชา","เพิ่มวิชา"], "เพิ่มรายวิชา กำหนดเวลา"],
+  ["clash", ["ตารางชน","เรียนชน","ชนกัน","ซ้ำซ้อน"], "เวลาเรียนซ้ำซ้อน เวลาสอบตรงกัน"],
+  ["retire", ["รีไทร์","พ้นสภาพ"], "พ้นสภาพนักศึกษา ระยะเวลาศึกษา GPAX"],
+  ["prereq", ["บังคับก่อน","ต้องผ่านอะไรก่อน","ต้องเรียนอะไรก่อน"],
+   "รายวิชาบังคับก่อน prerequisite แผนการศึกษา"],
+  ["seat_full", ["ที่นั่งเต็ม"], "ที่นั่งเต็ม ขอเพิ่มที่นั่ง หมู่เรียน"],
+  ["exam", ["ตารางสอบ","สอบกลางภาค","สอบปลายภาค"], "ตารางสอบ ปฏิทินการศึกษา"],
+  ["plan", ["เรียนวิชาอะไร","ต้องเรียนอะไร","วิชาอะไรบ้าง","แผนการเรียน"],
+   "แผนการศึกษาแนะนำ รายวิชา"],
+  ["grade", ["เกรด","กี่แต้ม","ค่าระดับ","เกรดเฉลี่ย"],
+   "ระดับคะแนน ค่าระดับคะแนน การวัดและประเมินผล"],
+  ["leave", ["ลาพัก","พักการเรียน","ดรอป"], "ลาพักการศึกษา สถานภาพนักศึกษา"],
+  ["retake", ["ได้ F","ติด F","สอบตก","เรียนซ้ำ"], "การเรียนซ้ำ ลงทะเบียนเรียนซ้ำ ระดับคะแนน"],
+  ["elective", ["วิชาเลือก","เลือกเสรี","วิชาชีพเลือก"],
+   "กลุ่มวิชาชีพเลือก รายวิชาที่ภาควิชาเปิดให้เลือก"],
+  ["syllabus", ["เรียนอะไรบ้าง","เนื้อหาวิชา","คืออะไร","สอนอะไร","เรียนเกี่ยวกับ"],
+   "คำอธิบายรายวิชา"],
+];
+const YEAR_RE = /(?:ชั้น)?ปี(?:ที่)?\s*([1-8])(?![0-9])/;
+const TERM_RE = /(?:เทอม|ภาคเรียน|ภาคการศึกษา)(?:ที่)?\s*([1-3])(?![0-9])/;
+
+function expandQuery(question){
+  const q = (question || "").trim();
+  const extra = [];
+  let m = q.match(YEAR_RE); if (m) extra.push("ชั้นปีที่ " + m[1]);
+  m = q.match(TERM_RE); if (m) extra.push("ภาคการศึกษาที่ " + m[1]);
+  const matched = new Set();
+  for (const [topic, keys, expansion] of EXPANSION_TOPICS){
+    if (matched.has(topic)) continue;
+    // หัวข้อ credits แบบกว้าง ใช้ต่อเมื่อไม่มีหัวข้อหน่วยกิตที่เจาะจงกว่าติดมาก่อน
+    if (topic === "credits" && (matched.has("graduate") || matched.has("term_credits"))) continue;
+    if (keys.some(k => q.includes(k))){ matched.add(topic); extra.push(expansion); }
+  }
+  return extra.length ? (q + " " + [...new Set(extra)].join(" ")).trim() : q;
+}
+
+function sectionHints(question){
+  const hints = [];
+  let m = (question || "").match(YEAR_RE); if (m) hints.push("ชั้นปีที่ " + m[1]);
+  m = (question || "").match(TERM_RE); if (m) hints.push("ภาคการศึกษาที่ " + m[1]);
+  return hints;
+}
+
+/* ── BM25 ───────────────────────────────────────────────── */
+class BM25Index {
+  constructor(k1 = 1.5, b = 0.75){ this.k1 = k1; this.b = b; }
+  fit(docs){
+    this.docs = docs;
+    this.tf = docs.map(d => { const c = new Map();
+      for (const t of d.tokens) c.set(t, (c.get(t) || 0) + 1); return c; });
+    this.docLen = docs.map(d => d.tokens.length);
+    this.avgLen = this.docLen.length
+      ? this.docLen.reduce((a, b) => a + b, 0) / this.docLen.length : 0;
+    this.df = new Map();
+    for (const c of this.tf) for (const t of c.keys()) this.df.set(t, (this.df.get(t) || 0) + 1);
+    // ดัชนีผกผัน: วนเฉพาะเอกสารที่มีคำนั้นจริง เร็วกว่าวนทุกเอกสารทุกคำมาก
+    this.postings = new Map();
+    this.tf.forEach((c, i) => { for (const [t, f] of c){
+      if (!this.postings.has(t)) this.postings.set(t, []);
+      this.postings.get(t).push([i, f]);
+    }});
+  }
+  idf(term){
+    const n = this.docs.length, df = this.df.get(term) || 0;
+    return df === 0 ? 0 : Math.log(1 + (n - df + 0.5) / (df + 0.5));
+  }
+  search(query, topK){
+    const q = tokenize(query);
+    if (!q.length || !this.docs.length) return [];
+    const scores = new Float64Array(this.docs.length);
+    for (const term of new Set(q)){
+      const idf = this.idf(term);
+      if (idf === 0) continue;
+      for (const [i, freq] of this.postings.get(term) || []){
+        const denom = freq + this.k1 * (1 - this.b + this.b * (this.docLen[i] / (this.avgLen || 1)));
+        scores[i] += idf * (freq * (this.k1 + 1)) / denom;
+      }
+    }
+    return [...scores].map((s, i) => [i, s]).filter(x => x[1] > 0)
+      .sort((a, b) => b[1] - a[1]).slice(0, topK);
+  }
+}
+
+/* ── TF-IDF cosine ──────────────────────────────────────── */
+class VectorIndex {
+  fit(docs){
+    this.docs = docs;
+    const n = docs.length, df = new Map();
+    for (const d of docs) for (const t of new Set(d.tokens)) df.set(t, (df.get(t) || 0) + 1);
+    this.idf = new Map([...df].map(([t, c]) => [t, Math.log((n + 1) / (c + 1)) + 1]));
+    this.vectors = docs.map(d => this.vectorize(d.tokens));
+  }
+  vectorize(tokens){
+    const vec = new Map();
+    if (!tokens.length) return vec;
+    const counts = new Map();
+    for (const t of tokens) counts.set(t, (counts.get(t) || 0) + 1);
+    let norm = 0;
+    for (const [t, c] of counts){
+      const v = (c / tokens.length) * (this.idf.get(t) ?? 1);
+      vec.set(t, v); norm += v * v;
+    }
+    norm = Math.sqrt(norm) || 1;
+    for (const [t, v] of vec) vec.set(t, v / norm);
+    return vec;
+  }
+  search(query, topK){
+    const qv = this.vectorize(tokenize(query));
+    if (!qv.size || !this.vectors?.length) return [];
+    const out = [];
+    this.vectors.forEach((vec, i) => {
+      const [small, large] = qv.size < vec.size ? [qv, vec] : [vec, qv];
+      let s = 0;
+      for (const [t, w] of small) s += w * (large.get(t) || 0);
+      if (s > 0) out.push([i, s]);
+    });
+    return out.sort((a, b) => b[1] - a[1]).slice(0, topK);
+  }
+}
+
+/** RRF: อันดับที่ดีในหลายวิธี ย่อมชนะคะแนนดิบสูงในวิธีเดียว */
+function reciprocalRankFusion(rankings, k = RRF_K){
+  const fused = new Map();
+  for (const ranking of rankings)
+    ranking.forEach(([idx], rank) => fused.set(idx, (fused.get(idx) || 0) + 1 / (k + rank + 1)));
+  return [...fused].sort((a, b) => b[1] - a[1]);
+}
+
+class HybridRetriever {
+  constructor(){ this.bm25 = new BM25Index(); this.vector = new VectorIndex(); this.docs = []; }
+  fit(docs){ this.docs = docs; this.bm25.fit(docs); this.vector.fit(docs); }
+  /** คืนคะแนน cosine (คูณตัวคูณ) ไม่ใช่คะแนน RRF
+   *  เพราะ RRF ให้คะแนนตามลำดับ อันดับ 1 ได้เท่ากันเสมอไม่ว่าคำถามจะเกี่ยวข้องจริงไหม
+   *  ใช้เป็นเกณฑ์ตัด "ไม่พบข้อมูล" ไม่ได้ */
+  search(query, topK, hints){
+    if (!this.docs.length) return [];
+    const bm = this.bm25.search(query, TOP_K_BM25);
+    const vec = this.vector.search(query, TOP_K_VECTOR);
+    const relevance = new Map(vec);
+    const codes = [...new Set(query.match(COURSE_CODE_RE) || [])];
+    const scored = [];
+    for (const [idx] of reciprocalRankFusion([bm, vec])){
+      const d = this.docs[idx];
+      let score = relevance.get(idx) || 0;
+      if (codes.length && codes.some(c => d.text.includes(c))) score *= CODE_MATCH_MULTIPLIER;
+      if (hints?.length && hints.every(h => d.section.includes(h))) score *= SECTION_HINT_MULTIPLIER;
+      scored.push([d, Math.min(score, 1)]);
+    }
+    scored.sort((a, b) => b[1] - a[1]);
+    return scored.slice(0, topK);
+  }
+}
+
+/* ── ขอบเขตที่ระบบไม่มีข้อมูล ───────────────────────────── */
+// การค้นคืนวัดได้แค่ "เอกสารเกี่ยวข้องไหม" ไม่ได้วัดว่า "มีคำตอบไหม"
+// เรื่องที่คลังไม่มีตั้งแต่แรก ต้องบอกตรง ๆ ไม่ใช่ยกเอกสารใกล้เคียงมาให้
+const COVERAGE_GAPS = [
+  {topic:"timetable", keywords:["เรียนวันไหน","เรียนวันอะไร","สอนวันไหน","เรียนกี่โมง","สอนกี่โมง",
+    "ตารางสอน","คาบไหน","หมู่ไหนว่าง","เรียนห้องไหน","เวลาเรียน"],
+   message:"ระบบยังไม่มีตารางสอน (วัน-เวลา-ห้องเรียน) อยู่ในคลังเอกสาร — แต่หน้า “จัดตารางเรียน” มีตารางจำลองของ 1/2569 และ 2/2569 ให้ลองใช้ได้ สำหรับตารางสอนจริงให้ตรวจสอบที่ระบบทะเบียน oreg3.rmutt.ac.th"},
+  {topic:"advisor", keywords:["อาจารย์ที่ปรึกษา","ที่ปรึกษาของ","อาจารย์ประจำ"],
+   message:"ระบบยังไม่มีข้อมูลอาจารย์ที่ปรึกษา ดูได้ที่ระบบทะเบียน หรือสอบถามที่ภาควิชาวิศวกรรมคอมพิวเตอร์"},
+  {topic:"fees", keywords:["ค่าเทอม","ค่าธรรมเนียม","ค่าหน่วยกิต","จ่ายเงิน","ผ่อนค่าเทอม"],
+   message:"ระบบยังไม่มีข้อมูลค่าเล่าเรียนและค่าธรรมเนียม ติดต่อกองคลังของมหาวิทยาลัย"},
+  {topic:"facility", keywords:["หอพัก","ที่จอดรถ","โรงอาหาร","ห้องสมุด","รถรับส่ง"],
+   message:"ระบบครอบคลุมเฉพาะเรื่องการลงทะเบียนและการวางแผนการเรียน ไม่มีข้อมูลด้านสวัสดิการ"},
+  {topic:"scholarship", keywords:["ทุนการศึกษา","กยศ","กู้ยืม","ทุนเรียนดี"],
+   message:"ระบบยังไม่มีข้อมูลทุนการศึกษาและเงินกู้ยืม ติดต่อกองพัฒนานักศึกษา"},
+];
+const findGap = q => COVERAGE_GAPS.find(g => g.keywords.some(k => (q || "").includes(k))) || null;
+
+const COVERAGE_HAS = [
+  "ข้อบังคับการศึกษาระดับปริญญาตรี (หน่วยกิต เพิ่ม-ถอน เกรด เกณฑ์จบ)",
+  "โครงสร้างหลักสูตรวิศวกรรมคอมพิวเตอร์ + แผนการศึกษา 4 ปี",
+  "ปฏิทินการศึกษา 3 ภาคเรียน",
+  "คำถามที่พบบ่อยเรื่องการลงทะเบียน",
+  "คำอธิบายรายวิชา CPE ครบทุกวิชา รวมวิชาชีพเลือก",
+];
+
+/* ── สร้างดัชนีครั้งเดียวตอนเปิดหน้า ────────────────────── */
+let RETRIEVER = null, KB_STATS = {chunks:0, files:[]};
+function buildIndex(){
+  if (RETRIEVER) return RETRIEVER;
+  const docs = [];
+  const files = [];
+  for (const [name, raw] of Object.entries(KB_FILES)){
+    files.push(name);
+    const [meta, body] = parseFrontmatter(raw);
+    const year = meta.effective_year || "";
+    for (const [heading, text] of splitByHeading(body)){
+      chunkText(text, CHUNK_CHARS, CHUNK_OVERLAP).forEach((piece, i) => {
+        const title = meta.title || name.replace(/\.md$/, "");
+        const section = heading;
+        docs.push({
+          doc_id: `${name.replace(/\.md$/,"")}#${heading || "intro"}#${i}`,
+          title, section,
+          doc_type: meta.doc_type || "unknown",
+          effective_year: /^\d+$/.test(year) ? Number(year) : null,
+          text: piece,
+          tokens: tokenize(`${title} ${section} ${piece}`),
+        });
+      });
+    }
+  }
+  RETRIEVER = new HybridRetriever();
+  RETRIEVER.fit(docs);
+  KB_STATS = {chunks: docs.length, files};
+  return RETRIEVER;
+}
+
+function ragSearch(question, topK = 6){
+  const r = buildIndex();
+  return r.search(expandQuery(question), topK, sectionHints(question))
+          .map(([d, score]) => ({...d, score}));
+}
+
+/* ── เรียบเรียงคำตอบ ────────────────────────────────────── */
+const DISCLAIMER = "ข้อมูลนี้เป็นคำแนะนำเบื้องต้นจากระบบ ไม่ใช่การยืนยันจากมหาวิทยาลัย " +
+  "โปรดตรวจสอบกับระบบทะเบียนและอาจารย์ที่ปรึกษาก่อนลงทะเบียนจริง";
+const NOT_FOUND = "ไม่พบข้อมูลเรื่องนี้ในระเบียบและเอกสารหลักสูตรที่ระบบมีอยู่ " +
+  "แนะนำให้ติดต่อสำนักส่งเสริมวิชาการและงานทะเบียน (สวท.) หรืออาจารย์ที่ปรึกษาโดยตรง";
+const SYSTEM_PROMPT =
+  "คุณเป็นผู้ช่วยตอบคำถามเรื่องระเบียบและหลักสูตรของมหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี\n" +
+  "กติกาที่ห้ามฝ่าฝืน:\n" +
+  "1. ตอบจากเอกสารอ้างอิงที่ให้มาเท่านั้น ห้ามเติมความรู้นอกเอกสาร\n" +
+  "2. อ้างหมายเลขเอกสารในวงเล็บเหลี่ยม เช่น [1] ทุกครั้งที่ยกข้อมูลมา\n" +
+  "3. ถ้าเอกสารไม่มีคำตอบ ให้บอกตรง ๆ ว่าไม่มีข้อมูล ห้ามเดา\n" +
+  "4. ตอบเป็นภาษาไทย กระชับ ตรงคำถาม";
+
+function ruleBasedAnswer(chunks){
+  if (!chunks.length) return "";
+  const lines = ["จากเอกสารของมหาวิทยาลัยที่เกี่ยวข้องกับคำถามนี้:", ""];
+  chunks.forEach((c, i) => {
+    const where = c.title + (c.section ? " — " + c.section : "");
+    let text = c.text.trim();
+    if (text.length > 600){
+      const cut = text.slice(0, 600);
+      text = cut.slice(0, cut.lastIndexOf("\n") + 1 || 600) + " ...";
+    }
+    lines.push(`[${i+1}] ${where}`, text, "");
+  });
+  return lines.join("\n").trim();
+}
+
+function buildPrompt(question, chunks){
+  const refs = chunks.map((c, i) =>
+    `[${i+1}] ${c.title} — ${c.section || "เนื้อหาทั่วไป"}\n${c.text}`).join("\n\n");
+  return `${SYSTEM_PROMPT}\n\n=== เอกสารอ้างอิง ===\n${refs}\n\n=== คำถาม ===\n${question}\n\nคำตอบ:`;
+}
+
+const KEY_STORE = "rmutt-gemini-key";
+const getKey = () => { try { return localStorage.getItem(KEY_STORE) || ""; } catch { return ""; } };
+
+async function callGemini(prompt, key){
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
+              "gemini-2.0-flash:generateContent?key=" + encodeURIComponent(key);
+  const r = await fetch(url, {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({contents:[{parts:[{text: prompt}]}],
+                          generationConfig:{temperature: 0.2, maxOutputTokens: 800}}),
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!r.ok) throw new Error("gemini " + r.status);
+  const data = await r.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("no text");
+  return text.trim();
+}
+
+/** ด่านกันตอบมั่ว 4 ชั้น เหมือนฝั่ง Python ทุกชั้น */
+async function ragAnswer(question){
+  // ชั้น 0: รู้ตัวว่าคลังไม่มีข้อมูลเรื่องนี้ตั้งแต่แรก
+  const gap = findGap(question);
+  if (gap) return {answer: gap.message, sources: [], grounded: false,
+                   provider: "coverage_gap", disclaimer: DISCLAIMER};
+
+  const chunks = ragSearch(question, 6);
+  // ชั้น 1: คะแนนต่ำกว่าเกณฑ์ -> ไม่เรียกโมเดลเลย
+  if (!chunks.length || chunks[0].score < MIN_SCORE)
+    return {answer: NOT_FOUND, sources: [], grounded: false,
+            provider: "none", disclaimer: DISCLAIMER,
+            topScore: chunks[0]?.score ?? 0};
+
+  const used = chunks.slice(0, RULE_BASED_MAX_CHUNKS);
+  const key = getKey();
+  if (!key)
+    return {answer: ruleBasedAnswer(used), sources: used, grounded: true,
+            provider: "rule_based", disclaimer: DISCLAIMER, topScore: chunks[0].score};
+  try {
+    // ชั้น 2: prompt บังคับให้ตอบจากเอกสารและอ้างหมายเลขเท่านั้น
+    const text = await callGemini(buildPrompt(question, chunks), key);
+    // ชั้น 3: sources ที่คืนต้องเป็นเอกสารที่ถูกใช้จริง
+    return {answer: text, sources: chunks, grounded: true,
+            provider: "gemini", disclaimer: DISCLAIMER, topScore: chunks[0].score};
+  } catch {
+    // เรียกโมเดลไม่ได้ก็ยังต้องตอบผู้ใช้ได้ ไม่ปล่อยให้ค้าง
+    return {answer: ruleBasedAnswer(used), sources: used, grounded: true,
+            provider: "rule_based_fallback", disclaimer: DISCLAIMER, topScore: chunks[0].score};
+  }
+}
+
+</script>
+
+<script>
+/* ═══ หน้าจอของแท็บถามเรื่องระเบียบ และแท็บตรวจคุณภาพระบบ ═══ */
+(function(){
+"use strict";
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ── สลับแท็บ ──────────────────────────────── */
+const PANELS = {plan: el("tab-plan"), ask: el("tab-ask"), eval: el("tab-eval")};
+let indexReady = false;
+
+function showTab(name){
+  for (const [k, node] of Object.entries(PANELS)) node.hidden = k !== name;
+  document.querySelectorAll(".tabs [data-tab]").forEach(b =>
+    b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  // ปุ่มบนแถบหัว (เลือกเทอม/จัดตารางให้) ใช้ได้เฉพาะหน้าจัดตาราง
+  el("plan-controls").style.display = name === "plan" ? "contents" : "none";
+  if ((name === "ask" || name === "eval") && !indexReady){
+    buildIndex();
+    indexReady = true;
+    el("kb-stat").textContent =
+      `คลังเอกสาร ${KB_STATS.files.length} ไฟล์ · แบ่งเป็น ${KB_STATS.chunks} ส่วน · ` +
+      `ค้นด้วย BM25 + TF-IDF cosine รวมอันดับด้วย RRF`;
+  }
+  try { localStorage.setItem("rmutt-tab", name); } catch {}
+}
+document.querySelector(".tabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]");
+  if (b) showTab(b.dataset.tab);
+});
+
+/* ── แชต ───────────────────────────────────── */
+const EXAMPLES = [
+  "ลงทะเบียนได้กี่หน่วยกิตต่อเทอม",
+  "ถอนรายวิชาได้ถึงเมื่อไหร่",
+  "ปี 2 เทอม 1 ต้องเรียนวิชาอะไรบ้าง",
+  "ได้ F ต้องทำยังไง",
+  "วิชา 04100203-66 ต้องผ่านอะไรก่อน",
+  "เรียนจบต้องได้กี่หน่วยกิต",
+];
+el("examples").innerHTML = EXAMPLES.map(q =>
+  `<button class="chip" type="button" data-q="${esc(q)}">${esc(q)}</button>`).join("");
+el("cov-has").innerHTML = COVERAGE_HAS.map(t => `<li>${esc(t)}</li>`).join("");
+el("cov-miss").innerHTML = COVERAGE_GAPS.map(g =>
+  `<li>${esc(g.message.split(" ").slice(0, 6).join(" ")).replace("ระบบยังไม่มี", "")}…</li>`).join("");
+
+function modeText(){
+  const has = !!getKey();
+  el("mode-txt").innerHTML = has
+    ? '<b style="color:var(--ok)">Gemini</b> — โมเดลจะเรียบเรียงคำตอบจากเอกสารที่ค้นเจอให้อ่านง่ายขึ้น'
+    : '<b>อ้างเอกสารตรง ๆ</b> — ยกข้อความจากเอกสารที่ค้นเจอมาแสดง ไม่ผ่านโมเดลภาษา จึงไม่มีทางแต่งเติม';
+  el("gkey").value = has ? "••••••••••••" : "";
+}
+modeText();
+
+el("gsave").addEventListener("click", () => {
+  const v = el("gkey").value.trim();
+  try {
+    if (!v || v.startsWith("•")) localStorage.removeItem(KEY_STORE);
+    else localStorage.setItem(KEY_STORE, v);
+  } catch {}
+  modeText();
+  toast(getKey() ? "เปิดโหมด Gemini แล้ว" : "ลบคีย์แล้ว กลับไปโหมดอ้างเอกสารตรง");
+});
+
+let busy = false;
+function push(html){
+  el("msgs").insertAdjacentHTML("beforeend", html);
+  el("msgs").lastElementChild.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+const PROVIDER_TH = {
+  gemini: "เรียบเรียงโดย Gemini จากเอกสารที่ค้นเจอ",
+  rule_based: "ยกจากเอกสารโดยตรง ไม่ผ่านโมเดลภาษา",
+  rule_based_fallback: "เรียก Gemini ไม่สำเร็จ จึงยกจากเอกสารโดยตรงแทน",
+  coverage_gap: "ระบบประกาศเองว่าไม่มีข้อมูลเรื่องนี้",
+  none: "ค้นแล้วคะแนนต่ำกว่าเกณฑ์ จึงไม่ตอบ",
+};
+
+async function ask(question){
+  const q = (question || "").trim();
+  if (!q || busy) return;
+  busy = true;
+  el("ask-send").disabled = true;
+  el("examples").hidden = true;
+  push(`<div class="bubble-me">${esc(q)}</div>`);
+  el("q-ask").value = "";
+  push('<div class="bubble-bot" id="pending"><div class="ans" style="color:var(--ink3)">กำลังค้นเอกสาร…</div></div>');
+
+  let r;
+  try { r = await ragAnswer(q); }
+  catch (e) { r = {answer:"เกิดข้อผิดพลาด: " + e.message, sources:[], grounded:false, provider:"none"}; }
+
+  const srcs = r.sources.length ? `
+    <div class="srcs"><p>แหล่งอ้างอิง</p>${r.sources.map((s, i) => `
+      <div class="src">
+        <span class="n">[${i+1}]</span>
+        <span class="w"><b>${esc(s.title)}</b>${s.section ? `<span>${esc(s.section)}</span>` : ""}</span>
+        <span class="sc">${s.score.toFixed(3)}</span>
+      </div>`).join("")}</div>` : "";
+
+  el("pending").outerHTML = `
+    <div class="bubble-bot">
+      <div class="ans">${esc(r.answer)}</div>
+      ${srcs}
+      <span class="badge ${r.grounded ? "grounded" : "nogr"}">
+        ${r.grounded ? "✓ อ้างจากเอกสารจริง" : "! ไม่มีข้อมูล จึงไม่ตอบ"}
+      </span>
+      <p style="margin:8px 0 0; font-size:11.5px; color:var(--ink3)">
+        ${esc(PROVIDER_TH[r.provider] || r.provider)}${r.topScore != null ? ` · คะแนนค้นคืนสูงสุด ${r.topScore.toFixed(4)} (เกณฑ์ ${MIN_SCORE})` : ""}
+      </p>
+      <p style="margin:5px 0 0; font-size:11px; color:var(--ink3)">${esc(r.disclaimer || "")}</p>
+    </div>`;
+  busy = false;
+  el("ask-send").disabled = false;
+}
+
+el("askform").addEventListener("submit", e => { e.preventDefault(); ask(el("q-ask").value); });
+el("examples").addEventListener("click", e => {
+  const b = e.target.closest("[data-q]");
+  if (b) ask(b.dataset.q);
+});
+
+/* ── แผงตรวจคุณภาพ: รัน golden set จริงให้ดูกับตา ────────── */
+el("ev-min").textContent = "MIN_SCORE = " + MIN_SCORE;
+
+el("run-eval").addEventListener("click", () => {
+  buildIndex();
+  const rows = [];
+  let pass = 0;
+
+  for (const q of GOLDEN.on_topic){
+    // คำถามที่ต้องตอบได้ = คะแนนอันดับ 1 ต้องเกินเกณฑ์
+    const hits = ragSearch(q, 1);
+    const score = hits[0]?.score ?? 0;
+    const ok = score >= MIN_SCORE;
+    if (ok) pass++;
+    rows.push({ok, kind:"ต้องตอบได้", q, score, where: hits[0] ? (hits[0].title + (hits[0].section ? " — " + hits[0].section : "")) : "ไม่เจอเอกสาร"});
+  }
+  for (const q of GOLDEN.off_topic){
+    // คำถามนอกเรื่อง = ต้องต่ำกว่าเกณฑ์ หรือถูกดักด้วย coverage gap
+    const gap = findGap(q);
+    const hits = gap ? [] : ragSearch(q, 1);
+    const score = hits[0]?.score ?? 0;
+    const ok = gap ? true : score < MIN_SCORE;
+    if (ok) pass++;
+    rows.push({ok, kind:"ต้องไม่ตอบ", q, score,
+               where: gap ? "ถูกดักด้วยการประกาศขอบเขต" : "คะแนนต่ำกว่าเกณฑ์จึงปฏิเสธ"});
+  }
+
+  const total = rows.length;
+  const allPass = pass === total;
+  el("ev-out").innerHTML = `
+    <div class="ev-sum">
+      <div class="stat ${allPass ? "is-ok" : "is-over"}"><dt>ผ่าน</dt><dd>${pass}/${total}</dd></div>
+      <div class="stat"><dt>คำถามที่ต้องตอบได้</dt><dd>${GOLDEN.on_topic.length}</dd></div>
+      <div class="stat"><dt>คำถามนอกเรื่อง</dt><dd>${GOLDEN.off_topic.length}</dd></div>
+      <div class="stat"><dt>เอกสารในคลัง</dt><dd>${KB_STATS.chunks}<span style="font-size:12px;font-weight:400;color:var(--ink3)"> ส่วน</span></dd></div>
+    </div>
+    <div class="card" style="padding:0">
+      ${rows.map(r => `
+        <div class="ev-line">
+          <span class="ev-tag ${r.ok ? "pass" : "fail"}">${r.ok ? "ผ่าน" : "ตก"}</span>
+          <span class="q">${esc(r.q)}<small>${esc(r.kind)} · ${esc(r.where)}</small></span>
+          <span class="sc">${r.score.toFixed(4)}</span>
+        </div>`).join("")}
+    </div>
+    <p style="margin:11px 2px 0; font-size:12.5px; color:var(--ink3)">
+      คะแนนคือ cosine similarity ของเอกสารอันดับ 1 หลังคูณตัวคูณรหัสวิชา/ชั้นปีแล้ว ·
+      ชุดคำถามนี้ดึงมาจาก <span class="mono">07_rag_llm_engine/tests/test_retrieval.py</span> ตอน build
+      จึงตรงกับที่ CI รันเสมอ
+    </p>`;
+  toast(allPass ? `ผ่านครบ ${pass}/${total}` : `ผ่าน ${pass}/${total} — มีข้อที่ตก`);
+});
+
+/* ── เปิดแท็บที่ค้างไว้ ─────────────────────── */
+try {
+  const saved = localStorage.getItem("rmutt-tab");
+  if (saved && PANELS[saved]) showTab(saved);
+} catch {}
+})();
+
 </script>

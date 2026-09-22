@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 
@@ -42,6 +43,35 @@ def load(path: Path) -> dict:
     }
 
 
+def load_knowledge() -> dict[str, str]:
+    """คลังความรู้ของ RAG — ฝังทั้งไฟล์ลงหน้าเว็บ เบราว์เซอร์จะสร้างดัชนีเองตอนเปิดแท็บถาม-ตอบ"""
+    folder = APP / "data" / "knowledge"
+    out = {}
+    for path in sorted(folder.glob("*.md")):
+        out[path.name] = path.read_text(encoding="utf-8")
+    return out
+
+
+def load_golden_set() -> dict[str, list[str]]:
+    """ดึงชุดคำถามมาตรฐานจากไฟล์เทสจริงของโมดูล 07
+
+    ทำไมต้องดึงจากเทส ไม่ copy มาวางไว้เอง: ถ้าแยกกันเก็บ วันหนึ่งจะหลุดจากกัน
+    แล้วหน้าเว็บจะโชว์ผลของชุดคำถามคนละชุดกับที่ CI รันจริง ซึ่งแย่กว่าไม่โชว์เลย
+    """
+    test_file = APP.parent / "07_rag_llm_engine" / "tests" / "test_retrieval.py"
+    tree = ast.parse(test_file.read_text(encoding="utf-8"))
+    found: dict[str, list[str]] = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+            name = node.targets[0].id
+            if name in ("ON_TOPIC", "OFF_TOPIC"):
+                found[name.lower()] = list(ast.literal_eval(node.value))
+    missing = {"on_topic", "off_topic"} - set(found)
+    if missing:
+        raise SystemExit(f"หา {missing} ใน {test_file.name} ไม่เจอ — โครงไฟล์เทสเปลี่ยนไปแล้ว")
+    return found
+
+
 def main() -> None:
     terms = {}
     for f in sorted((APP / "data" / "seed").glob("cpe_timetable_*.json")):
@@ -53,8 +83,21 @@ def main() -> None:
     if '"__TIMETABLE_DATA__"' not in html:
         raise SystemExit("ไม่พบ placeholder __TIMETABLE_DATA__ ใน template.html")
 
-    body = html.replace('"__TIMETABLE_DATA__"',
-                        json.dumps(terms, ensure_ascii=False, separators=(",", ":")))
+    knowledge = load_knowledge()
+    golden = load_golden_set()
+    print(f"คลังความรู้: {len(knowledge)} ไฟล์ "
+          f"({sum(len(v) for v in knowledge.values()) / 1024:.0f} KB)")
+    print(f"ชุดคำถามมาตรฐาน: ตอบได้ {len(golden['on_topic'])} ข้อ / "
+          f"นอกเรื่อง {len(golden['off_topic'])} ข้อ")
+
+    def dump(value):
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+    body = html.replace('"__TIMETABLE_DATA__"', dump(terms))
+    for placeholder, value in (("__KNOWLEDGE_DATA__", knowledge), ("__GOLDEN_SET__", golden)):
+        if f'"{placeholder}"' not in body:
+            raise SystemExit(f"ไม่พบ placeholder {placeholder} ใน template.html")
+        body = body.replace(f'"{placeholder}"', dump(value))
 
     # template.html เป็นแค่เนื้อหน้า ไม่มี doctype/charset/viewport
     # GitHub Pages เสิร์ฟไฟล์ตรง ๆ จึงต้องประกอบเป็นเอกสารเต็มก่อน
