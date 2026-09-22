@@ -81,12 +81,12 @@ curl http://localhost:8000/health
 - RAG API (โมดูล 07) → http://localhost:8700/docs
 - API Gateway (โมดูล 02) → http://localhost:8000/docs
 
-> **สิ่งที่ขึ้นมาแล้วทำงานจริงตอนนี้:** โมดูล 09 (หน้าเว็บ + ฟังก์ชัน Python) และโมดูล 07 (RAG)
-> ส่วนโมดูล 02–06 และ 08 ที่ขึ้นมาด้วยยังมีแค่ `/health` เพราะโค้ดจริงอยู่บน branch ของแต่ละคน
-> ยังไม่ได้ merge เข้า `main` — ดูตารางสถานะใน [หน้าสถาปัตยกรรม](https://onpreyaq5.github.io/Nuthaluek-CPE-LLM-/architecture.html)
+> **รวมงานของทุกคนเข้า `main` แล้ว** ทั้ง 9 โมดูลอยู่บน `main` เรียบร้อย
+> ดูตารางสถานะใน [หน้าสถาปัตยกรรม](https://onpreyaq5.github.io/Nuthaluek-CPE-LLM-/architecture.html)
+> หรือ [ดาวน์โหลดเป็น PDF](https://onpreyaq5.github.io/Nuthaluek-CPE-LLM-/architecture.pdf)
 >
-> โมดูล 01 ไม่ขึ้นโดยค่าตั้งต้น เพราะบน `main` ยังไม่มี `package.json` จะทำให้ build พังทั้งชุด
-> (`docker compose --profile wip up` ถ้าอยากลองหลัง merge แล้ว)
+> หน้าเว็บมีสองตัว — `:3000` คือโมดูล 09 ที่ใช้งานได้ครบ (จัดตาราง ตรวจชน ถามระเบียบ)
+> และ `:3001` คือโมดูล 01 ที่คุยกับ `api_backend` ตามสถาปัตยกรรมเต็ม
 
 ตรวจก่อนรันจริงโดยไม่ต้องมี Docker:
 ```bash
