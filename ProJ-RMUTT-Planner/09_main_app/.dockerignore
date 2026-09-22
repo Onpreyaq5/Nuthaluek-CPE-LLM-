@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-dev.log
+docs
+static_demo
+tests
+__pycache__
+*.pyc
+.env*

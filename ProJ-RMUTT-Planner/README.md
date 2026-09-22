@@ -77,9 +77,24 @@ curl http://localhost:8000/health
 ```
 
 เปิดใช้งาน:
-- หน้าเว็บ → http://localhost:3000
-- API docs → http://localhost:8000/docs
-- Qdrant → http://localhost:6333/dashboard
+- **หน้าเว็บที่ใช้งานได้จริง → http://localhost:3000** (โมดูล 09 จัดตารางเรียน + ตรวจชน + ถามระเบียบ)
+- RAG API (โมดูล 07) → http://localhost:8700/docs
+- API Gateway (โมดูล 02) → http://localhost:8000/docs
+
+> **สิ่งที่ขึ้นมาแล้วทำงานจริงตอนนี้:** โมดูล 09 (หน้าเว็บ + ฟังก์ชัน Python) และโมดูล 07 (RAG)
+> ส่วนโมดูล 02–06 และ 08 ที่ขึ้นมาด้วยยังมีแค่ `/health` เพราะโค้ดจริงอยู่บน branch ของแต่ละคน
+> ยังไม่ได้ merge เข้า `main` — ดูตารางสถานะใน [หน้าสถาปัตยกรรม](https://onpreyaq5.github.io/Nuthaluek-CPE-LLM-/architecture.html)
+>
+> โมดูล 01 ไม่ขึ้นโดยค่าตั้งต้น เพราะบน `main` ยังไม่มี `package.json` จะทำให้ build พังทั้งชุด
+> (`docker compose --profile wip up` ถ้าอยากลองหลัง merge แล้ว)
+
+ตรวจก่อนรันจริงโดยไม่ต้องมี Docker:
+```bash
+pip install pyyaml
+python scripts/check_compose.py
+```
+ตรวจว่า YAML ถูกต้อง ไฟล์ที่ Dockerfile สั่ง COPY มีครบ พอร์ตไม่ชนกัน
+และ `depends_on` ไม่ชี้ไปหาบริการที่ไม่มี healthcheck (ซึ่งจะทำให้ compose ค้างรอตลอดไป)
 
 ออปชันเสริม:
 ```bash

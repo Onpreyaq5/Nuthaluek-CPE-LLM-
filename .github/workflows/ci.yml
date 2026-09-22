@@ -49,7 +49,7 @@ jobs:
         with: { python-version: "3.11" }
       - run: python -m compileall -q 0*/src 09_main_app/api
 
-  # ---- docker-compose ต้อง valid ----
+  # ---- docker-compose ต้อง valid และ build ได้จริง ----
   compose-config:
     name: docker compose config
     runs-on: ubuntu-latest
@@ -57,6 +57,65 @@ jobs:
       - uses: actions/checkout@v4
       - run: cp .env.example .env
       - run: docker compose config -q
+      # docker compose config ตรวจแค่รูปแบบไฟล์ ไม่ได้ตรวจว่าไฟล์ที่ Dockerfile สั่ง COPY มีจริงไหม
+      # ซึ่งเป็นสาเหตุที่ build พังบ่อยที่สุด สคริปต์นี้ตรวจให้ก่อนโดยไม่ต้อง build จริง
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pyyaml
+      - run: python scripts/check_compose.py
+
+  # ---- ต้อง build แล้วรันขึ้นจริง ไม่ใช่แค่ไฟล์ถูกรูปแบบ ----
+  compose-up:
+    name: docker compose build + up
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+
+      # build เฉพาะบริการที่มีโค้ดจริง ส่วน 02-06/08 ยังเป็นโครงเปล่า
+      # ไม่ได้ช่วยพิสูจน์อะไร แต่กินเวลา CI
+      - name: Build
+        run: docker compose build main_api main_app rag_llm
+
+      - name: Up
+        run: docker compose up -d main_api main_app rag_llm
+
+      - name: รอให้ main_api พร้อม
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "http://localhost:3000/" >/dev/null 2>&1; then echo "พร้อมแล้ว"; exit 0; fi
+            sleep 3
+          done
+          echo "::error::ไม่ขึ้นภายใน 90 วินาที"
+          docker compose ps
+          docker compose logs --tail 60 main_api main_app
+          exit 1
+
+      - name: ยิงของจริง
+        run: |
+          set -euo pipefail
+          # ห้ามต่อ | head ตรง ๆ เพราะ exit code ของ pipeline จะกลายเป็นของ head (0 เสมอ)
+          # แล้ว curl พังก็ไม่มีใครรู้ CI จะเขียวทั้งที่ระบบตอบ 404 (เคยพลาดมาแล้ว)
+          check() {
+            local name="$1" expect="$2"; shift 2
+            echo "--- $name ---"
+            curl -fsS --max-time 20 "$@" -o /tmp/resp.txt
+            head -c 220 /tmp/resp.txt; echo
+            grep -q "$expect" /tmp/resp.txt               || { echo "::error::$name ตอบมาแต่ไม่มี '$expect' ในคำตอบ"; exit 1; }
+          }
+          check "หน้าเว็บ" "<!DOCTYPE html" http://localhost:3000/
+          check "/api/courses ผ่าน rewrite ของ Next" '"course_code"'             "http://localhost:3000/api/courses?term=1/2569"
+          check "ตรวจตารางชนจริง" '"conflicts"'             -X POST http://localhost:3000/api/validate             -H 'Content-Type: application/json'             -d '{"term":"1/2569","section_ids":["04100201-66-01"]}'
+          check "RAG ของโมดูล 07" '"documents"' http://localhost:8700/health
+
+      - name: เก็บ log เมื่อพัง
+        if: failure()
+        run: docker compose logs --tail 120
+
+      - name: ปิด
+        if: always()
+        run: docker compose down -v
 
   # ---- ห้ามมี secret / ข้อมูลนักศึกษาจริงหลุดเข้า repo ----
   secrets-guard:

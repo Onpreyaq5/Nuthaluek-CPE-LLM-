@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
@@ -21,7 +22,10 @@ ROOT = Path(__file__).resolve().parent.parent
 API_DIR = ROOT / "api"
 sys.path.insert(0, str(API_DIR))
 
-PORT = 8009
+PORT = int(os.getenv("PORT", "8009"))
+# ใน container ต้องผูก 0.0.0.0 ไม่งั้น container อื่นต่อเข้ามาไม่ได้
+# ตอนรันในเครื่องปล่อยเป็น 127.0.0.1 ไว้ จะได้ไม่เปิดพอร์ตออกนอกเครื่องโดยไม่ตั้งใจ
+HOST = os.getenv("HOST", "127.0.0.1")
 
 
 def load_handler(name: str):
@@ -78,6 +82,6 @@ class Router(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"Python API dev server: http://127.0.0.1:{PORT}/api/*")
+    print(f"Python API server: http://{HOST}:{PORT}/api/*")
     print("  endpoint ที่มี:", ", ".join(sorted(p.stem for p in API_DIR.glob("*.py") if not p.stem.startswith("_"))))
-    HTTPServer(("127.0.0.1", PORT), Router).serve_forever()
+    HTTPServer((HOST, PORT), Router).serve_forever()
