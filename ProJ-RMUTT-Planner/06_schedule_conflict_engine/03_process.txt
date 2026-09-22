@@ -1,38 +1,61 @@
-[06_schedule_conflict_engine] 03_process.txt  —  Algorithm / Contract
+[06_schedule_conflict_engine] 03_process.txt  —  อัลกอริทึมและข้อกำหนดสัญญาข้อมูล (Contracts)
+Owner: นายชีวากร อาจดีลัง
 ==================================================================
-ALGORITHM: TIME CLASH
-  slots(section) = OR ของทุก meeting → 182-bit mask
-  conflict(a,b)  = slots(a) & slots(b) != 0
-  ถ้าชน → หาช่วงที่ทับจริง (เอา bit ที่ซ้อน map กลับเป็นเวลา) เพื่อบอกผู้ใช้
 
-ALGORITHM: AUTO PLAN (ลำดับการทำ)
-  1. ดึง eligible sections จาก 05 (ผ่าน prereq + ตรงหลักสูตร + ที่นั่งว่าง)
-  2. จัดลำดับความสำคัญวิชา:
-       P0 วิชาบังคับที่ค้าง/เคยได้ F
-       P1 วิชาบังคับตามแผนเทอมนี้
-       P2 วิชาที่ปลดล็อกวิชาอื่นเยอะ (critical path)
-       P3 วิชาเลือก/เสรี
-  3. สร้างโมเดล CP-SAT ตามข้อจำกัดใน 02_step
-  4. solve (timeout MAX_SOLVER_SECONDS)
-  5. ถ้าไม่มีคำตอบ → relax ทีละชั้น: ที่นั่ง → ความชอบ → หน่วยกิตสูงสุด
-     แล้วบอกผู้ใช้ว่า "ต้องยอมอะไรบ้าง" (ห้ามคืน error เปล่า)
-  6. จัดอันดับ candidates ด้วยคะแนน + ความหลากหลาย
+1. อัลกอริทึมตรวจสอบการทับซ้อนของเวลา (182-Bitmask)
+  - 1 วัน แบ่งเป็น 26 สล็อต (สล็อตละ 30 นาที ตั้งแต่ 08:00 ถึง 21:00 น.)
+  - 7 วัน รวมเป็น 182 บิต
+  - slots(section) = OR ผลลัพธ์ของทุกช่วงเวลาการเรียน
+  - การตรวจสอบ: (mask_a & mask_b) != 0 หมายถึงเวลาชนกัน
+  - การถอดรหัส: สแกนบิตที่ซ้อนทับกัน เพื่อคำนวณวันและช่วงเวลาเริ่มต้น-สิ้นสุดที่แท้จริง
 
-RESPONSE CONTRACT
-{
-  "has_conflict": true,
-  "conflicts": [
-    {"code":"C1","severity":"ERROR",
-     "message_key":"time_clash",
-     "subjects":["ENG101-01","MTH102-02"],
-     "detail":{"day":"MON","overlap_start":"09:00","overlap_end":"10:30"},
-     "suggestions":[{"action":"change_section","to":"MTH102-05"}]}
-  ],
-  "warnings":[...],
-  "summary":{"total_credits":18,"days_on_campus":4,"free_days":["WED","SAT","SUN"]}
-}
+2. สถาปัตยกรรม Data Provider
+  - SectionProvider:
+      * MemorySectionProvider: ใช้สำหรับ Unit Test และ DEMO_MODE เท่านั้น
+      * HttpSectionProvider: ทำการเรียกไปยังโมดูล 04 ผ่าน HTTP เพื่อดึงข้อมูล Section จริง
+      * Fail-Closed Policy: หากกลุ่มเรียนไม่มีข้อมูลเวลาและไม่ใช่วิชาออนไลน์ หรือไม่พบรหัสกลุ่มเรียน จะตัดเข้าข้อยกเว้น DataIncompleteError หรือ SectionNotFoundError ทันที
+  - StudentContextProvider:
+      * MemoryStudentContextProvider: ข้อมูลทดสอบในหน่วยความจำ
+      * HttpStudentContextProvider: เชื่อมต่อไปยัง โมดูล 05 (/context/{hash})
+      * Data Validation: รหัสนักศึกษาต้องเป็น Synthetic Hash ที่สอดคล้องตามมาตรฐานของระบบ
 
-กฎเหล็กของทีม
-  - ตัวเลข/คำตัดสินเรื่อง "ชน/ไม่ชน" ต้องออกจาก service นี้เท่านั้น
-  - LLM ห้ามคำนวณเวลาเอง (มันคำนวณเวลาพลาดบ่อย)
-  - ทุก conflict ต้องมี message_key เพื่อทำ i18n ไทย/อังกฤษ
+3. โครงสร้างข้อกำหนดการสื่อสาร (Contracts)
+  ก. สัญญาโมดูล 02 (api_backend)
+     Request:
+       { "term": "1/2567", "section_ids": ["01076001-1", "01076002-1"] }
+     Response:
+       {
+         "valid": false,
+         "conflicts": [
+           {
+             "type": "TIME_CLASH",
+             "message": "เวลาเรียนซ้อนทับกัน",
+             "section_ids": ["01076001-1", "01076002-1"],
+             "details": { "day": "MON", "overlap_start": "09:00", "overlap_end": "12:00" }
+           }
+         ]
+       }
+
+  ข. สัญญาโมดูล 03 (ai_router_agent)
+     Request:
+       { "sections": ["01076001-1", "01076002-1"] }
+     Response:
+       {
+         "has_conflict": true,
+         "conflicts": [
+           {
+             "rule_code": "C1",
+             "rule_name": "TIME_CLASH",
+             "severity": "ERROR",
+             "sections": ["01076001-1", "01076002-1"],
+             "details": { "day": "MON", "overlap_start": "09:00", "overlap_end": "12:00" }
+           }
+         ],
+         "warnings": [],
+         "summary": { "total_credits": 6, "days_on_campus": 1, "free_days": ["TUE", "WED", "THU", "FRI", "SAT", "SUN"] }
+       }
+
+4. กฎเหล็กของทีม
+  - การตัดสินเงื่อนไขเวลาและตรรกะข้อขัดแย้งทั้งหมด ออกจากบริการนี้โดยเด็ดขาด
+  - โมเดลภาษา (LLM) มีหน้าที่เพียงสร้างคำอธิบายเป็นภาษาธรรมชาติจากโครงสร้างข้อมูลที่ส่งไป
+  - ระบบในสภาวะการทำงานจริง (Production) จะไม่ยอมรับการ Mock ข้อมูลโดยอัตโนมัติหากเชื่อมต่อภายนอกไม่สำเร็จ

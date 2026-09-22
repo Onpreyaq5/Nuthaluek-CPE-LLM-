@@ -1,29 +1,35 @@
-[06_schedule_conflict_engine] 01_env.txt  —  ★ หัวใจของโปรเจกต์
-ตรวจตารางชน + จัดตารางอัตโนมัติ
-Owner: <ใส่ชื่อ>
+[06_schedule_conflict_engine] 01_env.txt  —  แกนหลักการคำนวณและประมวลผลตารางเรียน
+ตรวจตารางชน + จัดตารางอัตโนมัติ (Deterministic Engine)
+Owner: นายชีวากร อาจดีลัง
 ==================================================================
 RUNTIME
-  - Python 3.11 + FastAPI
+  - Python 3.11+ / FastAPI
   - Port: 8600
 
 PACKAGES
   fastapi, uvicorn, pydantic v2
   ortools               # CP-SAT solver สำหรับจัดตารางอัตโนมัติ
+  httpx                 # สำหรับเรียก upstream data services (04, 05) แบบ non-blocking
   numpy
-  networkx              # ใช้ prereq graph จาก 05
-  redis                 # cache ผลการจัด
+  networkx              # วิเคราะห์กราฟวิชาบังคับก่อน (Prerequisite Graph)
+  pytest, pytest-asyncio
 
 ENV VARS
-  DATA_INTEGRATION_URL=http://data_integration:8500
-  MAX_SOLVER_SECONDS=10
-  MAX_PLAN_CANDIDATES=5        # เสนอกี่ทางเลือก
-  DEFAULT_MIN_CREDITS=9
-  DEFAULT_MAX_CREDITS=21       # เพดานลงทะเบียนต่อเทอมปกติ (ยืนยันแล้ว)
-  SUMMER_MAX_CREDITS=9         # เพดานเทอมฤดูร้อน (term 3) — ★ ยังไม่ยืนยัน ต้องเช็คระเบียบ
+  DEMO_MODE=false                      # โหมด Mock แยกชัดเจน ห้ามใช้ fallback เงียบใน Production
+  DATA_INTEGRATION_URL=http://data_integration:8500  # โมดูล 04 สำหรับดึงข้อมูลกลุ่มเรียน
+  STUDENT_PROFILE_URL=http://student_profile:8000    # โมดูล 05 สำหรับดึงข้อมูลบริบทนักศึกษา
+  HTTP_TIMEOUT_SECONDS=5.0             # ระยะเวลา Timeout สูงสุดในการเชื่อมต่อบริการภายนอก
+  MAX_SOLVER_SECONDS=10.0              # เวลาประมวลผลสูงสุดของ CP-SAT Solver
+  MAX_PLAN_CANDIDATES=5                # จำนวนทางเลือกแผนสูงสุดที่ส่งมอบ
+  DEFAULT_MIN_CREDITS=9                # เกณฑ์หน่วยกิตขั้นต่ำต่อเทอมปกติ
+  DEFAULT_MAX_CREDITS=21               # เพดานหน่วยกิตสูงสุดต่อเทอมปกติ
+  SUMMER_MAX_CREDITS=9                 # เพดานหน่วยกิตสูงสุดภาคฤดูร้อน
+  CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
 
-กฎที่ตกลงว่า "ไม่ทำ" (out of scope)
-  - ลดเพดานหน่วยกิตสำหรับนักศึกษาสถานะรอพินิจ (GPAX ต่ำกว่าเกณฑ์) → ไม่ implement
+ขอบเขตกฎระเบียบ (Out of Scope):
+  - การลดเพดานหน่วยกิตสำหรับนักศึกษาสถานะรอพินิจ (GPAX ต่ำกว่าเกณฑ์) ไม่อยู่ในขอบเขตการทำงานของเวอร์ชันนี้
 
-NOTE
-  service นี้ "ไม่มี LLM" — เป็นตรรกะล้วน ผลลัพธ์ต้องทำซ้ำได้ (deterministic)
-  LLM ใน 07 มีหน้าที่ "อธิบาย" ผลของ engine นี้เท่านั้น
+หลักการสำคัญ:
+  - ระบบนี้ไม่มีการใช้งาน LLM ในการประมวลผลเวลาหรือเงื่อนไขทางคณิตศาสตร์
+  - ผลลัพธ์ต้องมีความเที่ยงตรงและทำซ้ำได้ 100% (Deterministic Correctness)
+  - ระบบปฏิบัติตามหลัก Fail-Closed เมื่อข้อมูลไม่ครบถ้วนหรือไม่พบข้อมูลจริง

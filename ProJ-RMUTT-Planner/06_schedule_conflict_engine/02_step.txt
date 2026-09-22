@@ -1,49 +1,43 @@
-[06_schedule_conflict_engine] 02_step.txt  —  ขั้นตอนทำงาน
+[06_schedule_conflict_engine] 02_step.txt  —  ขั้นตอนการทำงานและสถาปัตยกรรมบริการ
+Owner: นายชีวากร อาจดีลัง
 ==================================================================
-STEP 1  Conflict Detector (ทำก่อน — เป็น MVP)
-  input: sections[] ที่นักศึกษาเลือก
-  ตรวจ 6 แบบ:
-    C1 TIME_CLASH      เวลาเรียนทับกัน            (bitmask AND)
-    C2 EXAM_CLASH      เวลาสอบกลางภาค/ปลายภาคชน
-    C3 PREREQ_FAIL     ยังไม่ผ่านวิชาบังคับก่อน
-    C4 CREDIT_LIMIT    หน่วยกิตเกิน/ต่ำกว่าเกณฑ์  (ปกติ 9-21, ฤดูร้อน ≤ SUMMER_MAX_CREDITS)
-    C5 DUPLICATE       ลงวิชาเดิมที่ผ่านแล้ว / ลงซ้ำ 2 sec
-    C6 SEAT_FULL       ที่นั่งเต็ม
-  แต่ละข้อคืน severity: ERROR (ลงไม่ได้) | WARNING (ลงได้แต่ควรรู้)
 
-STEP 2  Soft Rule (คำเตือนคุณภาพชีวิต)
-  W1 เรียนติดกันเกิน 6 ชม.ไม่มีพักกลางวัน
-  W2 ช่องว่างระหว่างคาบเกิน 4 ชม.
-  W3 คาบเช้า 08:00 ในวันที่ผู้ใช้ขอว่าง
-  W4 ต้องย้ายอาคาร/ศูนย์ ระหว่างคาบติดกัน < 15 นาที
-  W5 เรียน 6 วัน/สัปดาห์
+ขั้นตอนที่ 1: การเตรียมข้อมูลและแก้ปัญหาการอ้างอิง (Data Resolution Layer)
+  - กำหนด Protocol Interface สำหรับ SectionProvider และ StudentContextProvider
+  - HttpSectionProvider: เชื่อมต่อไปยัง โมดูล 04 เพื่อดึงข้อมูลรายวิชาและกลุ่มเรียนจริง
+  - HttpStudentContextProvider: เชื่อมต่อไปยัง โมดูล 05 (/context/{hash}) เพื่อดึงประวัติการเรียน
+  - Fail-Closed: หากไม่พบข้อมูล หรือข้อมูลคาบเรียนไม่สมบูรณ์ (ยกเว้นออนไลน์) ระบบจะหยุดการทำงานและคืนข้อผิดพลาด (HTTP 422 / 502) ทันที ห้ามใช้ Mock เงียบเด็ดขาดใน Production
 
-STEP 3  Auto Planner (CP-SAT)
-  ตัวแปร: x[section] ∈ {0,1}
-  ข้อจำกัด (hard):
-    - วิชาเดียวเลือกได้ 1 sec เท่านั้น
-    - ไม่มีคู่ sec ที่ bitmask ทับกัน
-    - หน่วยกิตรวม ∈ [min, max]  (max = 21 ต่อเทอม)
-    - prereq ครบ
-    - ที่นั่งไม่เต็ม
-    - ต้องมีวิชาบังคับตาม critical path ของหลักสูตร
-  ฟังก์ชันเป้าหมาย (maximize):
-    w1*ความก้าวหน้าหลักสูตร  + w2*ตรงความชอบ(วันว่าง/ไม่เรียนเช้า)
-    - w3*ช่องว่าง            - w4*จำนวนวันที่ต้องมามหาลัย
-  คืน 3-5 ทางเลือกที่ต่างกัน (solution pool)
+ขั้นตอนที่ 2: ระบบตรวจสอบข้อขัดแย้ง (Conflict Detector - Hard Constraints C1–C6)
+  C1 TIME_CLASH      เวลาเรียนทับซ้อน (คำนวณผ่าน 182-Bitmask Bitwise AND)
+  C2 EXAM_CLASH      เวลาสอบกลางภาคหรือปลายภาคทับซ้อนกัน
+  C3 PREREQ_FAIL     นักศึกษายังไม่ผ่านวิชาบังคับก่อนตามโครงสร้างหลักสูตร
+  C4 CREDIT_LIMIT    จำนวนหน่วยกิตรวมเกินเพดาน (21 ภาคปกติ / 9 ภาคฤดูร้อน) หรือต่ำกว่า 9
+  C5 DUPLICATE       เลือกลงทะเบียนซ้ำมากกว่า 1 กลุ่มในวิชาเดียวกัน หรือลงวิชาที่เคยสอบผ่านแล้ว
+  C6 SEAT_FULL       จำนวนรับในกลุ่มเรียนเต็มตามโควตา
 
-STEP 4  Explainability
-  ทุกผลลัพธ์ต้องแนบ "เหตุผลเชิงกฎ" เป็น structured data
-  เช่น {rule:"C1", a:"ENG101-01", b:"MTH102-02", overlap:"MON 09:00-10:30"}
-  → ส่งให้ 07 แปลงเป็นภาษาคน
+ขั้นตอนที่ 3: ระบบประเมินสุขภาวะและคุณภาพชีวิต (Soft Constraints W1–W5)
+  W1 LONG_STRETCH    เรียนติดต่อกันเกิน 6 ชั่วโมงโดยไม่มีเวลาพัก
+  W2 LARGE_GAP       มีช่องว่างระหว่างคาบเรียนในวันเดียวกันเกิน 4 ชั่วโมง
+  W3 EARLY_CLASS     มีคาบเรียนเวลา 08:00 น. หรือมีคาบในวันที่ผู้ใช้ต้องการเป็นวันว่าง
+  W4 RUSH_MOVE       ต้องย้ายอาคาร/วิทยาเขตระหว่างคาบโดยมีเวลาพักน้อยกว่า 15 นาที
+  W5 HEAVY_DAYS      มีวันเรียนกระจายตัว 6 ถึง 7 วันต่อสัปดาห์
 
-STEP 5  Endpoint
-  POST /conflicts/check       {student_id, sections[]} → conflicts[] + warnings[]
-  POST /conflicts/preview     เช็คเร็วตอนลากวาง (< 50ms)
-  POST /plan/generate         {student_id, term, preferences} → candidates[]
-  POST /plan/repair           แผนชน → เสนอวิธีแก้ (เปลี่ยน sec ไหน)
-  POST /plan/compare          เทียบ 2 แผน
+ขั้นตอนที่ 4: การจัดตารางอัตโนมัติ (Automated Timetable Planner via CP-SAT)
+  - ตัวแปรตัดสินใจ: x[section] in {0, 1}
+  - ข้อจำกัด Hard: เลือกได้ไม่เกิน 1 sec ต่อวิชา, ห้ามเวลาชน, หน่วยกิตรวมอยู่ในช่วงที่กำหนด
+  - ฟังก์ชันเป้าหมาย: เพิ่มน้ำหนักวิชาตามลำดับความสำคัญ (P0 Retake > P1 ตามแผน > P2 ปลดล็อกวิชาอื่น > P3 วิชาเลือก) หักคะแนนความไม่สะดวก (คาบเช้า, วันว่าง, จำนวนวันที่ต้องมามหาวิทยาลัย)
+  - Solution Pool: สร้างแผนทางเลือกที่แตกต่างกัน 3–5 แผน ด้วย Cut Constraints
+  - Fallback Relaxation: หากหาวิธีจัดไม่ได้ จะผ่อนปรนความชอบ -> ที่นั่ง -> หน่วยกิตขั้นต่ำ พร้อมรายงาน structured warning
 
-STEP 6  Test (สำคัญมาก)
-  unit test ครอบ: ชนพอดีหัวท้าย (10:00-12:00 กับ 12:00-13:00 = ไม่ชน),
-  คาบคร่อมเที่ยง, วิชาหลาย meeting, เทอมฤดูร้อน, sec ออนไลน์ไม่มีเวลา
+ขั้นตอนที่ 5: การส่งมอบข้อมูลผ่าน Endpoints (Contract Compatibility)
+  1. สัญญาของโมดูล 02 (api_backend):
+     - POST /validate  -> BackendValidateResponse (type, message, section_ids, details)
+     - POST /generate  -> BackendGenerateResponse (sections: list[str], warnings, explanation: null)
+  2. สัญญาของโมดูล 03 (ai_router_agent):
+     - POST /conflicts/check -> RouterConflictResponse (has_conflict, conflicts, warnings, summary)
+     - POST /plans/auto      -> RouterGenerateResponse (plans, total_candidates, solver_status)
+  3. ส่วนต่อประสานเฉพาะโมดูล 06:
+     - POST /conflicts/preview -> ตรวจสอบเวลาชนระดับต่ำกว่า 50ms สำหรับ UI Drag & Drop
+     - POST /plan/generate     -> Full Plan Generation Response สำหรับสเปกภายใน
+     - GET /health, GET /ready -> Liveness & Readiness Probes

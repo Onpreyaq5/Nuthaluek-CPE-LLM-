@@ -22,6 +22,7 @@ jobs:
         service:
           - 04_course_data_services
           - 05_data_integration
+          - 06_schedule_conflict_engine
           - 07_rag_llm_engine
           - 09_main_app
     steps:
