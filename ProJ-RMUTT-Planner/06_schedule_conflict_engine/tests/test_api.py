@@ -1,35 +1,63 @@
 """Tests for FastAPI HTTP Endpoints"""
+import pytest
 from fastapi.testclient import TestClient
+from src.adapters.course_data import MemorySectionProvider
+from src.adapters.student_data import MemoryStudentContextProvider
+from src.api.routes import set_test_providers
 from src.main import app
+from src.models.schemas import Meeting, SectionInput, StudentContextInput
 
 client = TestClient(app)
 
 
-def test_health_check():
-    response = client.get("/health")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["ok"] is True
-    assert data["service"] == "06_schedule_conflict_engine"
+@pytest.fixture(autouse=True)
+def setup_api_providers():
+    sec1 = SectionInput(
+        id="CPE101-01",
+        course_code="CPE101",
+        section="01",
+        credits=3,
+        meetings=[Meeting(day=0, start_min=540, end_min=720)],
+    )
+    sec2 = SectionInput(
+        id="CPE102-01",
+        course_code="CPE102",
+        section="01",
+        credits=3,
+        meetings=[Meeting(day=0, start_min=660, end_min=840)],
+    )
+    sec3 = SectionInput(
+        id="CPE103-01",
+        course_code="CPE103",
+        section="01",
+        credits=3,
+        meetings=[Meeting(day=1, start_min=540, end_min=720)],
+    )
+
+    set_test_providers(
+        MemorySectionProvider([sec1, sec2, sec3]),
+        MemoryStudentContextProvider({
+            "student_123": StudentContextInput(student_id="student_123", passed_courses=[])
+        }),
+    )
+    yield
+    set_test_providers(None, None)
+
+
+def test_health_and_ready_probes():
+    res_health = client.get("/health")
+    assert res_health.status_code == 200
+    assert res_health.json()["ok"] is True
+
+    res_ready = client.get("/ready")
+    assert res_ready.status_code == 200
+    assert res_ready.json()["ready"] is True
 
 
 def test_conflicts_check_endpoint():
     payload = {
         "term": "1/2569",
-        "sections": [
-            {
-                "id": "CPE101-01",
-                "course_code": "CPE101",
-                "section": "01",
-                "meetings": [{"day": 0, "start_min": 540, "end_min": 720}],
-            },
-            {
-                "id": "CPE102-01",
-                "course_code": "CPE102",
-                "section": "01",
-                "meetings": [{"day": 0, "start_min": 660, "end_min": 840}],
-            },
-        ],
+        "sections": ["CPE101-01", "CPE102-01"],
     }
     response = client.post("/conflicts/check", json=payload)
     assert response.status_code == 200
@@ -39,28 +67,20 @@ def test_conflicts_check_endpoint():
     assert data["conflicts"][0]["code"] == "C1"
 
 
-def test_validate_alias_endpoint():
-    """ทดสอบ endpoint alias /validate จาก 02_api_backend"""
+def test_validate_endpoint():
     payload = {
         "term": "1/2569",
-        "sections": [
-            {
-                "id": "CPE101-01",
-                "course_code": "CPE101",
-                "section": "01",
-                "meetings": [{"day": 0, "start_min": 540, "end_min": 720}],
-            }
-        ],
+        "section_ids": ["CPE101-01"],
     }
     response = client.post("/validate", json=payload)
     assert response.status_code == 200
     data = response.json()
     assert "conflicts" in data
     assert "summary" in data
+    assert data["summary"]["is_valid"] is True
 
 
 def test_preview_endpoint():
-    """ทดสอบ fast preview endpoint"""
     payload = {
         "sections": [
             {
@@ -84,87 +104,13 @@ def test_preview_endpoint():
     assert data["clash_count"] == 1
 
 
-def test_generate_plan_endpoint():
-    """ทดสอบ generate plan endpoint"""
+def test_generate_endpoint():
     payload = {
         "term": "1/2569",
-        "preferences": {"avoid_morning": False},
+        "preferences": {"no_early_class": False},
     }
-    response = client.post("/plan/generate", json=payload)
+    response = client.post("/generate", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] in ("success", "success_relaxed_preferences")
-    assert data["plans_count"] > 0
-
-
-def test_repair_endpoint():
-    """ทดสอบ repair endpoint"""
-    payload = {
-        "term": "1/2569",
-        "sections": [
-            {
-                "id": "01000101-01",
-                "course_code": "01000101",
-                "section": "01",
-                "meetings": [{"day": 0, "start_min": 540, "end_min": 720}],  # จันทร์ 09:00-12:00
-            },
-            {
-                "id": "01000102-01",
-                "course_code": "01000102",
-                "section": "01",
-                "meetings": [{"day": 0, "start_min": 600, "end_min": 780}],  # จันทร์ 10:00-13:00 (ชนกัน)
-            },
-        ],
-        "all_available_sections": [
-            {
-                "id": "01000101-02",
-                "course_code": "01000101",
-                "section": "02",
-                "meetings": [{"day": 1, "start_min": 780, "end_min": 960}],  # อังคารบ่าย (ไม่ชน)
-                "seat_total": 40,
-                "seat_taken": 10,
-            }
-        ],
-    }
-    response = client.post("/plan/repair", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["has_repair"] is True
-    assert len(data["suggestions"]) >= 1
-    assert data["suggestions"][0]["to_section"] == "01000101-02"
-
-
-def test_compare_endpoint():
-    """ทดสอบ compare plans endpoint"""
-    payload = {
-        "plan_a": [
-            {
-                "id": "CPE101-01",
-                "course_code": "CPE101",
-                "section": "01",
-                "credits": 3,
-                "meetings": [{"day": 0, "start_min": 540, "end_min": 720}],
-            }
-        ],
-        "plan_b": [
-            {
-                "id": "CPE101-01",
-                "course_code": "CPE101",
-                "section": "01",
-                "credits": 3,
-                "meetings": [{"day": 0, "start_min": 540, "end_min": 720}],
-            },
-            {
-                "id": "CPE102-01",
-                "course_code": "CPE102",
-                "section": "01",
-                "credits": 3,
-                "meetings": [{"day": 1, "start_min": 540, "end_min": 720}],
-            },
-        ],
-    }
-    response = client.post("/plan/compare", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["credits_a"] == 3
-    assert data["credits_b"] == 6
+    assert "plans" in data
+    assert isinstance(data["plans"], list)

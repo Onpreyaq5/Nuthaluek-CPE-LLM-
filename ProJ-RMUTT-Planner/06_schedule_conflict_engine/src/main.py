@@ -1,34 +1,52 @@
 """06_schedule_conflict_engine — Service Entrypoint
-Core collision detection & CP-SAT automated schedule planning engine
+Deterministic collision detection & CP-SAT automated schedule planning engine
+Internal microservice serving 02_api_backend and 03_ai_router_agent
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.routes import router
+from .config import get_settings
+
+settings = get_settings()
 
 app = FastAPI(
     title="06_schedule_conflict_engine",
     description="Deterministic Collision Detection & CP-SAT Auto Planner for RMUTT Planner",
-    version="1.0.0",
+    version="1.1.0",
 )
 
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Secure CORS: Only enable if specific origins are explicitly configured in environment
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/health")
 def health():
-    """Health check endpoint required by Docker and CI"""
+    """Liveness probe required by Docker and CI"""
     return {
         "ok": True,
         "service": "06_schedule_conflict_engine",
         "status": "healthy",
-        "version": "1.0.0",
+        "demo_mode": settings.demo_mode,
+        "version": "1.1.0",
+    }
+
+
+@app.get("/ready")
+def readiness():
+    """Readiness probe verifying operational settings"""
+    return {
+        "ready": True,
+        "service": "06_schedule_conflict_engine",
+        "demo_mode": settings.demo_mode,
+        "course_data_url": settings.course_data_url,
+        "data_integration_url": settings.data_integration_url,
     }
 
 

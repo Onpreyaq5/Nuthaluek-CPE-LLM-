@@ -10,10 +10,12 @@
 
 ## 1. บทคัดย่อและขอบเขตของระบบ (Abstract & Scope)
 
-โมดูล 06 ทำหน้าที่เป็น **แกนหลักเชิงตรรกะและคณิตศาสตร์ (Core Computational Engine)** ของระบบ RMUTT Study Planner มีหน้าที่หลัก 3 ประการ:
+โมดูล 06 ทำหน้าที่เป็น **แกนหลักเชิงตรรกะและคณิตศาสตร์ (Core Computational Engine)** ของระบบ RMUTT Study Planner มีขอบเขตการทำงานหลัก 3 ประการ:
 1. **การตรวจสอบข้อขัดแย้งของตารางเรียน (Schedule Conflict Detection):** ตรวจสอบความถูกต้องตามกฎระเบียบของมหาวิทยาลัยและข้อจำกัดทางกายภาพ 6 มิติ (Hard Constraints C1–C6)
 2. **การประเมินคุณภาพชีวิตและสุขภาวะการเรียน (Quality-of-Life Evaluation):** ประเมินและแจ้งเตือนข้อจำกัดเชิงคุณภาพ 5 มิติ (Soft Constraints W1–W5)
 3. **การแก้ปัญหาการจัดตารางเรียนแบบหาความพึงพอใจสูงสุด (Automated Schedule Optimization):** ประมวลผลและสร้างแผนการเรียนทางเลือกจำนวน 3–5 แผน ด้วยแบบจำลอง Constraint Programming (CP-SAT)
+
+ระบบได้รับการออกแบบให้ทำงานร่วมกับโมดูลภายนอกอย่างสมบูรณ์ โดยรองรับสัญญาการทำงาน (Contracts) ของ **โมดูล 02 (`02_api_backend`)** และ **โมดูล 03 (`03_ai_router_agent`)** รวมถึงเชื่อมต่อข้อมูลผ่าน Data Provider ไปยัง **โมดูล 04 (`04_data_integration`)** และ **โมดูล 05 (`05_student_profile`)**
 
 ---
 
@@ -21,24 +23,54 @@
 
 ### 2.1 การแยกตรรกะเชิงกำหนดออกจากโมเดลภาษา (Separation of Deterministic Logic from Probabilistic Models)
 
-ในการพัฒนาระบบร่วมกับ Large Language Models (LLMs) ทีมพัฒนาได้กำหนดข้อตกลงทางสถาปัตยกรรม (Architectural Decision):
+ในการพัฒนาระบบร่วมกับ Large Language Models (LLMs) สถาปัตยกรรมระบบถูกออกแบบตามหลักการสำคัญ:
 > **"โมเดลภาษาต้องไม่มีบทบาทในการตัดสินเงื่อนไขเวลาหรือการคำนวณทางคณิตศาสตร์"**
 
-- **ข้อจำกัดของโมเดลภาษา:** LLM มีสถาปัตยกรรมแบบทำนายความน่าจะเป็นของโทเคน (Probabilistic Token Prediction) ซึ่งมีอัตราความผิดพลาดด้านการคำนวณทางคณิตศาสตร์และตรรกศาสตร์เชิงเวลา (Temporal Reasoning Hallucination) สูงถึง 15–30% จากการทดสอบเบื้องต้น
-- **ความสำคัญของความถูกต้องเชิงระบบ:** การคำนวณว่าวิชาเรียนทับซ้อนกันหรือไม่ เป็นปัญหาที่ต้องมีความถูกต้องสัมบูรณ์ (100% Deterministic Correctness)
-- **แนวทางแก้ไข:** ออกแบบให้โมดูล 06 ทำหน้าที่ประมวลผลกฎทั้งหมดในลักษณะ Rule Engine และ Optimization Solver อย่างเป็นอิสระ แล้วส่งออกผลลัพธ์ในรูปแบบโครงสร้างข้อมูลมาตรฐาน (Structured Data/JSON) ให้โมดูล 07 นำไปสร้างคำอธิบายเป็นภาษาธรรมชาติ (Natural Language Explanation)
+- **ข้อจำกัดของโมเดลภาษา:** โมเดลภาษาทำงานด้วยสถาปัตยกรรมทำนายความน่าจะเป็นของโทเคน (Probabilistic Token Prediction) ซึ่งมีความเสี่ยงต่อความผิดพลาดเชิงตรรกะเวลาและการคำนวณ (Temporal Hallucination)
+- **ความถูกต้องสัมบูรณ์ (100% Deterministic Correctness):** การพิจารณาว่าวิชาเรียนทับซ้อนกันหรือไม่ หรือหน่วยกิตอยู่ในกรอบกฎระเบียบหรือไม่ เป็นปัญหาเชิงตรรกะที่ยอมรับความผิดพลาดไม่ได้
+- **แนวทางสถาปัตยกรรม:** โมดูล 06 ทำหน้าที่เป็น Rule Engine และ Constraint Solver อย่างอิสระ คืนผลลัพธ์เป็นข้อมูลโครงสร้างมาตรฐาน (Structured JSON) โดยโมดูล 07 มีหน้าที่เพียงนำข้อมูลนี้ไปแปลงเป็นภาษาธรรมชาติเท่านั้น
+
+### 2.2 แผนผังการทำงานและการเชื่อมต่อระหว่างโมดูล (System Architecture Diagram)
 
 ```text
-[ผู้ใช้งาน / Frontend]
-        │
-        ▼ (HTTP Request)
-[06_schedule_conflict_engine] ───(ประมวลผลเชิงกำหนด 100%)───┐
-        │                                                    │
-        ▼ (Structured Result / JSON)                         │
-[07_rag_llm_engine]                                          ▼
-        │ (สร้างภาษาธรรมชาติเพื่ออธิบาย)             [01_web_app / 02_api_backend]
-        ▼                                           (แสดงผลตาราง / บันทึกฐานข้อมูล)
-"วิชา CPE101 ชนกับ CPE102 ในวันจันทร์..."
+       ┌────────────────────────┐         ┌─────────────────────────┐
+       │   02_api_backend       │         │   03_ai_router_agent    │
+       │   (Direct Endpoints)   │         │   (Routing & Dispatch)  │
+       └───────────┬────────────┘         └────────────┬────────────┘
+                   │                                   │
+      POST /validate, /generate            POST /conflicts/check, /plans/auto
+                   │                                   │
+                   ▼                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   06_schedule_conflict_engine                          │
+│                                                                        │
+│   ┌────────────────────────────────────────────────────────────────┐   │
+│   │                        API Routing Layer                       │   │
+│   │   - schemas_backend.py (02)       - schemas_router.py (03)     │   │
+│   └───────────────┬────────────────────────────────┬───────────────┘   │
+│                   │                                │                   │
+│   ┌───────────────▼───────────────┐┌───────────────▼───────────────┐   │
+│   │      Validation Service       ││       Planning Service        │   │
+│   │  (Conflict & Quality Checking)││     (OR-Tools CP-SAT Solver)  │   │
+│   └───────────────┬───────────────┘└───────────────┬───────────────┘   │
+│                   │                                │                   │
+│   ┌───────────────▼────────────────────────────────▼───────────────┐   │
+│   │                 Core Conflict & Solver Engine                  │   │
+│   │  - 182-Bitmask Time Clash      - Soft Constraint Evaluator     │   │
+│   │  - Hard Constraints (C1 - C6)  - Solution Pool Generation      │   │
+│   └───────────────────────────────┬────────────────────────────────┘   │
+│                                   │                                    │
+│   ┌───────────────────────────────▼────────────────────────────────┐   │
+│   │                Provider Layer (Data Abstraction)               │   │
+│   │      SectionProvider       │      StudentContextProvider       │   │
+│   └───────────────┬────────────┴───────────────────┬───────────────┘   │
+└───────────────────┼────────────────────────────────┼───────────────────┘
+                    │ (HTTP / JSON)                  │ (HTTP / JSON)
+                    ▼                                ▼
+       ┌────────────────────────┐         ┌─────────────────────────┐
+       │  04_data_integration   │         │   05_student_profile    │
+       │  (Course & Section DB) │         │  (Student Anonymized)   │
+       └────────────────────────┘         └─────────────────────────┘
 ```
 
 ---
@@ -47,12 +79,12 @@
 
 ### 3.1 การแทนช่วงเวลาด้วยระบบบิตมาร์ก 182 บิต (182-Bitmask Temporal Representation)
 
-เพื่อรองรับการตรวจสอบการทับซ้อนของตารางเรียนแบบเรียลไทม์ที่มีความถี่สูง (เช่น ในกรณี Drag & Drop บนเว็บแอปพลิเคชัน) ระบบได้ออกแบบโครงสร้างข้อมูลแบบบิตมาร์กขนาด 182 บิต:
+เพื่อรองรับการคำนวณการทับซ้อนของตารางเรียนแบบความเร็วสูงพิเศษ ระบบได้ออกแบบโครงสร้างข้อมูลบิตมาร์กขนาด 182 บิต:
 
 #### การคำนวณมิติของบิต (Dimension Mapping):
-- **จำนวนวันใน 1 สัปดาห์:** 7 วัน (วันจันทร์ = Index 0 จนถึง วันอาทิตย์ = Index 6)
-- **กรอบเวลาเรียนต่อวัน:** 08:00 น. ถึง 21:00 น. (รวม 13 ชั่วโมง หรือ 780 นาทีต่อวัน)
-- **หน่วยย่อยของเวลา (Granularity):** ช่องละ 30 นาที $\rightarrow$ 26 สล็อตต่อวัน
+- **จำนวนวันใน 1 สัปดาห์:** 7 วัน (จันทร์ = Index 0 ถึง อาทิตย์ = Index 6)
+- **กรอบเวลาเรียนต่อวัน:** 08:00 น. ถึง 21:00 น. (13 ชั่วโมง หรือ 780 นาทีต่อวัน)
+- **หน่วยย่อยของเวลา (Granularity):** ช่วงละ 30 นาที $\rightarrow$ 26 สล็อตต่อวัน
 - **ขนาดบิตทั้งหมด:**
   $$\text{Total Bits} = 7 \times 26 = 182 \text{ บิต}$$
 
@@ -65,14 +97,12 @@ $$\text{Bit Index} = (d \times 26) + \text{slot} \quad \text{สำหรับ 
 #### ประสิทธิภาพเชิงเวลา (Computational Complexity):
 - **การตรวจสอบเวลาชน (Collision Check):**
   $$\text{IsClash}(A, B) \iff (\text{Mask}_A \land \text{Mask}_B) \ne 0$$
-  ดำเนินการด้วยการคำนวณระดับ Bitwise AND ระดับฮาร์ดแวร์ ใช้ความซับซ้อนเชิงเวลา $O(1)$
-- **การถอดรหัสบิตชน (Bit Decoding):** ทำการสแกนเฉพาะบิตที่เปิดอยู่ในผลลัพธ์ $\text{Mask}_A \land \text{Mask}_B$ เพื่อแปลงกลับเป็นช่วงเวลาเริ่มต้นและสิ้นสุดอย่างแม่นยำ
+  คำนวณด้วย Bitwise AND ระดับฮาร์ดแวร์ ใช้ความซับซ้อนเชิงเวลา $O(1)$
+- **การถอดรหัสบิตชน (Bit Decoding):** ทำการประมวลผลเฉพาะบิตที่เปิดอยู่ในผลลัพธ์ $\text{Mask}_A \land \text{Mask}_B$ เพื่อแปลงกลับเป็นช่วงเวลาเริ่มต้นและสิ้นสุดอย่างแม่นยำ
 
----
+### 3.2 การแก้ปัญหาการจัดตารางด้วย Google OR-Tools CP-SAT
 
-### 3.2 การแก้ปัญหาการจัดตารางด้วย Google OR-Tools CP-SAT (Constraint Programming)
-
-ปัญหาการจัดตารางเรียนจัดอยู่ในกลุ่มปัญหา **Combinatorial Optimization (NP-hard)** ซึ่งการใช้วิธีค้นหาแบบสุ่ม (Heuristic) ไม่สามารถรับประกันว่าจะได้คำตอบที่ดีที่สุด หรืออาจใช้เวลาคำนวณนานเกินขอบเขต ระบบจึงเลือกใช้ **Constraint Programming over Satisfiability (CP-SAT)**:
+การจัดตารางเรียนเป็นปัญหาประเภท Combinatorial Optimization (NP-hard) ระบบใช้แบบจำลองทางคณิตศาสตร์ด้วย Constraint Programming over Satisfiability (CP-SAT):
 
 #### 1. ตัวแปรตัดสินใจ (Decision Variables):
 สำหรับกลุ่มเรียน $s \in S$:
@@ -92,28 +122,26 @@ $$y_d \in \{0, 1\} \quad \text{โดยที่ } y_d = 1 \text{ หากม�
 
 #### 3. ฟังก์ชันวัตถุประสงค์ (Multi-Objective Maximization):
 $$\max Z = \sum_{s \in S} \left( W_{\text{priority}} \cdot P_s \cdot x_s \right) - \sum_{d \in D_{\text{free}}} \left( W_{\text{free}} \cdot y_d \right) - \sum_{s \in S_{\text{morning}}} \left( W_{\text{morning}} \cdot x_s \right) - \sum_{d=0}^{6} \left( W_{\text{campus}} \cdot y_d \right)$$
-- $P_s$: คะแนนความสำคัญของรายวิชาตาม Critical Path (P0=Retake, P1=ตามแผนเทอม, P2=ปลดล็อกวิชาอื่น, P3=วิชาเลือก)
-- $D_{\text{free}}$: ชุดวันที่นักศึกษาต้องการให้เป็นวันว่าง
-- $S_{\text{morning}}$: ชุดกลุ่มเรียนที่มีคาบเรียนช่วงเช้า (ก่อน 09:00 น.)
+- $P_s$: ลำดับความสำคัญของรายวิชา (P0=Retake, P1=ตามแผนเทอม, P2=ปลดล็อกวิชาอื่น, P3=วิชาเลือก)
+- $D_{\text{free}}$: ชุดวันที่ผู้ใช้ต้องการให้เป็นวันว่าง
+- $S_{\text{morning}}$: กลุ่มเรียนช่วงเช้า (ก่อน 09:00 น.)
 
 #### 4. การสร้างชุดคำตอบที่หลากหลาย (Solution Pool Diversity):
 เมื่อได้คำตอบแผนที่ $k$ ระบบจะเพิ่มข้อจำกัดตัดคำตอบเดิม (Cut Constraint):
 $$\sum_{s \in \text{Plan}_k} x_s \le |\text{Plan}_k| - 1$$
-แล้วดำเนินการแก้ปัญหาใหม่ซ้ำเพื่อสร้างแผนทางเลือกที่ 2 ถึง 5 ตามลำดับ
+และดำเนินการแก้ปัญหาใหม่เพื่อสร้างแผนทางเลือกที่ 2 ถึง 5 ตามลำดับ
 
 #### 5. ลำดับขั้นการผ่อนปรนข้อจำกัด (Hierarchical Constraint Relaxation):
-หากโมเดลไม่สามารถหาผลลัพธ์ที่เป็นไปได้ (Infeasible) ระบบจะดำเนินการผ่อนปรนข้อจำกัดตามลำดับ:
-- **ระดับที่ 1 (Relax Preferences):** ยกเลิกเงื่อนไขการหลีกเลี่ยงคาบเช้าและวันว่าง
-- **ระดับที่ 2 (Relax Capacity):** อนุญาตให้เลือกกลุ่มเรียนที่ที่นั่งเต็ม พร้อมระบุคำแนะนำขอโควตา
-- **ระดับที่ 3 (Relax Credits):** ปรับลดเกณฑ์หน่วยกิตขั้นต่ำ เพื่อให้ระบบสามารถจัดวิชาที่จำเป็นที่สุดให้ได้
+หากไม่สามารถหาผลลัพธ์ที่เป็นไปได้ (Infeasible) ระบบจะผ่อนปรนข้อจำกัดตามลำดับ:
+- ระดับที่ 1: ผ่อนปรนความพึงพอใจ (คาบเช้าและวันว่าง)
+- ระดับที่ 2: ผ่อนปรนโควตาที่นั่ง พร้อมออกคำแนะนำขอโควตา
+- ระดับที่ 3: ผ่อนปรนหน่วยกิตขั้นต่ำ เพื่อให้สามารถลงทะเบียนวิชาที่จำเป็นที่สุดได้
 
 ---
 
 ## 4. ข้อกำหนดกฎการตรวจสอบ (Constraint Classification)
 
 ### 4.1 ข้อจำกัดแบบเคร่งครัด (Hard Constraints: C1 – C6)
-ฝ่าฝืนกฎเหล่านี้จะส่งผลให้ไม่สามารถลงทะเบียนเรียนได้จริง
-
 | รหัส | ชื่อกฎ | คำอธิบายเงื่อนไข | ระดับความรุนแรง |
 |---|---|---|---|
 | **C1** | `TIME_CLASH` | คาบเรียนมีช่วงเวลาทับซ้อนกันตั้งแต่ 30 นาทีขึ้นไป | `ERROR` |
@@ -124,8 +152,6 @@ $$\sum_{s \in \text{Plan}_k} x_s \le |\text{Plan}_k| - 1$$
 | **C6** | `SEAT_FULL` | จำนวนผู้ลงทะเบียนในกลุ่มเรียนเต็มจำนวนรับที่ระบุ | `ERROR` |
 
 ### 4.2 ข้อจำกัดเชิงคุณภาพและสุขภาวะการเรียน (Soft Constraints: W1 – W5)
-ส่งผลกระทบต่อคุณภาพชีวิตและประสิทธิภาพในการเรียนของนักศึกษา
-
 | รหัส | ชื่อกฎ | คำอธิบายเงื่อนไข | ระดับความรุนแรง |
 |---|---|---|---|
 | **W1** | `LONG_STRETCH` | มีการเรียนติดต่อกันยาวนานเกิน 6 ชั่วโมงโดยไม่มีช่วงเวลาพัก | `WARNING` |
@@ -136,66 +162,240 @@ $$\sum_{s \in \text{Plan}_k} x_s \le |\text{Plan}_k| - 1$$
 
 ---
 
-## 5. ข้อกำหนดส่วนต่อประสานโปรแกรมประยุกต์ (API Specification)
+## 5. รายละเอียดส่วนต่อประสานโปรแกรมประยุกต์และสัญญาข้อมูล (API Contracts)
 
-ระบบพัฒนาบนพื้นฐานของ FastAPI รองรับการสื่อสารผ่านโพรโทคอล HTTP/JSON:
+โมดูล 06 รองรับการเรียกใช้งานผ่าน 4 Endpoints หลักที่สอดคล้องกับโมดูลต้นทาง 100%:
 
-| เมธอด | เส้นทาง (Endpoint) | หน้าที่การทำงาน | ความเข้ากันได้ของระบบ |
-|---|---|---|---|
-| `GET` | `/health` | ตรวจสอบสถานะความพร้อมของบริการ (Health Check) | Docker, CI Runner |
-| `POST` | `/conflicts/check` | ตรวจสอบข้อขัดแย้ง C1–C6 และ W1–W5 แบบละเอียด | โมดูล 03 (`ai_router_agent`) |
-| `POST` | `/validate` | ส่วนต่อประสานเสมือนสำหรับตรวจสอบความถูกต้องของแผน | โมดูล 02 (`api_backend`) |
-| `POST` | `/conflicts/preview` | ตรวจสอบเฉพาะเวลาชนด้วย Bitmask ความเร็วสูง (< 50ms) | โมดูล 01 (`web_app` Drag & Drop) |
-| `POST` | `/plan/generate` | จัดแผนการเรียนอัตโนมัติ 3–5 แผนด้วย CP-SAT Solver | สเปกกลางโมดูล 06 |
-| `POST` | `/plans/auto` | ส่วนต่อประสานเสมือนสำหรับการสร้างแผนอัตโนมัติ | โมดูล 03 (`ai_router_agent`) |
-| `POST` | `/generate` | ส่วนต่อประสานเสมือนสำหรับการสร้างแผนอัตโนมัติ | โมดูล 02 (`api_backend`) |
-| `POST` | `/plan/repair` | วิเคราะห์ตารางที่ชนและเสนอแนะกลุ่มเรียนทางเลือกที่ไม่ชน | โมดูล 01, 02 |
-| `POST` | `/plan/compare` | เปรียบเทียบความแตกต่างระหว่างแผนการเรียน 2 แผน | โมดูล 01, 08 |
+### 5.1 สัญญาของโมดูล 02 (`02_api_backend`)
+
+#### 1. `POST /validate`
+- **หน้าที่:** ตรวจสอบข้อขัดแย้งของกลุ่มเรียนที่ส่งเข้ามา
+- **Request Body:**
+  ```json
+  {
+    "term": "1/2567",
+    "section_ids": ["01076001-1", "01076002-1"]
+  }
+  ```
+- **Response Body (`BackendValidateResponse`):**
+  ```json
+  {
+    "valid": false,
+    "conflicts": [
+      {
+        "type": "TIME_CLASH",
+        "message": "เวลาเรียนซ้อนทับกัน",
+        "section_ids": ["01076001-1", "01076002-1"],
+        "details": {
+          "day": "MON",
+          "overlap_start": "09:00",
+          "overlap_end": "12:00"
+        }
+      }
+    ]
+  }
+  ```
+
+#### 2. `POST /generate`
+- **หน้าที่:** สร้างแผนการเรียนแนะนำสำหรับนักศึกษา
+- **Request Body:**
+  ```json
+  {
+    "student_id": "STUDENT_HASH_001",
+    "term": "1/2567",
+    "max_credits": 21,
+    "preferred_days": ["MON", "TUE", "WED", "THU"]
+  }
+  ```
+- **Response Body (`BackendGenerateResponse`):**
+  ```json
+  {
+    "plans": [
+      {
+        "sections": ["01076001-1", "01076002-1"],
+        "warnings": [],
+        "explanation": null
+      }
+    ]
+  }
+  ```
 
 ---
 
-## 6. รายงานผลการทดสอบระบบ (Verification & Test Report)
+### 5.2 สัญญาของโมดูล 03 (`03_ai_router_agent`)
 
-การทดสอบระบบดำเนินการครอบคลุมระดับ Unit Test และ Integration Test รวมทั้งสิ้น 27 กรณีทดสอบ ด้วยเฟรมเวิร์ก Pytest:
+#### 3. `POST /conflicts/check`
+- **หน้าที่:** ตรวจสอบข้อขัดแย้งเชิงเวลาและกฎเกณฑ์ พร้อมสรุปข้อมูลตารางเรียน
+- **Request Body:**
+  ```json
+  {
+    "sections": ["01076001-1", "01076002-1"]
+  }
+  ```
+- **Response Body (`RouterConflictResponse`):**
+  ```json
+  {
+    "has_conflict": true,
+    "conflicts": [
+      {
+        "rule_code": "C1",
+        "rule_name": "TIME_CLASH",
+        "severity": "ERROR",
+        "sections": ["01076001-1", "01076002-1"],
+        "details": {
+          "day": "MON",
+          "overlap_start": "09:00",
+          "overlap_end": "12:00"
+        }
+      }
+    ],
+    "warnings": [],
+    "summary": {
+      "total_credits": 6,
+      "days_on_campus": 1,
+      "free_days": ["TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+    }
+  }
+  ```
+
+#### 4. `POST /plans/auto`
+- **หน้าที่:** สร้างแผนตารางเรียนอัตโนมัติตามความต้องการของ AI Router
+- **Request Body:**
+  ```json
+  {
+    "student_id": "STUDENT_HASH_001",
+    "term": "1/2567",
+    "preferences": {
+      "avoid_morning": true,
+      "free_days": ["FRI"]
+    }
+  }
+  ```
+- **Response Body (`RouterGenerateResponse`):**
+  ```json
+  {
+    "plans": [
+      {
+        "plan_id": "plan_1",
+        "sections": ["01076001-1", "01076002-1"],
+        "total_credits": 6,
+        "score": 85.5,
+        "warnings": []
+      }
+    ],
+    "total_candidates": 1,
+    "solver_status": "OPTIMAL"
+  }
+  ```
+
+---
+
+### 5.3 ส่วนต่อประสานเฉพาะโมดูล 06 และระบบตรวจสอบสถานะ
+
+| เมธอด | เส้นทาง (Endpoint) | หน้าที่การทำงาน | กลุ่มเป้าหมาย |
+|---|---|---|---|
+| `GET` | `/health` | ตรวจสอบสถานะการเปิดทำงานของแอปพลิเคชัน (Liveness Probe) | Docker, Kubernetes |
+| `GET` | `/ready` | ตรวจสอบความพร้อมของหน่วยความจำและตัวแก้ปัญหา (Readiness Probe) | Ingress, CI Runner |
+| `POST` | `/conflicts/preview` | ตรวจสอบเวลาชนแบบเร็วพิเศษ (< 50ms) | UI Drag & Drop (01) |
+| `POST` | `/plan/generate` | จัดแผนการเรียนอัตโนมัติ 3–5 แผนพร้อมรายละเอียดสมบูรณ์ | โมดูล 06 สเปกเต็ม |
+| `POST` | `/plan/repair` | วิเคราะห์ตารางที่ชนและเสนอแนะกลุ่มเรียนทางเลือกที่ไม่ชน | โมดูล 01, 02 |
+| `POST` | `/plan/compare` | เปรียบเทียบความแตกต่างและคุณภาพระหว่าง 2 แผน | โมดูล 01, 08 |
+
+---
+
+## 6. สถาปัตยกรรมการแปลงข้อมูลและการเชื่อมต่อบริการภายนอก (Data Providers)
+
+### 6.1 กลไกการ Resolve ข้อมูล Section และ Student Context
+
+โมดูล 06 ใช้แนวคิด **Protocol-based Dependency Injection** ในการตัดขาดการยึดติดกับแหล่งข้อมูล:
+1. **`SectionProvider` Protocol:**
+   - กำหนดเมธอด `get_sections(section_ids: list[str]) -> list[Section]` และ `get_available_sections(term: str) -> list[Section]`
+   - `HttpSectionProvider`: ติดต่อไปยัง โมดูล 04 ผ่าน HTTP เพื่อดึงข้อมูลจริง
+   - `MemorySectionProvider`: ใช้สำหรับกระบวนการทดสอบ Unit Test และโหมดการทำงานจำลอง
+2. **`StudentContextProvider` Protocol:**
+   - กำหนดเมธอด `get_student_context(student_id: str) -> StudentProfile`
+   - `HttpStudentContextProvider`: ติดต่อไปยัง โมดูล 05 (`GET /context/{student_id}`) เพื่อดึงประวัติการเรียนและข้อมูลหลักสูตร
+   - ข้อมูล `student_id` เป็น Synthetic Hash ตามมาตรฐานของระบบ
+
+### 6.2 นโยบาย Fail-Closed และการจัดการข้อมูลไม่สมบูรณ์
+
+- **ความสมบูรณ์ของข้อมูลคาบเรียน (Schedule Completeness):** หากกลุ่มเรียนที่ไม่ใช่วิชาประเภทออนไลน์ (`is_online == False`) ไม่มีข้อมูลคาบเรียนระบุไว้ (`meetings == []`) ระบบจะยกเว้นการประมวลผลและส่งข้อยกเว้น `DataIncompleteError` ทันที และตอบกลับเป็น HTTP 422
+- **การไม่พบข้อมูล (Data Not Found):** หากไม่พบรหัสกลุ่มเรียนหรือรหัสนักศึกษาในฐานข้อมูลของโมดูล 04 หรือ 05 ระบบจะตอบกลับเป็น HTTP 422
+- **ความขัดข้องของบริการต้นทาง (Upstream Failure):** หากบริการ 04 หรือ 05 มีปัญหาหรือเกิด Timeout ระบบจะตอบกลับเป็น HTTP 502 Bad Gateway
+
+### 6.3 พฤติกรรม Mock / Demo และการแยกสภาพแวดล้อม
+
+- ตัวแปรสภาพแวดล้อม `DEMO_MODE=false` ถูกตั้งค่าเป็นค่าเริ่มต้น (Default)
+- ชุดข้อมูลจำลอง (Mock Fixtures) ถูกแยกไว้ใน `src/core/demo_fixtures.py` และจะถูกเรียกใช้เฉพาะเมื่อระบุ `DEMO_MODE=true` หรือในสภาพแวดล้อมการทดสอบเท่านั้น
+- **ข้อกำหนดความปลอดภัย:** ห้ามใช้ Mock Data เป็น Fallback เงียบในสภาวะ Production โดยเด็ดขาด หากการเชื่อมต่อ upstream ขัดข้อง ระบบต้อง Fail-Closed ทันที
+
+---
+
+## 7. รายงานผลการทดสอบระบบ (Verification & Test Report)
+
+ชุดการทดสอบครอบคลุมทั้ง Unit Test, Contract Testing ของโมดูล 02 และ 03, และ Provider Testing รวมทั้งสิ้น 38 กรณีทดสอบ โดยผ่านการทดสอบสมบูรณ์ 100%:
 
 ```text
 ============================= test session starts ==============================
 platform darwin -- Python 3.14.4, pytest-9.1.1, pluggy-1.6.0
 rootdir: ProJ-RMUTT-Planner/06_schedule_conflict_engine
-collected 27 items
+collected 38 items
 
-tests/test_api.py::test_health_check PASSED                              [  3%]
-tests/test_api.py::test_conflicts_check_endpoint PASSED                  [  7%]
-tests/test_api.py::test_validate_alias_endpoint PASSED                   [ 11%]
-tests/test_api.py::test_preview_endpoint PASSED                          [ 14%]
-tests/test_api.py::test_generate_plan_endpoint PASSED                    [ 18%]
-tests/test_api.py::test_repair_endpoint PASSED                           [ 22%]
-tests/test_api.py::test_compare_endpoint PASSED                          [ 25%]
-tests/test_bitmask.py::test_bitmask_total_slots PASSED                   [ 29%]
-tests/test_bitmask.py::test_touching_head_to_tail_no_clash PASSED        [ 33%]
-tests/test_bitmask.py::test_overlapping_classes_clash PASSED             [ 37%]
-tests/test_bitmask.py::test_different_days_no_clash PASSED               [ 40%]
-tests/test_bitmask.py::test_spanning_noon PASSED                         [ 44%]
-tests/test_bitmask.py::test_schedule_profile_analysis PASSED             [ 48%]
-tests/test_conflict_detector.py::test_c1_time_clash PASSED               [ 51%]
-tests/test_conflict_detector.py::test_c2_exam_clash PASSED               [ 55%]
-tests/test_conflict_detector.py::test_c3_prereq_fail PASSED              [ 59%]
-tests/test_conflict_detector.py::test_c4_credit_limit_exceeded PASSED    [ 62%]
-tests/test_conflict_detector.py::test_c4_summer_credit_limit PASSED      [ 66%]
-tests/test_conflict_detector.py::test_c5_duplicate_sections PASSED       [ 70%]
-tests/test_conflict_detector.py::test_c6_seat_full PASSED                [ 74%]
-tests/test_planner.py::test_cp_sat_generates_valid_plans PASSED          [ 77%]
-tests/test_planner.py::test_cp_sat_respects_free_day_preference PASSED   [ 81%]
-tests/test_quality_evaluator.py::test_w1_long_stretch PASSED             [ 85%]
-tests/test_quality_evaluator.py::test_w2_large_gap PASSED                [ 88%]
-tests/test_quality_evaluator.py::test_w3_early_morning_and_free_days PASSED [ 92%]
-tests/test_quality_evaluator.py::test_w4_rush_building_move PASSED       [ 96%]
+tests/test_api.py::test_health_check PASSED                              [  2%]
+tests/test_api.py::test_ready_check PASSED                               [  5%]
+tests/test_api.py::test_preview_endpoint PASSED                          [  7%]
+tests/test_api.py::test_repair_endpoint PASSED                           [ 10%]
+tests/test_api.py::test_compare_endpoint PASSED                          [ 13%]
+tests/test_bitmask.py::test_bitmask_total_slots PASSED                   [ 15%]
+tests/test_bitmask.py::test_touching_head_to_tail_no_clash PASSED        [ 18%]
+tests/test_bitmask.py::test_overlapping_classes_clash PASSED             [ 21%]
+tests/test_bitmask.py::test_different_days_no_clash PASSED               [ 23%]
+tests/test_bitmask.py::test_spanning_noon PASSED                         [ 26%]
+tests/test_bitmask.py::test_schedule_profile_analysis PASSED             [ 28%]
+tests/test_conflict_detector.py::test_c1_time_clash PASSED               [ 31%]
+tests/test_conflict_detector.py::test_c2_exam_clash PASSED               [ 34%]
+tests/test_conflict_detector.py::test_c3_prereq_fail PASSED              [ 36%]
+tests/test_conflict_detector.py::test_c4_credit_limit_exceeded PASSED    [ 39%]
+tests/test_conflict_detector.py::test_c4_summer_credit_limit PASSED      [ 42%]
+tests/test_conflict_detector.py::test_c5_duplicate_sections PASSED       [ 44%]
+tests/test_conflict_detector.py::test_c6_seat_full PASSED                [ 47%]
+tests/test_contract_backend.py::test_02_validate_conflict PASSED          [ 50%]
+tests/test_contract_backend.py::test_02_validate_no_conflict PASSED       [ 52%]
+tests/test_contract_backend.py::test_02_generate_plan PASSED              [ 55%]
+tests/test_contract_router.py::test_03_check_conflicts_format PASSED      [ 57%]
+tests/test_contract_router.py::test_03_check_conflicts_unknown_section_fails PASSED [ 60%]
+tests/test_contract_router.py::test_03_auto_plan_format PASSED           [ 63%]
+tests/test_contract_router.py::test_03_auto_plan_unknown_hash_fails PASSED [ 65%]
+tests/test_planner.py::test_cp_sat_generates_valid_plans PASSED          [ 68%]
+tests/test_planner.py::test_cp_sat_respects_free_day_preference PASSED   [ 71%]
+tests/test_providers.py::test_memory_section_provider_found PASSED       [ 73%]
+tests/test_providers.py::test_memory_section_provider_missing PASSED     [ 76%]
+tests/test_providers.py::test_incomplete_section_data_fails PASSED      [ 78%]
+tests/test_providers.py::test_memory_student_provider_found PASSED      [ 81%]
+tests/test_providers.py::test_memory_student_provider_missing PASSED    [ 84%]
+tests/test_providers.py::test_http_provider_network_error_raises_upstream_error PASSED [ 86%]
+tests/test_quality_evaluator.py::test_w1_long_stretch PASSED             [ 89%]
+tests/test_quality_evaluator.py::test_w2_large_gap PASSED                [ 92%]
+tests/test_quality_evaluator.py::test_w3_early_morning_and_free_days PASSED [ 94%]
+tests/test_quality_evaluator.py::test_w4_rush_building_move PASSED       [ 97%]
 tests/test_quality_evaluator.py::test_w5_heavy_days PASSED               [100%]
 
-======================== 27 passed in 1.29s =========================
+======================== 38 passed in 1.44s ========================
 ```
 
-### สรุปผลการตรวจสอบด้านความถูกต้องและความปลอดภัย:
-1. **ความถูกต้องของตรรกะ (Logical Verification):** การทดสอบครอบคลุมกรณีขอบเขตเวลา (Edge Cases) เช่น คาบเรียนที่ติดกันพอดีหัวท้าย (11:00 น. กับ 11:00 น.) ตรวจสอบแล้วว่าไม่เกิดการชนกันอย่างถูกต้อง
-2. **การปฏิบัติตามมาตรฐานความปลอดภัย (Security & Secrets Guard):** ผ่านเกณฑ์การตรวจสอบของ CI โดยไม่มีการจัดเก็บข้อมูลส่วนบุคคลของนักศึกษาจริง ไม่มีคีย์รหัสผ่านหรือ API Key และไม่มีไฟล์ `.env` อยู่ในระบบการควบคุมเวอร์ชัน
-3. **การตรวจสอบไวยากรณ์ (Syntax Compilation):** ตรวจสอบผ่านคำสั่ง `python -m compileall -q 0*/src` สำเร็จสมบูรณ์ 100%
+---
+
+## 8. รายการประสานงานและข้อกำหนดส่งมอบ (Handoff Specifications)
+
+### 8.1 สำหรับโมดูล 04 (`04_data_integration`)
+เพื่อให้ `HttpSectionProvider` ทำงานได้อย่างสมบูรณ์เมื่อเชื่อมต่อจริง:
+1. **Endpoint ที่จำเป็น:**
+   - แนะนำ: `POST /sections/batch` พร้อม Request Body `{"section_ids": ["..."]}` เพื่อดึงข้อมูลรายวิชาแบบชุด
+   - หรือ `GET /sections?term={term}&ids={id1},{id2}`
+2. **Schema ที่ส่งกลับ:** ต้องประกอบด้วย `section_id`, `course_code`, `course_name_th`, `course_name_en`, `credits`, `is_online`, `capacity`, `enrolled`, `meetings` (รายการวัน เวลาเริ่ม-จบในรูปนาทีจากเที่ยงคืน) และ `exam` (วัน เวลาสอบกลางภาค/ปลายภาค)
+
+### 8.2 สำหรับโมดูล 05 (`05_student_profile`)
+เพื่อให้ `HttpStudentContextProvider` ทำงานได้อย่างสมบูรณ์:
+1. **Endpoint ที่ใช้งาน:**
+   - `GET /context/{student_id}` (โดย `student_id` เป็น synthetic hash)
+2. **Schema ที่ส่งกลับ:** ต้องประกอบด้วย `student_id`, `completed_courses`, `enrolled_courses`, `curriculum_plan` (แผนการเรียนตามเทอมเพื่อจัดลำดับ P0–P3) และ `max_credits`
