@@ -7,7 +7,13 @@ from pathlib import Path
 
 from ..config import settings
 from ..core.retrieval import Document, HybridRetriever
-from ..core.text import chunk_text, parse_frontmatter, split_by_heading
+from ..core.text import (
+    chunk_text,
+    expand_query,
+    parse_frontmatter,
+    section_hints,
+    split_by_heading,
+)
 from ..models.schemas import Chunk
 
 log = logging.getLogger(__name__)
@@ -89,14 +95,18 @@ class KnowledgeBase:
         effective_year: int | None = None,
         program_id: str | None = None,
     ) -> list[Chunk]:
+        # ขยายคำถามที่จุดเดียว เพื่อให้ /knowledge/search กับ /generate
+        # ได้ผลเหมือนกันเสมอสำหรับคำถามเดียวกัน
+        # (เดิมขยายเฉพาะใน /generate ทำให้สองปลายทางให้อันดับต่างกัน)
         hits = self.retriever.search(
-            query,
+            expand_query(query),
             top_k=top_k or settings.top_k_final,
             top_k_bm25=settings.top_k_bm25,
             top_k_vector=settings.top_k_vector,
             doc_type=doc_type,
             effective_year=effective_year,
             program_id=program_id,
+            section_hints=section_hints(query),
         )
         return [
             Chunk(

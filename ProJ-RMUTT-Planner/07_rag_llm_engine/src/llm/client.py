@@ -54,12 +54,16 @@ def build_prompt(question: str, chunks: list[Chunk], context: dict) -> str:
 
 
 # ── โหมด rule-based ─────────────────────────────────────────────
+# โหมดนี้ยกข้อความจากเอกสารมาแสดงตรง ๆ จึงใส่ได้ไม่กี่ชิ้นก่อนจะยาวเกินอ่าน
+RULE_BASED_MAX_CHUNKS = 3
+
+
 def _rule_based_answer(question: str, chunks: list[Chunk]) -> str:
     """เรียบเรียงคำตอบจากข้อความในเอกสารโดยตรง ไม่แต่งเพิ่ม"""
     if not chunks:
         return ""
     lines = ["จากเอกสารของมหาวิทยาลัยที่เกี่ยวข้องกับคำถามนี้:", ""]
-    for i, c in enumerate(chunks[:3], start=1):
+    for i, c in enumerate(chunks, start=1):
         where = f"{c.title}" + (f" — {c.section}" if c.section else "")
         excerpt = c.text.strip()
         if len(excerpt) > 600:
@@ -124,20 +128,30 @@ _PROVIDERS = {
 }
 
 
-async def generate(question: str, chunks: list[Chunk], context: dict | None = None) -> tuple[str, str]:
-    """คืน (คำตอบ, ชื่อ provider ที่ใช้จริง)"""
+async def generate(
+    question: str, chunks: list[Chunk], context: dict | None = None
+) -> tuple[str, str, list[Chunk]]:
+    """คืน (คำตอบ, ชื่อ provider ที่ใช้จริง, เอกสารที่ถูกใช้สร้างคำตอบจริง)
+
+    ตัวที่สามสำคัญ: ผู้เรียกต้องเอาไปทำ sources ให้ตรงกับคำตอบ
+    โหมด rule_based ใช้แค่ 3 ชิ้นแรก ถ้าแนบ sources ครบ 6 ชิ้น ผู้ใช้จะเห็น
+    แหล่งอ้างอิงที่ไม่เคยถูกอ้างถึงในคำตอบเลย (เคยเป็นบั๊กจริง)
+    """
     context = context or {}
+    used = chunks[:RULE_BASED_MAX_CHUNKS]
+
     if not settings.llm_enabled:
-        return _rule_based_answer(question, chunks), "rule_based"
+        return _rule_based_answer(question, used), "rule_based", used
 
     caller = _PROVIDERS.get(settings.llm_provider)
     if caller is None:
         log.warning("ไม่รู้จัก provider %r กลับไปใช้ rule_based", settings.llm_provider)
-        return _rule_based_answer(question, chunks), "rule_based"
+        return _rule_based_answer(question, used), "rule_based", used
 
     try:
         answer = await caller(build_prompt(question, chunks, context))
-        return answer.strip(), settings.llm_provider
+        # provider จริงได้เอกสารครบทุกชิ้นใน prompt จึงถือว่าใช้ทั้งหมด
+        return answer.strip(), settings.llm_provider, chunks
     except Exception as exc:  # noqa: BLE001 - ล้มแล้วต้องยังตอบผู้ใช้ได้
         log.error("เรียก %s ไม่สำเร็จ: %s — กลับไปใช้ rule_based", settings.llm_provider, exc)
-        return _rule_based_answer(question, chunks), "rule_based_fallback"
+        return _rule_based_answer(question, used), "rule_based_fallback", used

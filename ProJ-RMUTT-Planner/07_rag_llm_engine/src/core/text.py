@@ -92,18 +92,35 @@ def parse_frontmatter(raw: str) -> tuple[dict[str, str], str]:
 
 
 def split_by_heading(body: str) -> list[tuple[str, str]]:
-    """แบ่งเอกสารตามหัวข้อ markdown -> [(heading, text)]"""
+    """แบ่งเอกสารตามหัวข้อ markdown -> [(breadcrumb, text)]
+
+    breadcrumb คือหัวข้อไล่ตามลำดับชั้น เช่น "ชั้นปีที่ 2 > ภาคการศึกษาที่ 1 (18 หน่วยกิต)"
+
+    ทำไมต้องมี: แผนการศึกษามีหัวข้อ "ภาคการศึกษาที่ 1" ซ้ำกัน 4 ครั้ง (ปี 1-4)
+    ถ้าเก็บแค่หัวข้อสุดท้าย chunk ทั้ง 4 จะหน้าตาเหมือนกันหมด แยกไม่ออกว่าเป็นของปีไหน
+    ทำให้คำถาม "ปี 2 เทอม 1 เรียนอะไร" ค้นไม่เจอ (เคยเป็นบั๊กจริง)
+    """
     matches = list(HEADING_RE.finditer(body))
     if not matches:
         return [("", body.strip())]
+
     parts: list[tuple[str, str]] = []
     lead = body[: matches[0].start()].strip()
     if lead:
         parts.append(("", lead))
+
+    trail: list[tuple[int, str]] = []  # (ระดับหัวข้อ, ข้อความ)
     for i, m in enumerate(matches):
+        level = len(m.group(1))
+        title = m.group(2).strip()
+        while trail and trail[-1][0] >= level:
+            trail.pop()
+        trail.append((level, title))
+
         start = m.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
-        parts.append((m.group(2).strip(), body[start:end].strip()))
+        breadcrumb = " > ".join(t for _, t in trail)
+        parts.append((breadcrumb, body[start:end].strip()))
     return parts
 
 
@@ -129,3 +146,91 @@ def chunk_text(text: str, max_chars: int, overlap: int) -> list[str]:
             break
         start = max(end - overlap, start + 1)
     return chunks
+
+
+# ── การขยายคำถาม ────────────────────────────────────────────────
+# คำถามนักศึกษามักสั้นและใช้คำพูดชาวบ้าน ต่างจากคำในเอกสารราชการ
+# เช่น ถาม "ปี 2 เทอม 1" แต่เอกสารเขียน "ชั้นปีที่ 2 > ภาคการศึกษาที่ 1"
+#
+# จัดเป็น "กลุ่มหัวข้อ" ไม่ใช่ dict แบน ๆ เพราะถ้าคำในหัวข้อเดียวกันติดหลายคำ
+# ข้อความขยายจะซ้ำซ้อนจนกลบคำถามเดิม เคยทำให้คำถาม "เรียนกี่หน่วยกิตถึงจะจบ"
+# ไปได้เอกสาร "หน่วยกิตต่อเทอม" แทนที่จะเป็น "หน่วยกิตตลอดหลักสูตร"
+# กติกา: หนึ่งหัวข้อใช้ข้อความขยายได้ครั้งเดียว และคำที่เจาะจงกว่าอยู่ก่อน
+
+EXPANSION_TOPICS: list[tuple[str, tuple[str, ...], str]] = [
+    # (ชื่อหัวข้อ, คำที่จับ, ข้อความที่เติมเข้าไป)
+    ("graduate", ("ถึงจะจบ", "จะจบ", "เรียนจบ", "สำเร็จการศึกษา", "จบการศึกษา", "ตลอดหลักสูตร"),
+     "เกณฑ์สำเร็จการศึกษา จำนวนหน่วยกิตรวมตลอดหลักสูตร โครงสร้างหลักสูตร"),
+    ("term_credits", ("กี่หน่วยกิตต่อเทอม", "หน่วยกิตต่อเทอม", "หน่วยกิตต่อภาค", "ลงได้กี่หน่วยกิต"),
+     "จำนวนหน่วยกิตต่อภาคการศึกษา ขั้นต่ำ สูงสุด"),
+    ("credits", ("หน่วยกิต",),
+     "หน่วยกิต"),
+    ("withdraw", ("ถอนรายวิชา", "ถอนวิชา"),
+     "ถอนรายวิชา สัญลักษณ์ W กำหนดเวลา"),
+    ("add_course", ("เพิ่มรายวิชา", "เพิ่มวิชา"),
+     "เพิ่มรายวิชา กำหนดเวลา"),
+    ("clash", ("ตารางชน", "เรียนชน", "ชนกัน", "ซ้ำซ้อน"),
+     "เวลาเรียนซ้ำซ้อน เวลาสอบตรงกัน"),
+    ("retire", ("รีไทร์", "พ้นสภาพ"),
+     "พ้นสภาพนักศึกษา ระยะเวลาศึกษา GPAX"),
+    ("prereq", ("บังคับก่อน", "ต้องผ่านอะไรก่อน", "ต้องเรียนอะไรก่อน"),
+     "รายวิชาบังคับก่อน prerequisite แผนการศึกษา"),
+    ("seat_full", ("ที่นั่งเต็ม",),
+     "ที่นั่งเต็ม ขอเพิ่มที่นั่ง หมู่เรียน"),
+    ("exam", ("ตารางสอบ", "สอบกลางภาค", "สอบปลายภาค"),
+     "ตารางสอบ ปฏิทินการศึกษา"),
+    ("plan", ("เรียนวิชาอะไร", "ต้องเรียนอะไร", "วิชาอะไรบ้าง", "แผนการเรียน"),
+     "แผนการศึกษาแนะนำ รายวิชา"),
+]
+
+# "ปี 2" -> "ชั้นปีที่ 2"   /   "เทอม 1" -> "ภาคการศึกษาที่ 1"
+# ต้องแปลงเพราะ breadcrumb ของ chunk ใช้คำทางการ ถ้าไม่แปลงจะค้นไม่เจอเลย
+_YEAR_RE = re.compile(r"(?:ชั้น)?ปี(?:ที่)?\s*([1-8])(?![0-9])")
+_TERM_RE = re.compile(r"(?:เทอม|ภาคเรียน|ภาคการศึกษา)(?:ที่)?\s*([1-3])(?![0-9])")
+
+
+def expand_query(question: str) -> str:
+    """ขยายคำถามสั้น ๆ ให้ตรงกับคำที่ใช้ในเอกสาร
+
+    - แปลงคำพูดชาวบ้านเป็นคำทางการ (ปี 2 -> ชั้นปีที่ 2)
+    - เติมคำพ้องความหมายตามหัวข้อ หัวข้อละไม่เกิน 1 ครั้ง
+    """
+    q = question.strip()
+    extra: list[str] = []
+
+    m = _YEAR_RE.search(q)
+    if m:
+        extra.append(f"ชั้นปีที่ {m.group(1)}")
+    m = _TERM_RE.search(q)
+    if m:
+        extra.append(f"ภาคการศึกษาที่ {m.group(1)}")
+
+    matched_topics: set[str] = set()
+    for topic, keys, expansion in EXPANSION_TOPICS:
+        if topic in matched_topics:
+            continue
+        # หัวข้อ credits แบบกว้าง ใช้ต่อเมื่อไม่มีหัวข้อหน่วยกิตที่เจาะจงกว่าติดมาก่อน
+        if topic == "credits" and {"graduate", "term_credits"} & matched_topics:
+            continue
+        if any(k in q for k in keys):
+            matched_topics.add(topic)
+            extra.append(expansion)
+
+    return f"{q} {' '.join(dict.fromkeys(extra))}".strip() if extra else q
+
+
+def section_hints(question: str) -> list[str]:
+    """ดึงเงื่อนไขที่ต้องปรากฏใน breadcrumb ของ chunk
+
+    "ปี 2 เทอม 1" -> ["ชั้นปีที่ 2", "ภาคการศึกษาที่ 1"]
+    ใช้คู่กับ SECTION_HINT_BOOST ในตัวค้นคืน เพราะเลขชั้นปี/ภาคเรียน
+    มีน้ำหนักน้อยเกินกว่าจะแยกแยะได้ด้วยการค้นตามปกติ
+    """
+    hints: list[str] = []
+    m = _YEAR_RE.search(question or "")
+    if m:
+        hints.append(f"ชั้นปีที่ {m.group(1)}")
+    m = _TERM_RE.search(question or "")
+    if m:
+        hints.append(f"ภาคการศึกษาที่ {m.group(1)}")
+    return hints

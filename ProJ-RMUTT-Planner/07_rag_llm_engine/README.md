@@ -3,7 +3,7 @@
 ค้นระเบียบ/หลักสูตร มทร.ธัญบุรี แล้วสร้างคำตอบ **พร้อมแหล่งอ้างอิงเสมอ**
 และแปลงผลตรวจตารางชนจากโมดูล 06 ให้เป็นภาษาที่นักศึกษาอ่านรู้เรื่อง
 
-พอร์ต `8700` · ผู้รับผิดชอบ: เฟิส · สถานะ: ใช้งานได้ (เทส 56 เคสผ่าน)
+พอร์ต `8700` · ผู้รับผิดชอบ: เฟิส · สถานะ: ใช้งานได้ (เทส 80 เคสผ่าน · user test 12/12)
 
 ---
 
@@ -158,7 +158,7 @@ BM25 กับ TF-IDF cosine เขียนเองใน `src/core/retrieval.
 ## เทส
 
 ```bash
-PYTHONPATH=. python -m pytest -q     # 56 passed
+PYTHONPATH=. python -m pytest -q     # 80 passed
 ```
 
 | ไฟล์ | ครอบอะไร |
@@ -166,3 +166,4 @@ PYTHONPATH=. python -m pytest -q     # 56 passed
 | `test_retrieval.py` | tokenizer, chunking, และวัดว่า `MIN_SCORE` แยกคำถามนอกเรื่องได้จริง |
 | `test_explainer.py` | ขอบเขตหน่วยกิต 9/21/22/8, ภาคฤดูร้อน, การอธิบาย C1–C4 |
 | `test_api.py` | contract ของทุก endpoint + ความถูกต้องของข้อมูลจำลอง |
+| `test_answer_matches_sources.py` | กันบั๊กที่เจอจาก user test — sources ตรงกับคำตอบ, ลำดับตรงกับคะแนน, สอง endpoint ตรงกัน, ค้นรหัสวิชา/ชั้นปีได้ถูกอัน |

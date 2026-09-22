@@ -60,10 +60,23 @@ def test_frontmatter_parsed():
     assert body.startswith("# หัวข้อ")
 
 
-def test_split_by_heading():
+def test_split_by_heading_keeps_parent_path():
+    """หัวข้อย่อยต้องพ่วงหัวข้อแม่มาด้วย (breadcrumb) ไม่งั้นแยกไม่ออกว่าอยู่ใต้อะไร"""
     parts = split_by_heading("# ก\nเนื้อ ก\n## ข\nเนื้อ ข")
     headings = [h for h, _ in parts]
-    assert "ก" in headings and "ข" in headings
+    assert headings == ["ก", "ก > ข"]
+
+
+def test_breadcrumb_distinguishes_repeated_headings():
+    """แผนการศึกษามี 'ภาคการศึกษาที่ 1' ซ้ำทุกชั้นปี ต้องแยกออกจากกันได้"""
+    body = (
+        "## ชั้นปีที่ 1\n### ภาคการศึกษาที่ 1\nวิชาปี1เทอม1\n"
+        "## ชั้นปีที่ 2\n### ภาคการศึกษาที่ 1\nวิชาปี2เทอม1\n"
+    )
+    headings = [h for h, _ in split_by_heading(body)]
+    assert "ชั้นปีที่ 1 > ภาคการศึกษาที่ 1" in headings
+    assert "ชั้นปีที่ 2 > ภาคการศึกษาที่ 1" in headings
+    assert len(set(headings)) == len(headings), "breadcrumb ต้องไม่ซ้ำกัน"
 
 
 def test_chunk_respects_max_chars():

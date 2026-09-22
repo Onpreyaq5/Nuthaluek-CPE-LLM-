@@ -13,7 +13,26 @@ import math
 from collections import Counter
 from dataclasses import dataclass, field
 
-from .text import tokenize
+from .text import COURSE_CODE_RE, tokenize
+
+# ตัวคูณคะแนนเมื่อ chunk มีรหัสวิชาตรงกับที่ถาม
+#
+# ทำไมเป็น "คูณ" ไม่ใช่ "บวก": ถ้าบวกค่าคงที่ chunk ที่ไม่เกี่ยวข้องเลย (cosine ~0.09)
+# ก็จะถูกดันข้ามเกณฑ์ MIN_SCORE ได้ ทำให้คำถามนอกเรื่องอย่าง "ปี 2 นี้หุ้นตัวไหนน่าซื้อ"
+# กลายเป็นตอบได้ การคูณจะขยายเฉพาะ chunk ที่มีความเกี่ยวข้องอยู่บ้างแล้ว
+#
+# ช่วงที่ใช้ได้ วัดจากข้อมูลจริง:
+#   เพดาน  MIN_SCORE / cosine ของ chunk นอกเรื่อง = 0.21 / 0.087 = 2.4
+#   พื้น    cosine ของ chunk ที่ตรง ต้องชนะ chunk ทั่วไปที่ได้ ~0.27 => ~1.9
+CODE_MATCH_MULTIPLIER = 2.2
+
+# ตัวคูณคะแนนเมื่อ breadcrumb ของ chunk ตรงกับชั้นปี/ภาคการศึกษาที่ถาม
+#
+# ทำไมต้องบวกแยก แทนที่จะพึ่งการค้นตามปกติ: เลขชั้นปี ("2") กับเลขภาคการศึกษา ("1")
+# ถูกตัดเป็น token ตัวเลขโดด ๆ ซึ่งโผล่อยู่ในทุกตารางหน่วยกิต IDF จึงเกือบเป็นศูนย์
+# ส่วนข้อความไทย "ชั้นปีที่" ให้ n-gram เหมือนกันหมดทุกปี
+# ผลคือถาม "ปี 2 เทอม 1" แล้วได้ "ชั้นปีที่ 4 ภาคการศึกษาที่ 2" (เคยเป็นบั๊กจริง)
+SECTION_HINT_MULTIPLIER = 2.0
 
 
 @dataclass
@@ -160,12 +179,17 @@ class HybridRetriever:
         doc_type: str | None = None,
         effective_year: int | None = None,
         program_id: str | None = None,
+        section_hints: list[str] | None = None,
     ) -> list[tuple[Document, float]]:
-        """คืน [(document, relevance)] เรียงตามอันดับที่รวมด้วย RRF
+        """คืน [(document, score)] เรียงจากคะแนนมากไปน้อย
 
-        ค่า relevance ที่คืนออกไปคือ **cosine similarity (0–1)** ไม่ใช่คะแนน RRF
-        เพราะ RRF ให้คะแนนตามลำดับ ผลอันดับ 1 จึงได้คะแนนเท่ากันเสมอไม่ว่าคำถาม
-        จะเกี่ยวข้องจริงหรือไม่ ใช้เป็นเกณฑ์ตัด "ไม่พบข้อมูล" ไม่ได้
+        score = cosine similarity (0–1) คูณด้วยตัวคูณ ถ้ามีรหัสวิชา
+                หรือชั้นปี/ภาคการศึกษาตรงกับคำถาม
+
+        ทำไมไม่คืนคะแนน RRF: RRF ให้คะแนนตามลำดับ ผลอันดับ 1 จะได้คะแนนเท่ากันเสมอ
+        ไม่ว่าคำถามจะเกี่ยวข้องจริงหรือไม่ ใช้เป็นเกณฑ์ตัด "ไม่พบข้อมูล" ไม่ได้
+        RRF จึงถูกใช้แค่ "คัดผู้เข้ารอบ" ส่วนการเรียงลำดับใช้คะแนนที่แสดงจริง
+        เพื่อให้สิ่งที่ผู้ใช้เห็นอธิบายลำดับได้
         """
         if not self.docs:
             return []
@@ -173,9 +197,14 @@ class HybridRetriever:
         vector_hits = self.vector.search(query, top_k_vector)
         relevance = {idx: score for idx, score in vector_hits}
 
-        fused = reciprocal_rank_fusion([bm25_hits, vector_hits], k=self.rrf_k)
-        out: list[tuple[Document, float]] = []
-        for idx, _rrf in fused:
+        # รหัสวิชาเป็นตัวชี้เฉพาะเจาะจง ถ้าถามถึงรหัสไหน เอกสารที่มีรหัสนั้นต้องมาก่อน
+        # (ก่อนหน้านี้ chunk ตารางหลักสูตรยาวมาก TF-IDF เลยหารคะแนนตก
+        #  ทำให้คำถาม "วิชา 04100203-66 ต้องผ่านอะไรก่อน" ไม่เจอตารางที่มีคำตอบ)
+        codes = set(COURSE_CODE_RE.findall(query))
+
+        candidates = reciprocal_rank_fusion([bm25_hits, vector_hits], k=self.rrf_k)
+        scored: list[tuple[Document, float]] = []
+        for idx, _rrf in candidates:
             d = self.docs[idx]
             if doc_type and d.doc_type != doc_type:
                 continue
@@ -185,7 +214,16 @@ class HybridRetriever:
             if program_id and d.program_ids and "ALL" not in d.program_ids:
                 if program_id not in d.program_ids:
                     continue
-            out.append((d, relevance.get(idx, 0.0)))
-            if len(out) >= top_k:
-                break
-        return out
+
+            score = relevance.get(idx, 0.0)
+            if codes and any(c in d.text for c in codes):
+                score *= CODE_MATCH_MULTIPLIER
+            # ถ้าคำถามระบุชั้นปี/ภาคการศึกษา ให้ chunk ที่ breadcrumb ตรงทุกเงื่อนไขมาก่อน
+            if section_hints and all(h in d.section for h in section_hints):
+                score *= SECTION_HINT_MULTIPLIER
+            scored.append((d, min(score, 1.0)))
+
+        # เรียงตามคะแนนที่ "แสดงให้ผู้ใช้เห็น" เพื่อให้ลำดับกับคะแนนตรงกันเสมอ
+        # (เดิมเรียงด้วย RRF แต่โชว์คะแนน cosine ทำให้อันดับ 2 มีคะแนนสูงกว่าอันดับ 1)
+        scored.sort(key=lambda x: x[1], reverse=True)
+        return scored[:top_k]
