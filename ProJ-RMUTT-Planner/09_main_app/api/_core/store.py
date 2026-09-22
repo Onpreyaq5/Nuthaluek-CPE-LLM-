@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -14,11 +15,26 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data"
 
+# เทอมที่รับได้มีรูปแบบเดียวคือ <ภาค>/<ปีพ.ศ.> เช่น 1/2569
+TERM_RE = re.compile(r"^[1-3]/25\d{2}$")
+
+
+def safe_term(term: str) -> str:
+    """ตรวจ term ก่อนเอาไปประกอบชื่อไฟล์
+
+    term มาจากผู้ใช้ตรง ๆ ถ้าปล่อยผ่านจะเอา .. หรือ \\ มาไต่ออกนอกโฟลเดอร์ data ได้
+    (เช่น "..\\..\\x" บน Windows) จึงบังคับรูปแบบ แล้วเทียบกับรายการเทอมที่มีจริงอีกชั้น
+    """
+    term = (term or "").strip()
+    if not TERM_RE.match(term) or term not in available_terms():
+        raise FileNotFoundError(f"ไม่มีข้อมูลภาคการศึกษา {term or '(ว่าง)'}")
+    return term
+
 
 @lru_cache(maxsize=8)
 def load_timetable(term: str = "1/2569") -> dict:
     """อ่านตารางสอนของภาคการศึกษาที่ระบุ"""
-    name = f"cpe_timetable_{term.replace('/', '_')}.json"
+    name = f"cpe_timetable_{safe_term(term).replace('/', '_')}.json"
     path = DATA_DIR / "seed" / name
     if not path.exists():
         raise FileNotFoundError(name)

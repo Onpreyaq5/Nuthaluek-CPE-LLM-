@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Loader2, Search, Users } from "lucide-react";
+import { AlertTriangle, BookOpen, Loader2, RotateCcw, Search, Users } from "lucide-react";
 import { api } from "../lib/api";
 import { CATEGORY_LABEL, DAY_TH, categoryStyle, hhmm, type Course } from "../lib/types";
 
@@ -12,10 +12,12 @@ export default function CoursesPage() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);   // เคลียร์ก่อนทุกครั้ง ไม่งั้นโหลดสำเร็จแล้วกล่องแดงยังค้างอยู่
     api
       .courses({ term })
       .then((d) => {
@@ -28,7 +30,7 @@ export default function CoursesPage() {
     return () => {
       cancelled = true;
     };
-  }, [term]);
+  }, [term, reloadKey]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -75,13 +77,38 @@ export default function CoursesPage() {
         <p className="mt-2 text-sm text-slate-500">พบ {filtered.length} รายวิชา</p>
       </div>
 
-      {error && <div className="card border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</div>}
+      {error && (
+        <div className="card flex flex-wrap items-center justify-between gap-3 border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            {error}
+          </span>
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="btn shrink-0 border border-rose-300 bg-white px-3 py-1.5 text-rose-700 hover:bg-rose-100"
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden />
+            ลองใหม่
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="card grid place-items-center p-12 text-sm text-slate-500">
           <span className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> กำลังโหลด...
           </span>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="card grid place-items-center gap-1 p-12 text-center">
+          <BookOpen className="h-8 w-8 text-slate-300" aria-hidden />
+          <p className="text-sm font-medium text-slate-700">
+            {q.trim() ? `ไม่พบรายวิชาที่ตรงกับ “${q.trim()}”` : "ยังไม่มีรายวิชาในภาคการศึกษานี้"}
+          </p>
+          <p className="text-sm text-slate-500">
+            {q.trim() ? "ลองพิมพ์รหัสวิชาหรือชื่อวิชาแบบสั้นลง" : "ลองเปลี่ยนภาคการศึกษาด้านบน"}
+          </p>
         </div>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">

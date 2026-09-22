@@ -12,6 +12,7 @@ DISCLAIMER = ("ข้อมูลนี้เป็นคำแนะนำเ�
               "โปรดตรวจสอบกับระบบทะเบียนและอาจารย์ที่ปรึกษาก่อนลงทะเบียนจริง")
 NOT_FOUND = ("ไม่พบข้อมูลเรื่องนี้ในระเบียบและเอกสารหลักสูตรที่ระบบมีอยู่ "
              "แนะนำให้ติดต่อสำนักส่งเสริมวิชาการและงานทะเบียน (สวท.) หรืออาจารย์ที่ปรึกษาโดยตรง")
+MAX_QUESTION = 500
 
 
 class handler(JsonHandler):
@@ -22,9 +23,13 @@ class handler(JsonHandler):
                 "coverage": coverage_summary()}
 
     def post(self, body: dict) -> dict:
-        question = (body.get("question") or "").strip()
+        question = str(body.get("question") or "").strip()
         if not question:
             raise ValueError("ต้องส่ง question มาด้วย")
+        # จำกัดความยาวก่อนเข้าโมดูลค้นคืน ไม่งั้นส่งข้อความยาวเป็นแสนตัวอักษร
+        # แล้วขั้นตอนตัดคำ+BM25 จะกินเวลาจนฟังก์ชันหมดเวลาไปเอง
+        if len(question) > MAX_QUESTION:
+            raise ValueError(f"คำถามยาวเกินไป (ไม่เกิน {MAX_QUESTION} ตัวอักษร)")
 
         gap = find_gap(question)
         if gap is not None:

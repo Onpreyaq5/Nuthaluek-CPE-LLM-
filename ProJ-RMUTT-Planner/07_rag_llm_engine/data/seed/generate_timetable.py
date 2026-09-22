@@ -30,6 +30,9 @@ MON, TUE, WED, THU, FRI, SAT, SUN = range(7)
 DAY_TH = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
 
 CAMPUS = "คลองหก"
+
+# วันเปิดภาคการศึกษา (วันจันทร์) ตามปฏิทินการศึกษา 2569
+TERM_START = {1: "2026-06-15", 2: "2026-11-23"}
 PRIORITY = {"major": 80, "basic": 60, "general": 40, "elective": 30}
 
 
@@ -277,6 +280,10 @@ def build_term(term: int) -> dict:
 
     return {
         "term": f"{term}/2569",
+        # วันจันทร์แรกของภาคการศึกษา ตรงกับปฏิทินการศึกษาใน data/knowledge
+        # ใช้คำนวณวันที่จริงของแต่ละคาบตอนส่งออกไฟล์ปฏิทิน (.ics)
+        "term_start": TERM_START[term],
+        "weeks": 16,
         "program_id": "CPE-2566",
         "faculty": "คณะวิศวกรรมศาสตร์",
         "credit_rule": {"min_credits": 9, "max_credits": 21, "summer_max_credits": 9},

@@ -23,6 +23,7 @@ jobs:
           - 04_course_data_services
           - 05_data_integration
           - 07_rag_llm_engine
+          - 09_main_app
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,7 +47,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.11" }
-      - run: python -m compileall -q 0*/src
+      - run: python -m compileall -q 0*/src 09_main_app/api
 
   # ---- docker-compose ต้อง valid ----
   compose-config:
