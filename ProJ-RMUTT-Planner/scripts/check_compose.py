@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +31,7 @@ ENV_EXAMPLE = ROOT / ".env.example"
 
 problems: list[str] = []
 notes: list[str] = []
+TRACKED: set[str] | None = None
 
 
 def check_dockerfile_copies(service: str, context: Path, dockerfile: Path,
@@ -55,8 +57,44 @@ def check_dockerfile_copies(service: str, context: Path, dockerfile: Path,
                               f"{service}: {dockerfile.name} สั่ง COPY {src} แต่ไม่มีใน {context.name}/")
 
 
+def tracked_paths() -> set[str] | None:
+    """ไฟล์ที่ git เก็บจริง
+
+    ไฟล์ที่มีแค่ในเครื่องแต่ git ไม่ได้เก็บ (เช่นโฟลเดอร์ว่าง) จะหายไปตอน CI checkout
+    แล้ว docker build พังเฉพาะบน CI ซึ่งหาสาเหตุยากกว่าพังในเครื่องมาก
+    """
+    try:
+        out = subprocess.run(["git", "ls-files"], cwd=ROOT.parent, capture_output=True,
+                             text=True, timeout=30, check=True).stdout
+    except Exception:
+        return None
+    return {line.strip() for line in out.splitlines() if line.strip()}
+
+
+def check_untracked_dirs(service: str, context: Path, optional: bool = False) -> None:
+    """โฟลเดอร์ที่มีในเครื่องแต่ git ไม่ได้เก็บไฟล์ไหนเลย
+
+    git ไม่เก็บโฟลเดอร์ว่าง พอ CI checkout โฟลเดอร์นั้นจะไม่มี
+    ถ้า Dockerfile อ้างถึงมัน (เช่น public/ ของ Next.js) build จะพังเฉพาะบน CI
+    ซึ่งหาสาเหตุยากกว่าพังในเครื่องมาก เพราะในเครื่องทุกอย่างดูปกติ
+    """
+    if TRACKED is None:
+        return
+    bucket = notes if optional else problems
+    for child in sorted(context.iterdir()):
+        if not child.is_dir() or child.name.startswith(".") or child.name == "node_modules":
+            continue
+        rel = child.relative_to(ROOT.parent).as_posix()
+        if not any(f == rel or f.startswith(rel + "/") for f in TRACKED):
+            bucket.append(f"{service}: โฟลเดอร์ {context.name}/{child.name}/ มีในเครื่อง "
+                          f"แต่ git ไม่ได้เก็บไฟล์ไหนเลย -> หายไปตอน CI checkout "
+                          f"(ใส่ .gitkeep ถ้าจำเป็นต้องมี)")
+
+
 def main() -> int:
     raw = COMPOSE.read_text(encoding="utf-8")
+    global TRACKED
+    TRACKED = tracked_paths()
     try:
         doc = yaml.safe_load(raw)
     except yaml.YAMLError as e:
@@ -85,6 +123,7 @@ def main() -> int:
                 problems.append(f"{name}: ไม่มี {dfname} ใน {context.name}/")
             else:
                 check_dockerfile_copies(name, context, dockerfile, optional=bool(profiles))
+                check_untracked_dirs(name, context, optional=bool(profiles))
             print(f"  {name:16} build {context.name}/{dfname}{tag}")
         else:
             print(f"  {name:16} image {spec.get('image', '?')}{tag}")

@@ -21,6 +21,8 @@ RUN apk add --no-cache curl \
 # output: 'standalone' รวม dependency ที่ใช้จริงมาให้แล้ว ไม่ต้องก็อป node_modules ทั้งก้อน
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# public/ ต้องมีไฟล์อย่างน้อยหนึ่งตัว (มี .gitkeep อยู่) ไม่งั้น git ไม่เก็บโฟลเดอร์
+# แล้วตอน build ใน CI จะพังที่บรรทัดนี้ว่า "/app/public": not found
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 USER nextjs
