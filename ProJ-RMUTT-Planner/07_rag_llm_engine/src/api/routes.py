@@ -22,6 +22,7 @@ from ..models.schemas import (
     KnowledgeSearchRequest,
     KnowledgeSearchResponse,
 )
+from ..services.coverage import coverage_summary
 from ..services.explainer import explain_plan
 from ..services.generator import answer
 from ..services.knowledge import knowledge_base
@@ -38,6 +39,7 @@ def health() -> dict:
         "documents": len(knowledge_base.documents),
         "files": knowledge_base.files,
         "llm_provider": settings.llm_provider if settings.llm_enabled else "rule_based",
+        "coverage": coverage_summary(),
     }
 
 
