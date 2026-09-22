@@ -1,0 +1,6 @@
+{
+  "_readme": "ตั้ง llm_proxy_url เป็น URL ของ 09_main_app ที่ deploy บน Vercel แล้วรัน build.py ใหม่",
+  "_example": "https://rmutt-planner.vercel.app  (ห้ามมี / ปิดท้าย)",
+  "_warning": "คีย์ Gemini อยู่ใน Environment Variables ของ Vercel เท่านั้น ห้ามใส่ในไฟล์นี้เด็ดขาด เพราะไฟล์นี้ถูก build ลงหน้าเว็บที่ใคร ๆ ก็เปิดดูได้",
+  "llm_proxy_url": ""
+}

@@ -141,6 +141,31 @@ td .mono{font-size:12.5px}
 footer{margin-top:52px; padding-top:18px; border-top:1px solid var(--line);
   font-size:13px; color:var(--ink3)}
 
+/* ── สำหรับพิมพ์เป็น PDF ────────────────────
+   เบราว์เซอร์ตัดหน้าโดยไม่สนใจโครงสร้าง ไดอะแกรมกับการ์ดจึงขาดกลางหน้าได้
+   ต้องสั่งไม่ให้ตัดกลางบล็อก และบังคับให้พิมพ์สีพื้นหลังออกมาด้วย
+   ไม่งั้นแถบสีประจำชั้นกับป้ายสถานะจะหายไปหมด */
+@media print{
+  :root{ --paper:#FFFFFF; --shadow:none; }
+  body{ background:#fff; font-size:10.5pt; }
+  .wrap{ max-width:none; padding-inline:0; padding-block:0; }
+  *{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  section{ margin-top:22px; break-inside:auto; }
+  section > .scroller, .layer, .step, .note, .tbl-wrap, .card{ break-inside:avoid; }
+  .mod{ break-inside:avoid; }
+  h2{ break-after:avoid; font-size:17pt; }
+  h3{ break-after:avoid; }
+  .eyebrow{ break-after:avoid; }
+  /* กล่องเลื่อนแนวนอนพิมพ์ไม่ได้ ต้องย่อไดอะแกรมให้พอดีหน้ากระดาษแทน */
+  .scroller{ overflow:visible; border:1px solid var(--line); padding:8px; }
+  .scroller > svg{ min-width:0; width:100%; height:auto; }
+  .tbl-wrap{ overflow:visible; }
+  table{ min-width:0; font-size:9.5pt; }
+  .hero{ padding-block:0 6px; }
+  footer{ break-inside:avoid; }
+  a{ color:inherit; text-decoration:none; }
+}
+
 /* ตัวอักษรใน SVG ต้องประกาศฟอนต์เอง ไม่งั้นจะ fallback เป็นฟอนต์ระบบที่สระไทยลอย */
 svg text{font-family:var(--ui)}
 svg .t-mono{font-family:var(--mono)}
@@ -155,6 +180,11 @@ svg .t-mono{font-family:var(--mono)}
       ระบบช่วยนักศึกษาวิศวกรรมคอมพิวเตอร์จัดตารางเรียนแต่ละเทอม
       แล้วตรวจให้ก่อนวันลงทะเบียนจริงว่า <strong>เวลาเรียนชน เวลาสอบชน หน่วยกิตเกิน
       วิชาบังคับก่อนยังไม่ผ่าน หรือที่นั่งเต็ม</strong> หรือเปล่า
+    </p>
+    <p style="margin-top:16px">
+      <a href="./architecture.pdf" download style="color:var(--brand); font-weight:600; font-family:var(--ui); font-size:14.5px">
+        ดาวน์โหลดเป็น PDF (10 หน้า) →
+      </a>
     </p>
     <div class="facts">
       <div class="fact"><b>9</b><span>โมดูล</span></div>
@@ -691,29 +721,29 @@ svg .t-mono{font-family:var(--mono)}
 
         <g font-size="12.5" fill="var(--ink2)">
           <path d="M99 96 H 316" stroke="var(--brand)" stroke-width="1.8" fill="none" marker-end="url(#sq)"/>
-          <text x="108" y="88">① กดปุ่ม “จัดตารางให้เลย” พร้อมบอกชั้นปี</text>
+          <text x="108" y="88">1. กดปุ่ม “จัดตารางให้เลย” พร้อมบอกชั้นปี</text>
 
           <path d="M323 140 H 540" stroke="var(--brand)" stroke-width="1.8" fill="none" marker-end="url(#sq)"/>
-          <text x="332" y="132">② ส่งเทอม ชั้นปี และเงื่อนไขที่ตั้งไว้ไปให้</text>
+          <text x="332" y="132">2. ส่งเทอม ชั้นปี และเงื่อนไขที่ตั้งไว้ไปให้</text>
 
           <path d="M580 176 a 34 26 0 1 1 -33 26" stroke="var(--brand)" stroke-width="1.8" fill="none" marker-end="url(#sq)"/>
-          <text x="600" y="184">③ เรียงวิชาตามลำดับความสำคัญ</text>
+          <text x="600" y="184">3. เรียงวิชาตามลำดับความสำคัญ</text>
           <text x="600" y="202">แล้วหยิบทีละวิชาจนครบหน่วยกิต</text>
 
           <path d="M547 250 H 764" stroke="var(--brand)" stroke-width="1.8" fill="none" marker-end="url(#sq)"/>
-          <text x="556" y="242">④ แผนที่ได้ ตรวจให้หน่อย</text>
+          <text x="556" y="242">4. แผนที่ได้ ตรวจให้หน่อย</text>
 
           <path d="M804 286 a 34 24 0 1 1 -33 24" stroke="var(--brand)" stroke-width="1.8" fill="none" marker-end="url(#sq)"/>
-          <text x="600" y="300" text-anchor="end">⑤ ตรวจ C1–C6 และ W1–W5</text>
+          <text x="600" y="300" text-anchor="end">5. ตรวจ C1–C6 และ W1–W5</text>
 
           <path d="M764 336 H 552" stroke="var(--ok)" stroke-width="1.8" fill="none" marker-end="url(#sqBack)"/>
-          <text x="756" y="328" text-anchor="end">⑥ ผลตรวจ + วิธีแก้ที่เป็นไปได้</text>
+          <text x="756" y="328" text-anchor="end">6. ผลตรวจ + วิธีแก้ที่เป็นไปได้</text>
 
           <path d="M540 372 H 330" stroke="var(--ok)" stroke-width="1.8" fill="none" marker-end="url(#sqBack)"/>
-          <text x="532" y="364" text-anchor="end">⑦ แผน + ผลตรวจ</text>
+          <text x="532" y="364" text-anchor="end">7. แผน + ผลตรวจ</text>
 
           <path d="M316 404 H 106" stroke="var(--ok)" stroke-width="1.8" fill="none" marker-end="url(#sqBack)"/>
-          <text x="308" y="396" text-anchor="end">⑧ วาดตาราง + ขึ้นสีเขียว/แดง</text>
+          <text x="308" y="396" text-anchor="end">8. วาดตาราง + ขึ้นสีเขียว/แดง</text>
         </g>
       </svg>
     </div>

@@ -72,6 +72,23 @@ def load_golden_set() -> dict[str, list[str]]:
     return found
 
 
+def load_proxy_url() -> str:
+    """URL ของตัวกลางที่ถือคีย์ Gemini ไว้ฝั่งเซิร์ฟเวอร์
+
+    หน้าเว็บนิ่งซ่อนคีย์ไม่ได้ ใครกด View Source ก็เห็น จึงห้ามฝังคีย์ลงหน้าเว็บเด็ดขาด
+    วิธีที่ได้ผลคือ deploy 09_main_app ขึ้น Vercel แล้วเก็บคีย์ไว้ใน env ที่นั่น
+    หน้านี้ยิงคำถามไปที่ /api/chat ของตัวนั้น ผู้ใช้จึงได้คำตอบจาก Gemini
+    โดยไม่เคยเห็นและไม่ต้องกรอกคีย์เลย
+    """
+    cfg = HERE / "config.json"
+    if not cfg.exists():
+        return ""
+    # utf-8-sig เพราะโปรแกรมแก้ไฟล์บน Windows (รวมถึง PowerShell) มักเขียน BOM นำหน้ามาด้วย
+    # แล้ว json.loads จะพังทันทีโดยที่คนแก้ไม่รู้ว่าพิมพ์อะไรผิด
+    url = (json.loads(cfg.read_text(encoding="utf-8-sig")).get("llm_proxy_url") or "").strip()
+    return url.rstrip("/")
+
+
 def main() -> None:
     terms = {}
     for f in sorted((APP / "data" / "seed").glob("cpe_timetable_*.json")):
@@ -93,7 +110,11 @@ def main() -> None:
     def dump(value):
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
+    proxy = load_proxy_url()
+    print(f"ตัวกลาง LLM: {proxy or '(ยังไม่ได้ตั้ง — จะใช้โหมดอ้างเอกสารตรง)'}")
+
     body = html.replace('"__TIMETABLE_DATA__"', dump(terms))
+    body = body.replace('"__LLM_PROXY_URL__"', dump(proxy))
     for placeholder, value in (("__KNOWLEDGE_DATA__", knowledge), ("__GOLDEN_SET__", golden)):
         if f'"{placeholder}"' not in body:
             raise SystemExit(f"ไม่พบ placeholder {placeholder} ใน template.html")
