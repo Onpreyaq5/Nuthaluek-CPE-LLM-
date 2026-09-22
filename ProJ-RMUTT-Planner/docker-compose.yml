@@ -1,7 +1,16 @@
-# RMUTT Study Planner — Docker Compose (โครงร่าง)
-# ใช้: docker compose up -d
-# เปิด monitoring เพิ่ม: docker compose --profile monitoring up -d
-# เปิดโมเดลในเครื่อง:   docker compose --profile local-ai up -d
+# RMUTT Study Planner — Docker Compose
+#
+#   docker compose up -d --build        ยกระบบที่ใช้งานได้จริงขึ้นทั้งหมด
+#   เปิดเว็บที่ http://localhost:3000
+#
+# โปรไฟล์เสริม (ไม่ขึ้นโดยค่าตั้งต้น)
+#   --profile wip           โมดูลที่โค้ดจริงยังอยู่บน branch ของเจ้าของ (01)
+#   --profile monitoring    Prometheus + Grafana
+#   --profile local-ai      โมเดลในเครื่องผ่าน Ollama
+#   --profile vector        Qdrant
+#
+# ทำไม 01 ไม่ขึ้นโดยค่าตั้งต้น: บน main ยังไม่มี package.json ทำให้ docker build พังทั้งชุด
+# โค้ดจริงอยู่บน branch feat/web-app — merge เข้ามาแล้วค่อยเอา profiles ออก
 
 name: rmutt-planner
 
@@ -10,11 +19,43 @@ x-common-env: &common-env
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
 
 services:
-  # ---------- 01 Frontend ----------
+  # ---------- 09 แอปที่ใช้งานได้จริง (หน้าเว็บ + ฟังก์ชัน Python) ----------
+  # เป็นตัวที่ผู้ใช้เปิดใช้งานจริง รวมตรรกะตรวจตารางชนและ RAG ไว้ในตัว
+  # จึงไม่ต้องรอให้โมดูล 01-08 เสร็จครบก่อนถึงจะมีของให้ดู
+  main_app:
+    build: ./09_main_app
+    container_name: rmutt_main_app
+    ports: ["3000:3000"]
+    environment:
+      <<: *common-env
+      # ชี้ /api/* ไปที่ container ฝั่ง Python (ดู next.config.mjs)
+      API_PROXY_URL: http://main_api:8009
+    depends_on:
+      main_api: {condition: service_healthy}
+    networks: [rmutt-net]
+
+  main_api:
+    build:
+      context: ./09_main_app
+      dockerfile: Dockerfile.api
+    container_name: rmutt_main_api
+    environment:
+      <<: *common-env
+      HOST: 0.0.0.0
+      PORT: "8009"
+      # ใส่คีย์แล้วหน้าแชตจะเรียบเรียงคำตอบด้วย Gemini
+      # ไม่ใส่ก็ใช้ได้ ระบบจะยกข้อความจากเอกสารมาตอบตรง ๆ แทน
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      # main_app คุยผ่าน network ภายใน จึงไม่ต้องเปิด CORS ให้โดเมนภายนอก
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+    networks: [rmutt-net]
+
+  # ---------- 01 Frontend (โค้ดจริงอยู่บน branch feat/web-app) ----------
   web_app:
     build: ./01_web_app
     container_name: rmutt_web
-    ports: ["3000:3000"]
+    profiles: [wip]
+    ports: ["3001:3000"]
     environment:
       <<: *common-env
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000

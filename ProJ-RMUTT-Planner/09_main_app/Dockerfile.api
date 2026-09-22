@@ -1,0 +1,27 @@
+# ฟังก์ชัน Python ของ 09 (api/*.py)
+#
+# บน Vercel ไฟล์พวกนี้เป็น serverless function คนละตัว แต่ใน Docker เรารันรวมกัน
+# ด้วย scripts/dev_server.py ซึ่ง route ไปยังไฟล์เดียวกัน ตรรกะจึงเหมือนกันทุกอย่าง
+#
+# ใช้ stdlib ล้วน ไม่มี dependency ภายนอก (ดูเหตุผลใน requirements.txt)
+FROM python:3.11-slim
+
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 TZ=Asia/Bangkok \
+    HOST=0.0.0.0 PORT=8009
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY api/ ./api/
+COPY data/ ./data/
+COPY scripts/dev_server.py ./scripts/dev_server.py
+
+EXPOSE 8009
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -fsS "http://localhost:8009/api/courses?term=1/2569" || exit 1
+
+CMD ["python", "scripts/dev_server.py"]

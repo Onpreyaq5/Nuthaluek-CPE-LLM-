@@ -1,0 +1,31 @@
+# หน้าเว็บ Next.js ของ 09 — ส่วน /api/* ถูก rewrite ไปที่ container main_api
+# (ดู API_PROXY_URL ใน docker-compose.yml และ next.config.mjs)
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 TZ=Asia/Bangkok PORT=3000
+RUN apk add --no-cache curl \
+    && addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+
+# output: 'standalone' รวม dependency ที่ใช้จริงมาให้แล้ว ไม่ต้องก็อป node_modules ทั้งก้อน
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+USER nextjs
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -fsS http://localhost:3000/ || exit 1
+
+CMD ["node", "server.js"]
