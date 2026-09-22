@@ -467,14 +467,17 @@ footer{margin-top:22px; padding-top:14px; border-top:1px solid var(--line); font
         <ul id="cov-miss" class="miss"></ul>
         <h3 style="margin-top:16px">โหมดตอบคำถาม</h3>
         <p style="margin:0; font-size:13px; color:var(--ink2)" id="mode-txt"></p>
-        <div class="keyrow">
-          <input id="gkey" type="password" placeholder="วาง Gemini API key (ถ้ามี)" aria-label="Gemini API key" autocomplete="off">
-          <button class="btn" id="gsave" type="button">บันทึก</button>
-        </div>
-        <p style="margin:7px 0 0; font-size:11.5px; color:var(--ink3)">
-          ไม่ใส่ก็ใช้ได้ ระบบจะยกข้อความจากเอกสารมาตอบตรง ๆ แทน ·
-          คีย์ถูกเก็บในเบราว์เซอร์ของคุณเครื่องเดียว ส่งตรงไป Google ไม่ผ่านเซิร์ฟเวอร์ของเรา
-        </p>
+        <details id="devbox" style="margin-top:10px">
+          <summary style="cursor:pointer; font-size:12px; color:var(--ink3); font-family:var(--ui)">สำหรับผู้พัฒนา</summary>
+          <div class="keyrow">
+            <input id="gkey" type="password" placeholder="Gemini API key ของคุณเอง" aria-label="Gemini API key" autocomplete="off">
+            <button class="btn" id="gsave" type="button">บันทึก</button>
+          </div>
+          <p style="margin:7px 0 0; font-size:11.5px; color:var(--ink3)">
+            ช่องนี้ไว้ทดสอบในเครื่องตัวเองเท่านั้น คีย์เก็บใน localStorage ของเบราว์เซอร์คุณ
+            ยิงตรงไป Google ไม่ถูกส่งไปที่อื่นและไม่ถูกบันทึกไว้ที่ไหน
+          </p>
+        </details>
       </aside>
     </div>
   </div>
@@ -1238,6 +1241,7 @@ else autoPlan();
    ═══════════════════════════════════════════════════════════════ */
 "use strict";
 
+const LLM_PROXY = "__LLM_PROXY_URL__";   // ตั้งใน static_demo/config.json
 const KB_FILES = "__KNOWLEDGE_DATA__";
 const GOLDEN = "__GOLDEN_SET__";
 
@@ -1617,6 +1621,38 @@ async function callGemini(prompt, key){
   return text.trim();
 }
 
+/** ถามผ่านตัวกลางที่ถือคีย์ไว้ฝั่งเซิร์ฟเวอร์
+ *
+ * ผู้ใช้ไม่ต้องรู้จักคีย์เลย และคีย์ไม่เคยถูกส่งมาถึงเบราว์เซอร์
+ * ตัวกลางคือ /api/chat ของ 09_main_app ที่ deploy บน Vercel
+ * ซึ่งค้นเอกสารเองฝั่งนั้น คำตอบจึงเหมือนกับเวอร์ชันเต็มทุกอย่าง
+ */
+async function askProxy(question){
+  const r = await fetch(LLM_PROXY + "/api/chat", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({question}),
+    signal: AbortSignal.timeout(25000),
+  });
+  if (!r.ok) throw new Error("proxy " + r.status);
+  const d = await r.json();
+  if (!d || typeof d.answer !== "string") throw new Error("proxy bad json");
+  return {answer: d.answer, sources: (d.sources || []).map(s => ({...s, score: s.score ?? 0})),
+          grounded: !!d.grounded, provider: d.provider || "proxy",
+          disclaimer: d.disclaimer || DISCLAIMER,
+          topScore: d.sources?.[0]?.score};
+}
+
+/** ถามตัวกลางว่าเปิดโหมด Gemini อยู่ไหม — ใช้บอกสถานะ ไม่ได้ส่งคีย์มา */
+async function proxyStatus(){
+  if (!LLM_PROXY) return null;
+  try {
+    const r = await fetch(LLM_PROXY + "/api/chat", {signal: AbortSignal.timeout(8000)});
+    if (!r.ok) return null;
+    const d = await r.json();
+    return {llm: d.llm, chunks: d.knowledge?.chunks};
+  } catch { return null; }
+}
+
 /** ด่านกันตอบมั่ว 4 ชั้น เหมือนฝั่ง Python ทุกชั้น */
 async function ragAnswer(question){
   // ชั้น 0: รู้ตัวว่าคลังไม่มีข้อมูลเรื่องนี้ตั้งแต่แรก
@@ -1632,6 +1668,14 @@ async function ragAnswer(question){
             topScore: chunks[0]?.score ?? 0};
 
   const used = chunks.slice(0, RULE_BASED_MAX_CHUNKS);
+
+  // ลำดับความสำคัญ: ตัวกลางของเจ้าของระบบ > คีย์ที่ผู้ใช้ใส่เอง > ยกเอกสารตรง ๆ
+  // ทุกทางล้มเหลวก็ยังตอบจากเอกสารได้เสมอ หน้าเว็บจึงไม่มีทางใช้ไม่ได้
+  if (LLM_PROXY){
+    try { return await askProxy(question); }
+    catch { /* ตัวกลางล่มก็ค้นเองในเครื่องต่อ ไม่ต้องบอกผู้ใช้ว่าอะไรพัง */ }
+  }
+
   const key = getKey();
   if (!key)
     return {answer: ruleBasedAnswer(used), sources: used, grounded: true,
@@ -1697,12 +1741,26 @@ el("cov-has").innerHTML = COVERAGE_HAS.map(t => `<li>${esc(t)}</li>`).join("");
 el("cov-miss").innerHTML = COVERAGE_GAPS.map(g =>
   `<li>${esc(g.message.split(" ").slice(0, 6).join(" ")).replace("ระบบยังไม่มี", "")}…</li>`).join("");
 
-function modeText(){
-  const has = !!getKey();
-  el("mode-txt").innerHTML = has
-    ? '<b style="color:var(--ok)">Gemini</b> — โมเดลจะเรียบเรียงคำตอบจากเอกสารที่ค้นเจอให้อ่านง่ายขึ้น'
-    : '<b>อ้างเอกสารตรง ๆ</b> — ยกข้อความจากเอกสารที่ค้นเจอมาแสดง ไม่ผ่านโมเดลภาษา จึงไม่มีทางแต่งเติม';
-  el("gkey").value = has ? "••••••••••••" : "";
+const MODE_HTML = {
+  gemini_proxy: '<b style="color:var(--ok)">Gemini (เปิดอยู่)</b> — โมเดลเรียบเรียงคำตอบจากเอกสารที่ค้นเจอให้ ' +
+                'คีย์อยู่ฝั่งเซิร์ฟเวอร์ ผู้ใช้ไม่ต้องกรอกอะไร',
+  proxy_rule:   '<b>อ้างเอกสารตรง ๆ</b> — ต่อกับเซิร์ฟเวอร์ได้แล้ว แต่ยังไม่ได้ใส่คีย์ Gemini ไว้ที่นั่น',
+  own_key:      '<b style="color:var(--ok)">Gemini (คีย์ของคุณเอง)</b> — ใช้คีย์ที่ใส่ไว้ในเบราว์เซอร์เครื่องนี้',
+  local:        '<b>อ้างเอกสารตรง ๆ</b> — ค้นเอกสารในเบราว์เซอร์แล้วยกข้อความมาแสดง ' +
+                'ไม่ผ่านโมเดลภาษา จึงไม่มีทางแต่งเติมเกินเอกสาร',
+};
+
+async function modeText(){
+  el("gkey").value = getKey() ? "••••••••••••" : "";
+  // ทายไม่ได้ว่าฝั่งเซิร์ฟเวอร์ใส่คีย์ไว้หรือยัง ต้องถามจริง ไม่งั้นจะโชว์สถานะหลอกผู้ใช้
+  if (LLM_PROXY){
+    el("mode-txt").innerHTML = '<span style="color:var(--ink3)">กำลังตรวจสอบ…</span>';
+    const st = await proxyStatus();
+    el("mode-txt").innerHTML = MODE_HTML[st ? (st.llm === "gemini" ? "gemini_proxy" : "proxy_rule")
+                                            : (getKey() ? "own_key" : "local")];
+    return;
+  }
+  el("mode-txt").innerHTML = MODE_HTML[getKey() ? "own_key" : "local"];
 }
 modeText();
 
@@ -1713,7 +1771,7 @@ el("gsave").addEventListener("click", () => {
     else localStorage.setItem(KEY_STORE, v);
   } catch {}
   modeText();
-  toast(getKey() ? "เปิดโหมด Gemini แล้ว" : "ลบคีย์แล้ว กลับไปโหมดอ้างเอกสารตรง");
+  toast(getKey() ? "บันทึกคีย์แล้ว" : "ลบคีย์แล้ว กลับไปโหมดอ้างเอกสารตรง");
 });
 
 let busy = false;
@@ -1825,6 +1883,9 @@ el("run-eval").addEventListener("click", () => {
     </p>`;
   toast(allPass ? `ผ่านครบ ${pass}/${total}` : `ผ่าน ${pass}/${total} — มีข้อที่ตก`);
 });
+
+// ต่อตัวกลางไว้แล้ว ผู้ใช้ไม่ต้องยุ่งกับคีย์เลย ซ่อนกล่องผู้พัฒนาไปเลย
+if (LLM_PROXY) el("devbox").hidden = true;
 
 /* ── เปิดแท็บที่ค้างไว้ ─────────────────────── */
 try {

@@ -6,6 +6,7 @@ Vercel มองไฟล์ api/*.py เป็นฟังก์ชันคน
 from __future__ import annotations
 
 import json
+import os
 import sys
 import traceback
 from http.server import BaseHTTPRequestHandler
@@ -19,6 +20,29 @@ MAX_BODY = 1_000_000   # 1 MB กันคนยิง payload ใหญ่ผ�
 INTERNAL_MSG = "ระบบขัดข้องชั่วคราว ลองใหม่อีกครั้งในอีกสักครู่"
 
 
+def allowed_origins() -> list[str]:
+    """โดเมนที่เรียก API นี้ได้ ตั้งที่ ALLOWED_ORIGINS คั่นด้วยจุลภาค
+
+    ทำไมต้องมี: เมื่อใส่ GEMINI_API_KEY แล้ว endpoint นี้กลายเป็น "ตัวกลางที่มีคีย์"
+    ถ้าเปิด CORS ให้ทุกโดเมน ใครก็เอา URL ไปยิงเผาโควตาของเจ้าของคีย์ได้
+    ไม่ตั้งค่า = เปิดให้ทุกโดเมน (สะดวกตอน dev แต่อย่าใช้ตอนมีคีย์จริง)
+    """
+    raw = (os.getenv("ALLOWED_ORIGINS") or "").strip()
+    return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+
+
+def resolve_origin(request_origin: str | None) -> str:
+    """เลือกค่า Access-Control-Allow-Origin ที่จะตอบกลับ
+
+    ต้องสะท้อนโดเมนที่ขอมา ไม่ใช่ส่งรายการทั้งหมด เพราะสเปกให้ใส่ได้ค่าเดียว
+    """
+    allowed = allowed_origins()
+    if not allowed:
+        return "*"
+    origin = (request_origin or "").strip().rstrip("/")
+    return origin if origin in allowed else allowed[0]
+
+
 class JsonHandler(BaseHTTPRequestHandler):
     """รับ-ส่ง JSON พร้อมจัดการ CORS และ error ให้เรียบร้อย
 
@@ -30,7 +54,8 @@ class JsonHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", resolve_origin(self.headers.get("Origin")))
+        self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Cache-Control", "no-store")
