@@ -138,7 +138,8 @@ def main() -> None:
                    course_name=s["course_name"], credits=s["credits"])
         for s in chosen
     ]
-    result = explain_plan(ExplainPlanRequest(term=data["term"], plan=plan_items))
+    # เดโม่ตรวจการชนเองแล้วใน pick_plan() จึงส่ง conflicts=[] = ตรวจแล้วไม่เจอ
+    result = explain_plan(ExplainPlanRequest(term=data["term"], plan=plan_items, conflicts=[]))
 
     print("\n" + "=" * 64)
     print(" คำอธิบายจากระบบ (โมดูล 07)")

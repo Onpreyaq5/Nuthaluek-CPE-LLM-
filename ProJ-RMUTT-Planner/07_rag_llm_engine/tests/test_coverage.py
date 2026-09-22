@@ -28,7 +28,6 @@ def client():
     ("เทอม 2/2569 วิชา 04100205-66 เรียนวันไหน", "timetable"),
     ("วิชานี้เรียนกี่โมง", "timetable"),
     ("อาจารย์ที่ปรึกษาของผมคือใคร", "advisor"),
-    ("วิชาเลือกเสรีมีอะไรให้เลือกบ้าง", "elective_list"),
     ("ค่าเทอมเท่าไหร่", "fees"),
     ("หอพักในมหาลัยสมัครยังไง", "facility"),
     ("ขอทุนการศึกษายังไง", "scholarship"),
@@ -58,7 +57,8 @@ def test_gap_check_runs_before_retrieval(client):
 def test_questions_with_data_are_not_blocked_by_gaps(client):
     """คำถามที่ตอบได้ ต้องไม่ถูกดักด้วย coverage gap โดยผิดพลาด"""
     for q in ["ลงทะเบียนได้กี่หน่วยกิตต่อเทอม", "ถอนรายวิชาได้ถึงเมื่อไหร่",
-              "ปี 2 เทอม 1 ต้องเรียนวิชาอะไรบ้าง", "หมวดวิชาศึกษาทั่วไปต้องเก็บกี่หน่วยกิต"]:
+              "ปี 2 เทอม 1 ต้องเรียนวิชาอะไรบ้าง", "หมวดวิชาศึกษาทั่วไปต้องเก็บกี่หน่วยกิต",
+              "วิชาเลือกเสรีมีอะไรให้เลือกบ้าง"]:
         assert find_gap(q) is None, f"{q} ไม่ควรถูกจัดเป็นช่องว่างข้อมูล"
         assert client.post("/generate", json={"question": q}).json()["grounded"] is True
 
@@ -106,3 +106,16 @@ def test_answers_contain_the_actual_fact(client, question, must_contain):
     body = client.post("/generate", json={"question": question}).json()
     assert body["grounded"] is True, f"{question} ควรตอบได้"
     assert must_contain in body["answer"], f"คำตอบควรมี '{must_contain}'"
+
+
+# ── เอกสารคำอธิบายรายวิชาที่เพิ่มเข้ามา ─────────────────────────
+@pytest.mark.parametrize("question,must_contain", [
+    ("วิชาชีพเลือกมีอะไรบ้าง", "04100501-66"),
+    ("คอมพิวเตอร์วิทัศน์เรียนเกี่ยวกับอะไร", "ภาพ"),
+    ("04100302-66 การเรียนรู้ของเครื่อง เนื้อหาวิชาเป็นยังไง", "การเรียนรู้"),
+])
+def test_course_description_answerable(client, question, must_contain):
+    """เพิ่ม 05_cpe_course_descriptions.md แล้ว ต้องตอบเรื่องเนื้อหาวิชาได้"""
+    body = client.post("/generate", json={"question": question}).json()
+    assert body["grounded"] is True, f"{question} ควรตอบได้แล้ว"
+    assert must_contain in body["answer"]

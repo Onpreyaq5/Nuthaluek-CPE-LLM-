@@ -80,16 +80,21 @@ class PlanItemIn(BaseModel):
 class ExplainPlanRequest(BaseModel):
     term: str = ""
     plan: list[PlanItemIn] = Field(default_factory=list)
-    conflicts: list[ConflictIn] = Field(default_factory=list)
-    warnings: list[ConflictIn] = Field(default_factory=list)
+    # None = ผู้เรียกยังไม่ได้ตรวจตารางชน  /  [] = ตรวจแล้วไม่เจอปัญหา
+    # แยกสองกรณีนี้ให้ชัด ไม่งั้นแผนที่ยังไม่ถูกตรวจจะถูกรายงานว่า "ใช้ได้"
+    conflicts: list[ConflictIn] | None = None
+    warnings: list[ConflictIn] | None = None
     total_credits: int | None = None
+    # รับ section_ids ได้ด้วย เพราะโมดูล 02 ส่งมาแบบนี้
+    section_ids: list[str] = Field(default_factory=list)
     student_context: dict[str, Any] = Field(default_factory=dict)
+    student: dict[str, Any] = Field(default_factory=dict)
     language: Literal["th", "en"] = "th"
 
 
 class ExplainPlanResponse(BaseModel):
     ok: bool = True
-    verdict: Literal["ok", "blocked", "warning"]
+    verdict: Literal["ok", "blocked", "warning", "unknown"]
     headline: str
     explanation: str
     next_steps: list[str] = Field(default_factory=list)

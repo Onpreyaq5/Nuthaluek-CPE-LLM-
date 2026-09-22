@@ -50,7 +50,7 @@ def test_credit_note_tells_how_much_to_adjust():
 
 # ── การอธิบายแผน ────────────────────────────────────────────────
 def test_clean_plan_is_ok():
-    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=CPE_PLAN_18))
+    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=CPE_PLAN_18, conflicts=[]))
     assert res.verdict == "ok"
     assert res.credit_check["total_credits"] == 18
     assert res.credit_check["status"] == "ok"
@@ -96,7 +96,7 @@ def test_over_credit_plan_flagged():
         ("04100208-66", "01", "การพัฒนาเว็บแอปพลิเคชัน", 3),
         ("04100105-66", "01", "คณิตศาสตร์ดิสครีต", 3),
     )  # 24 หน่วยกิต
-    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=big))
+    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=big, conflicts=[]))
     assert res.credit_check["status"] == "over"
     assert res.verdict == "warning"
     assert any("ถอด" in s for s in res.next_steps)
@@ -104,14 +104,14 @@ def test_over_credit_plan_flagged():
 
 def test_under_credit_plan_flagged():
     small = plan(("04100201-66", "02", "สถาปัตยกรรมคอมพิวเตอร์", 3))
-    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=small))
+    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=small, conflicts=[]))
     assert res.credit_check["status"] == "under"
     assert any("เพิ่ม" in s for s in res.next_steps)
 
 
 def test_warnings_only_is_not_blocked():
     res = explain_plan(ExplainPlanRequest(
-        term="1/2569", plan=CPE_PLAN_18,
+        term="1/2569", plan=CPE_PLAN_18, conflicts=[],
         warnings=[ConflictIn(code="W2", severity="WARNING", message_key="large_gap",
                              message_th="วันอังคารมีช่องว่าง 4 ชั่วโมง")],
     ))
@@ -129,7 +129,7 @@ def test_explanation_attaches_regulation_sources():
 
 
 def test_disclaimer_always_present():
-    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=CPE_PLAN_18))
+    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=CPE_PLAN_18, conflicts=[]))
     assert "ไม่ใช่การยืนยันจากมหาวิทยาลัย" in res.disclaimer
 
 
@@ -141,3 +141,33 @@ def test_never_invents_numbers():
     ))
     assert "09:00" not in res.explanation
     assert "วันจันทร์" not in res.explanation
+
+
+# ── แยก "ยังไม่ได้ตรวจ" ออกจาก "ตรวจแล้วไม่เจอ" ─────────────────
+def test_unchecked_plan_is_not_reported_as_ok():
+    """ถ้าผู้เรียกไม่ส่งผลตรวจมา ต้องไม่บอกว่าแผนใช้ได้
+
+    เคยเป็นบั๊ก: conflicts ที่ไม่ได้ส่งมา กับ conflicts ว่าง ถูกมองเป็นอย่างเดียวกัน
+    ทำให้แผนที่ยังไม่เคยถูกตรวจ ถูกรายงานว่า "ไม่มีวิชาไหนชนกัน"
+    """
+    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=CPE_PLAN_18))
+    assert res.verdict == "unknown"
+    assert "ยังไม่ได้ตรวจ" in res.headline
+    assert any("06" in s for s in res.next_steps), "ต้องบอกให้ไปเรียก 06 ก่อน"
+
+
+def test_checked_and_clean_is_ok():
+    """ส่ง conflicts=[] = ตรวจแล้วไม่เจอ -> ตอบว่าใช้ได้"""
+    res = explain_plan(ExplainPlanRequest(term="1/2569", plan=CPE_PLAN_18, conflicts=[]))
+    assert res.verdict == "ok"
+
+
+def test_section_ids_payload_from_module_02_accepted():
+    """โมดูล 02 ส่ง section_ids มา ไม่ใช่ plan[] ต้องรับได้และยังไม่ตัดสินว่าใช้ได้"""
+    res = explain_plan(ExplainPlanRequest(
+        term="1/2569",
+        section_ids=["04100201-66-01", "04100202-66-02"],
+        student={"student_id": "x"},
+    ))
+    assert res.verdict == "unknown"
+    assert "2 รายการ" in res.explanation

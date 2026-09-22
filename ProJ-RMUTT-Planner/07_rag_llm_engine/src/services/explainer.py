@@ -158,13 +158,36 @@ def _regulation_sources(codes: set[str]) -> list[Source]:
 
 
 def explain_plan(req: ExplainPlanRequest) -> ExplainPlanResponse:
-    errors = [c for c in req.conflicts if c.severity == "ERROR"]
-    non_errors = [c for c in req.conflicts if c.severity != "ERROR"] + list(req.warnings)
-
     total_credits = req.total_credits
     if total_credits is None and req.plan:
         total_credits = sum(item.credits for item in req.plan)
     credit_check = check_credits(total_credits, req.term)
+
+    # ── ผู้เรียกยังไม่ได้ตรวจตารางชนมา ──────────────────────────
+    # ต้องไม่บอกว่า "แผนนี้ใช้ได้" เพราะไม่เคยตรวจ แค่ไม่มีข้อมูลเท่านั้น
+    if req.conflicts is None:
+        n = len(req.plan) or len(req.section_ids)
+        return ExplainPlanResponse(
+            verdict="unknown",
+            headline="ยังบอกไม่ได้ว่าแผนนี้ใช้ได้หรือไม่ — ยังไม่ได้ตรวจตารางชน",
+            explanation=(
+                f"ได้รับรายวิชามา {n} รายการ แต่ไม่ได้รับผลตรวจตารางชนมาด้วย\n"
+                "โมดูลนี้ไม่คำนวณเวลาเรียนเอง จึงยืนยันไม่ได้ว่าชนกันหรือไม่"
+            ),
+            next_steps=[
+                "เรียก POST /conflicts/check ของโมดูล 06 ก่อน",
+                "แล้วส่งผลที่ได้ (conflicts, warnings) กลับมาที่ /explain/plan",
+            ],
+            credit_check=credit_check,
+            sources=[],
+            provider="rule_based",
+            disclaimer=DISCLAIMER,
+        )
+
+    conflicts = req.conflicts
+    warnings = req.warnings or []
+    errors = [c for c in conflicts if c.severity == "ERROR"]
+    non_errors = [c for c in conflicts if c.severity != "ERROR"] + list(warnings)
 
     # ── สรุปหัวเรื่อง ────────────────────────────────────────────
     if errors:

@@ -38,6 +38,23 @@ services:
       RAG_LLM_URL: http://rag_llm:8700
       FEEDBACK_URL: http://feedback:8800
       CORS_ORIGINS: http://localhost:3000
+      # ── ชื่อ env ที่โมดูล 02 อ่านจริง (src/core/config.py) ──────────────
+      # 02 ตั้งชื่อตามบทบาท ไม่ได้ตั้งตามชื่อ service ถ้าไม่ตั้งคู่นี้ 02 จะ fallback
+      # ไปหา host ที่ไม่มีอยู่จริงใน compose (course_catalog, plan_engine, explainer ...)
+      COURSE_CATALOG_URL: http://course_data:8400
+      STUDENT_DATA_URL: http://data_integration:8500
+      PLAN_ENGINE_URL: http://schedule_engine:8600
+      EXPLAINER_URL: http://rag_llm:8700
+      LOG_SINK_URL: http://feedback:8800
+      # ── ต้องสั่งให้ 02 คุยกับโมดูลจริง ──────────────────────────────────
+      # ค่าเริ่มต้นในโค้ดคือ "mock" ถ้าไม่ตั้ง ระบบจะขึ้นได้ครบแต่ 02 ตอบด้วยข้อมูลปลอม
+      # และไม่เคยเรียกโมดูล 04-08 เลย (ดูเหมือนใช้งานได้ทั้งที่ยังไม่ได้ต่อกันจริง)
+      ADAPTER_04: ${ADAPTER_04:-http}
+      ADAPTER_05: ${ADAPTER_05:-http}
+      ADAPTER_06: ${ADAPTER_06:-http}
+      ADAPTER_07: ${ADAPTER_07:-http}
+      ADAPTER_08: ${ADAPTER_08:-http}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_started}
@@ -138,6 +155,8 @@ services:
       <<: *common-env
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/3
+      # ถ้าไม่ตั้ง endpoint ฝั่งแอดมินของ 08 จะตอบ 503 INTERNAL_AUTH_UNCONFIGURED ทุกครั้ง
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
     depends_on:
       postgres: {condition: service_healthy}
     networks: [rmutt-net]

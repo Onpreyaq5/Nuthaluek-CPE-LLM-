@@ -70,7 +70,20 @@ async def generate(req: GenerateRequest) -> GenerateResponse:
 
 @router.post("/explain/plan", response_model=ExplainPlanResponse)
 def explain(req: ExplainPlanRequest) -> ExplainPlanResponse:
-    """แปลงผลตรวจตารางชนจากโมดูล 06 เป็นคำอธิบายภาษาคน"""
+    """แปลงผลตรวจตารางชนจากโมดูล 06 เป็นคำอธิบายภาษาคน
+
+    ต้องส่ง conflicts ที่ได้จาก 06 มาด้วย ถ้าไม่ส่งจะได้ verdict="unknown"
+    เพราะโมดูลนี้ไม่คำนวณเวลาเรียนเอง
+    """
+    return explain_plan(req)
+
+
+@router.post("/explain", response_model=ExplainPlanResponse)
+def explain_alias(req: ExplainPlanRequest) -> ExplainPlanResponse:
+    """ชื่อเดียวกับที่โมดูล 02 เรียกอยู่ (src/adapters/http/explainer.py)
+
+    เก็บไว้เพื่อให้ 02 ต่อได้โดยไม่ต้องแก้โค้ดฝั่งเขา
+    """
     return explain_plan(req)
 
 
@@ -95,5 +108,12 @@ def seed_timetable(term: str = "1/2569") -> dict:
     filename = f"cpe_timetable_{term.replace('/', '_')}.json"
     path = Path(settings.seed_dir) / filename
     if not path.exists():
-        raise HTTPException(status_code=404, detail=f"ไม่พบไฟล์ข้อมูลจำลอง {filename}")
+        available = sorted(
+            p.stem.replace("cpe_timetable_", "").replace("_", "/")
+            for p in Path(settings.seed_dir).glob("cpe_timetable_*.json")
+        )
+        raise HTTPException(
+            status_code=404,
+            detail=f"ไม่มีตารางสอนของภาคการศึกษา {term} — ที่มีคือ {', '.join(available) or 'ไม่มีเลย'}",
+        )
     return json.loads(path.read_text(encoding="utf-8"))
