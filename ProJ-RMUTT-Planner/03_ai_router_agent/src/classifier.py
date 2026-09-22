@@ -20,6 +20,8 @@ import json
 import re
 import logging
 
+import httpx
+
 from .models import ClassificationResult, Slots
 from .config import settings
 
@@ -196,32 +198,74 @@ def _llm_classify(message: str, history: list) -> ClassificationResult:
     )
 
     try:
-        raw = _call_llm(user_prompt)
+        raw, source = _call_llm(user_prompt)
         # Strip markdown fences if model wraps in ```json
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.MULTILINE)
         data = json.loads(raw)
 
-        slots_data = data.get("slots", {})
-        return ClassificationResult(
-            intent=data.get("intent", "GENERAL_CHAT"),
-            confidence=float(data.get("confidence", 0.5)),
-            reasoning=data.get("reasoning", ""),
-            slots=Slots(
+        intent = str(data.get("intent", "")).strip().upper()
+        # โมเดลเล็กในเครื่องตอบ intent นอกรายการได้ ถ้าไม่รู้จักให้ถือว่าจัดไม่ได้ ใช้ keyword แทน
+        if intent not in ClassificationResult.VALID_INTENTS:
+            raise ValueError(f"unknown intent from {source}: {intent!r}")
+
+        if source == "local":
+            # โมเดลเล็กเก่งพอจะแยกประเภท แต่ดึงรหัสวิชา/ภาคเรียนพลาดบ่อย
+            # ใช้ slot จาก regex ซึ่งแม่นกว่าสำหรับรูปแบบที่ตายตัวอย่างรหัสวิชา
+            slots = _extract_slots(message)
+        else:
+            slots_data = data.get("slots") or {}
+            slots = Slots(
                 term=slots_data.get("term"),
                 academic_year=slots_data.get("academic_year"),
                 course_codes=slots_data.get("course_codes", []),
                 day=slots_data.get("day"),
                 time_str=slots_data.get("time_str"),
                 topic=slots_data.get("topic"),
-            ),
-            source="llm",
+            )
+        return ClassificationResult(
+            intent=intent,
+            confidence=min(max(float(data.get("confidence", 0.5)), 0.0), 1.0),
+            reasoning=str(data.get("reasoning", "")),
+            slots=slots,
+            source=source,
         )
     except Exception as exc:
         logger.warning("LLM classify failed: %s; falling back to keyword result", exc)
         return _keyword_classify(message)
 
 
-def _call_llm(user_prompt: str) -> str:
+def _call_local(user_prompt: str) -> str:
+    """ถามโมเดลในเครื่อง (Ollama) ให้ตอบเป็น JSON — ใช้เมื่อไม่มีคีย์ของ provider ภายนอก"""
+    with httpx.Client(timeout=settings.local_classify_timeout_s) as client:
+        r = client.post(
+            f"{settings.local_model_url.rstrip('/')}/api/generate",
+            json={
+                "model": settings.local_model,
+                "system": _LLM_SYSTEM_PROMPT,
+                "prompt": user_prompt,
+                "format": "json",
+                "stream": False,
+                "options": {"temperature": 0, "num_predict": 160},
+            },
+        )
+        r.raise_for_status()
+        return r.json().get("response", "")
+
+
+def _call_llm(user_prompt: str) -> tuple[str, str]:
+    """คืน (ข้อความดิบจากโมเดล, ที่มา "llm" | "local")
+
+    มีคีย์ของ provider ภายนอก -> ใช้ provider นั้น (General AI)
+    ไม่มีคีย์แต่มี Ollama -> ใช้โมเดลในเครื่อง (Local AI Model)
+    """
+    if not settings.llm_api_key:
+        if settings.local_model_url:
+            return _call_local(user_prompt), "local"
+        raise RuntimeError("no LLM key and no local model configured")
+    return _call_remote(user_prompt), "llm"
+
+
+def _call_remote(user_prompt: str) -> str:
     """Dispatch to the configured LLM provider and return raw response text."""
     provider = settings.llm_provider.lower()
 

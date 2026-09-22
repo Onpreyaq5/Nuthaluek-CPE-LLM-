@@ -14,6 +14,8 @@ from __future__ import annotations
 import importlib.util
 import os
 import sys
+import time
+from collections import Counter
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
@@ -39,11 +41,56 @@ def load_handler(name: str):
     return getattr(module, "handler", None)
 
 
+# ตัวนับให้ Prometheus (ช่อง Monitoring ในแผนภาพ) — ใช้ชื่อ metric เดียวกับบริการ FastAPI
+# ตัวอื่น (prometheus-fastapi-instrumentator) Grafana จะได้รวมกราฟได้ในแผงเดียว
+# เขียนเองเพราะ image นี้ตั้งใจใช้ stdlib ล้วน ไม่มี pip install
+_REQUESTS: Counter[tuple[str, str, str]] = Counter()
+_DURATION_SUM: Counter[str] = Counter()
+_DURATION_COUNT: Counter[str] = Counter()
+_BUCKETS = (0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+_DURATION_BUCKET: Counter[tuple[str, str]] = Counter()
+
+
+def _render_metrics() -> str:
+    out = ["# TYPE http_requests_total counter"]
+    for (handler, method, status), n in sorted(_REQUESTS.items()):
+        out.append(f'http_requests_total{{handler="{handler}",method="{method}",status="{status}"}} {n}')
+    out.append("# TYPE http_request_duration_seconds histogram")
+    for handler in sorted(_DURATION_COUNT):
+        for le in (*_BUCKETS, "+Inf"):
+            key = (handler, str(le))
+            out.append(f'http_request_duration_seconds_bucket{{handler="{handler}",le="{le}"}} {_DURATION_BUCKET[key]}')
+        out.append(f'http_request_duration_seconds_sum{{handler="{handler}"}} {_DURATION_SUM[handler]}')
+        out.append(f'http_request_duration_seconds_count{{handler="{handler}"}} {_DURATION_COUNT[handler]}')
+    return "\n".join(out) + "\n"
+
+
+def _observe(handler: str, method: str, status: int, seconds: float) -> None:
+    _REQUESTS[(handler, method, f"{status // 100}xx")] += 1
+    _DURATION_SUM[handler] += seconds
+    _DURATION_COUNT[handler] += 1
+    for le in _BUCKETS:
+        if seconds <= le:
+            _DURATION_BUCKET[(handler, str(le))] += 1
+    _DURATION_BUCKET[(handler, "+Inf")] += 1
+
+
 class Router(BaseHTTPRequestHandler):
     """ส่งต่อ /api/<ชื่อ> ไปยัง handler ของไฟล์นั้น"""
 
+    def _metrics(self) -> None:
+        body = _render_metrics().encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _dispatch(self, method: str) -> None:
         path = urlparse(self.path).path
+        if path == "/metrics" and method == "GET":
+            self._metrics()
+            return
         if not path.startswith("/api/"):
             self.send_error(404, "ใช้ได้เฉพาะ /api/*")
             return
@@ -66,7 +113,21 @@ class Router(BaseHTTPRequestHandler):
         inst.server = self.server
         inst.command = method
         inst.close_connection = True
-        getattr(inst, f"do_{method}")()
+
+        # จับ status ที่ handler ส่งจริงไว้นับ (send_response ถูกเรียกผ่าน instance)
+        status = {"code": 200}
+        original = inst.send_response
+
+        def _send_response(code, message=None):
+            status["code"] = code
+            original(code, message)
+
+        inst.send_response = _send_response
+        started = time.perf_counter()
+        try:
+            getattr(inst, f"do_{method}")()
+        finally:
+            _observe(f"/api/{name}", method, status["code"], time.perf_counter() - started)
 
     def do_GET(self):      # noqa: N802
         self._dispatch("GET")

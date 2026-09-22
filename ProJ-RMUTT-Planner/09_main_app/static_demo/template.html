@@ -1586,7 +1586,8 @@ function ruleBasedAnswer(chunks){
   const lines = ["จากเอกสารของมหาวิทยาลัยที่เกี่ยวข้องกับคำถามนี้:", ""];
   chunks.forEach((c, i) => {
     const where = c.title + (c.section ? " — " + c.section : "");
-    let text = c.text.trim();
+    // เอกสารต้นฉบับเป็น Markdown ถ้าไม่ลบ ** ผู้ใช้จะเห็นเครื่องหมายดิบในคำตอบ
+    let text = c.text.trim().split("**").join("");
     if (text.length > 600){
       const cut = text.slice(0, 600);
       text = cut.slice(0, cut.lastIndexOf("\n") + 1 || 600) + " ...";

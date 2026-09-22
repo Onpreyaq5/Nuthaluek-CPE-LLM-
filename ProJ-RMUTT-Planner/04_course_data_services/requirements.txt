@@ -5,3 +5,6 @@ pydantic
 httpx
 beautifulsoup4
 lxml
+
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ)
+prometheus-fastapi-instrumentator>=7.0

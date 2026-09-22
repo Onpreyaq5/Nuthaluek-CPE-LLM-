@@ -1,4 +1,7 @@
 """config.py — Settings loaded from environment variables (.env)"""
+import os
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,6 +12,12 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     llm_api_key: str = ""
     llm_model: str = "gemini-2.0-flash"
+
+    # Local AI Model (Ollama) — ช่อง Local AI ในแผนภาพ
+    # ใช้จัดประเภทคำถามตอน keyword ไม่มั่นใจ เมื่อไม่มีคีย์ของ provider ภายนอก
+    local_model: str = "qwen2.5:0.5b"
+    # ต้องน้อยกว่า TIMEOUT_CHAT_START_SECONDS ของ 02 (15 วินาที) ไม่งั้น 02 ตัดว่า 03 ไม่ตอบ
+    local_classify_timeout_s: float = 10.0
 
     # Internal service URLs (Docker Compose hostnames)
     local_model_url: str = "http://local_ai:11434"              # Ollama ฟังที่ 11434 ไม่ใช่ 8300
@@ -24,6 +33,14 @@ class Settings(BaseSettings):
     confidence_threshold: float = 0.7   # below this -> call LLM classifier
 
     log_level: str = "INFO"
+
+    @model_validator(mode="after")
+    def _key_fallback(self) -> "Settings":
+        # .env ของโปรเจกต์ใส่คีย์ Gemini ไว้ที่ GEMINI_API_KEY (ใช้ร่วมกับ 09)
+        # ผู้ใช้จึงใส่คีย์ที่เดียวแล้วใช้ได้ทั้งระบบ
+        if not self.llm_api_key and self.llm_provider.lower() == "gemini":
+            self.llm_api_key = os.getenv("GEMINI_API_KEY", "")
+        return self
 
 
 settings = Settings()

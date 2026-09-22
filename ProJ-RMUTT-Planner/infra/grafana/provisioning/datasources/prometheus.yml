@@ -1,0 +1,10 @@
+# Grafana ต่อ Prometheus ให้เองตอนขึ้นครั้งแรก ไม่ต้องไปกดตั้งค่าในหน้าเว็บ
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

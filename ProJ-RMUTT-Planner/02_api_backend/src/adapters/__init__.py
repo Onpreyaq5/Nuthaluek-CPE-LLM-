@@ -95,6 +95,10 @@ def get_chat_router() -> ChatRouter:
 
 
 def get_answer_generator() -> AnswerGenerator:
-    # ยังไม่มี contract จริงที่ยืนยันแล้วจากทีม 07 สำหรับการสร้างคำตอบแบบ stream (ต่างจาก Explainer ที่ใช้
-    # อธิบายแผนที่บันทึกแล้ว) — production path จึงตอบ error เสมอ ทดสอบ flow จริงต้อง override ด้วย fake
+    # สัญญาของ 07 POST /generate ยืนยันจากโค้ดจริงแล้ว (ดู http/answer_generator.py)
+    # ADAPTER_07=mock ยังคงตอบ error ชัดเจนเหมือนเดิม — ห้ามแกล้งตอบสำเร็จด้วยข้อมูลปลอม
+    if get_settings().ADAPTER_07 == "http":
+        from .http.answer_generator import HttpAnswerGenerator
+
+        return HttpAnswerGenerator()
     return NotReadyAnswerGenerator()

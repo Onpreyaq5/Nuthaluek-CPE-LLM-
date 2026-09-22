@@ -2,6 +2,7 @@
 Deterministic collision detection & CP-SAT automated schedule planning engine
 Internal microservice serving 02_api_backend and 03_ai_router_agent
 """
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.routes import router
@@ -14,6 +15,9 @@ app = FastAPI(
     description="Deterministic Collision Detection & CP-SAT Auto Planner for RMUTT Planner",
     version="1.1.0",
 )
+
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # Secure CORS: Only enable if specific origins are explicitly configured in environment
 if settings.cors_origins:

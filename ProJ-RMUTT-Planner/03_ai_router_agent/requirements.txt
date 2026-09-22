@@ -17,3 +17,6 @@ tenacity>=8.3.0
 
 # SSE streaming
 sse-starlette>=1.8.0
+
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ)
+prometheus-fastapi-instrumentator>=7.0

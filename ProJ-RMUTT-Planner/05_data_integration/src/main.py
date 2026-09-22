@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
@@ -48,6 +49,9 @@ app = FastAPI(
     description="Data Cleaning, Course Normalization, Time Slot Bitmasks, Prereq DAG & Student Context Service",
     version="1.0.0",
 )
+
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # In-memory stores
 prereq_dag = PrerequisiteDAG()

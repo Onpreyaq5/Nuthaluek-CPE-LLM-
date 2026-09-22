@@ -65,7 +65,8 @@ def _rule_based_answer(question: str, chunks: list[Chunk]) -> str:
     lines = ["จากเอกสารของมหาวิทยาลัยที่เกี่ยวข้องกับคำถามนี้:", ""]
     for i, c in enumerate(chunks, start=1):
         where = f"{c.title}" + (f" — {c.section}" if c.section else "")
-        excerpt = c.text.strip()
+        # เอกสารต้นฉบับเป็น Markdown ถ้าไม่ลบ ** ผู้ใช้จะเห็นเครื่องหมายดิบในคำตอบ
+        excerpt = c.text.strip().replace("**", "")
         if len(excerpt) > 600:
             excerpt = excerpt[:600].rsplit("\n", 1)[0] + " ..."
         lines.append(f"[{i}] {where}")
@@ -126,6 +127,72 @@ _PROVIDERS = {
     "openai": _call_openai,
     "anthropic": _call_anthropic,
 }
+
+
+# ── Local AI Model (Ollama) ─────────────────────────────────────
+async def call_local(prompt: str) -> str:
+    """เรียกโมเดลในเครื่องผ่าน Ollama — ไม่มีค่าใช้จ่าย ไม่ส่งข้อมูลออกนอกเครื่อง"""
+    async with httpx.AsyncClient(timeout=settings.local_timeout) as client:
+        r = await client.post(
+            f"{settings.local_model_url.rstrip('/')}/api/generate",
+            json={
+                "model": settings.local_model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"num_predict": settings.local_max_tokens, "temperature": 0.3},
+            },
+        )
+        r.raise_for_status()
+        return (r.json().get("response") or "").strip()
+
+
+# ── General AI (ช่อง General AI ในแผนภาพ) ───────────────────────
+GENERAL_SYSTEM_PROMPT = """คุณคือผู้ช่วย AI ของระบบวางแผนการเรียน มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี
+ตอบเป็นภาษาไทย กระชับ สุภาพ
+ช่วยได้เรื่องความรู้ทั่วไป การเขียน การสรุป และอธิบายแนวคิด
+ถ้าคำถามเป็นเรื่องระเบียบ หลักสูตร ค่าธรรมเนียม หรือกำหนดการของมหาวิทยาลัย ห้ามตอบจากความจำ
+ให้บอกว่าถามเรื่องนั้นโดยตรงแล้วระบบจะค้นจากเอกสารของมหาวิทยาลัยให้"""
+
+GENERAL_UNAVAILABLE = (
+    "ตอนนี้ยังไม่ได้เปิดใช้โมเดลสำหรับคำถามทั่วไป "
+    "ถ้าเป็นเรื่องระเบียบหรือหลักสูตร ลองถามให้ระบุเรื่องชัดขึ้น เช่น "
+    "“ถอนรายวิชาได้ถึงเมื่อไหร่” ระบบจะค้นจากเอกสารของมหาวิทยาลัยให้"
+)
+
+
+def _general_prompt(question: str, history: list[dict] | None) -> str:
+    turns = []
+    for m in (history or [])[-6:]:
+        role = "ผู้ใช้" if m.get("role") == "user" else "ผู้ช่วย"
+        content = str(m.get("content", "")).strip()
+        if content:
+            turns.append(f"{role}: {content}")
+    convo = "\n".join(turns)
+    return (
+        f"{GENERAL_SYSTEM_PROMPT}\n\n"
+        + (f"=== บทสนทนาก่อนหน้า ===\n{convo}\n\n" if convo else "")
+        + f"ผู้ใช้: {question}\nผู้ช่วย:"
+    )
+
+
+async def general_answer(question: str, history: list[dict] | None = None) -> tuple[str, str]:
+    """คืน (คำตอบ, provider) — Gemini ก่อน ถ้าไม่มีคีย์หรือเรียกไม่ติดใช้โมเดลในเครื่อง"""
+    prompt = _general_prompt(question, history)
+    if settings.llm_enabled:
+        caller = _PROVIDERS.get(settings.llm_provider)
+        if caller is not None:
+            try:
+                return (await caller(prompt)).strip(), settings.llm_provider
+            except Exception as exc:  # noqa: BLE001
+                log.error("General AI (%s) ล้ม ลองโมเดลในเครื่องต่อ: %s", settings.llm_provider, exc)
+    if settings.local_enabled:
+        try:
+            text = await call_local(prompt)
+            if text:
+                return text, f"local:{settings.local_model}"
+        except Exception as exc:  # noqa: BLE001
+            log.error("Local AI เรียกไม่ติด: %s", exc)
+    return GENERAL_UNAVAILABLE, "none"
 
 
 async def generate(

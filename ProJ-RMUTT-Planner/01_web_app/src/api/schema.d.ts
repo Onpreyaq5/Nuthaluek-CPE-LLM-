@@ -817,7 +817,7 @@ export interface components {
             /** Year Level */
             year_level: number;
             /** Gpax */
-            gpax: number;
+            gpax: number | null;
             /** Credits Earned */
             credits_earned: number;
             /** Credits Remaining */

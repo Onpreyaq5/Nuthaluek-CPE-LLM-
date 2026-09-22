@@ -6,6 +6,7 @@ Endpoints:
   POST /classify    -> debug: return classification result only (no tool calls)
 """
 from __future__ import annotations
+import asyncio
 import json
 import logging
 import time
@@ -13,6 +14,7 @@ import uuid
 from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
@@ -20,6 +22,8 @@ from .config import settings
 from .models import RouterRequest, SSEEvent
 from .classifier import classify, missing_slots, SLOT_QUESTIONS, resolve_term
 from .planner import run_planner
+from .ai_select import select_ai, backing_model
+from .metrics import ROUTED, TOOL_CALLS
 
 logging.basicConfig(
     level=settings.log_level,
@@ -28,6 +32,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="03_ai_router_agent", version="0.1.0")
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ) รวมตัวนับ ROUTED/TOOL_CALLS ด้วย
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -56,7 +62,13 @@ async def chat(req: RouterRequest):
         t0 = time.perf_counter()
         try:
             # ── Step 1: Intent Classification ─────────────────────────
-            classification = classify(req.message, [m.model_dump() for m in req.history])
+            # รันใน thread: ถ้า keyword ไม่มั่นใจ classify จะเรียกโมเดล (Gemini/Ollama) แบบ sync
+            # ถ้ารันตรงนี้ event loop จะค้าง request อื่นทั้ง service รอไปด้วย
+            classification = await asyncio.to_thread(
+                classify, req.message, [m.model_dump() for m in req.history]
+            )
+            ai_target = select_ai(classification.intent)
+            ROUTED.labels(classification.intent, ai_target, classification.source).inc()
             
             # Resolve term and academic year
             resolved_term, resolved_year = resolve_term(classification.slots.term, req.term)
@@ -71,6 +83,9 @@ async def chat(req: RouterRequest):
                 "reasoning": classification.reasoning,
                 "source": classification.source,
                 "slots": classification.slots.model_dump(),
+                # กล่อง 4 ในแผนภาพ: เลือก AI ตัวไหนตอบ และตัวนั้นใช้โมเดลอะไรจริง
+                "ai_target": ai_target,
+                "ai_model": backing_model(ai_target),
             })
 
             # ── Step 2: Slot check — ask back if required slot missing ─
@@ -83,6 +98,10 @@ async def chat(req: RouterRequest):
 
             # ── Step 3: Planner Loop (tool execution + guardrails) ─────
             router_resp, sse_events = await run_planner(req, classification)
+            for tc in router_resp.tools_called:
+                TOOL_CALLS.labels(tc.tool, str(tc.success).lower()).inc()
+            router_resp.context["ai_target"] = ai_target
+            router_resp.context["intent"] = router_resp.intent
 
             has_refusal = False
             for event in sse_events:

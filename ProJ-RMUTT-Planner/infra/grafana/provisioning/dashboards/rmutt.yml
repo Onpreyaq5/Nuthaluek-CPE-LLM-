@@ -1,0 +1,10 @@
+# โหลด dashboard จากไฟล์ใน infra/grafana/dashboards อัตโนมัติ
+apiVersion: 1
+providers:
+  - name: rmutt
+    folder: RMUTT Planner
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

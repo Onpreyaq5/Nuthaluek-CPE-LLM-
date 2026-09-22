@@ -8,9 +8,11 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from .api.routes import router
 from .config import settings
+from .core.metrics import VECTOR_BACKEND
 from .services.knowledge import knowledge_base
 
 logging.basicConfig(
@@ -23,10 +25,13 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     count = knowledge_base.load()
+    VECTOR_BACKEND.set(1 if knowledge_base.vector_backend == "qdrant" else 0)
     log.info(
-        "โหลดคลังความรู้แล้ว: %s chunk จาก %s ไฟล์ | LLM=%s",
+        "โหลดคลังความรู้แล้ว: %s chunk จาก %s ไฟล์ | LLM=%s | vector=%s | local=%s",
         count, len(knowledge_base.files),
         settings.llm_provider if settings.llm_enabled else "rule_based",
+        knowledge_base.vector_backend,
+        settings.local_model if settings.local_enabled else "off",
     )
     yield
 
@@ -38,3 +43,5 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(router)
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ) รวมตัวนับของ core/metrics.py ด้วย
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)

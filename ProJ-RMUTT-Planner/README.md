@@ -105,11 +105,23 @@ python scripts/check_dockerfiles.py    # HEALTHCHECK ไม่มี curl, .sh �
 ```
 สามตัวนี้ดักปัญหาที่ `docker build` ผ่านแต่พังตอนรัน ซึ่งเป็นประเภทที่หาสาเหตุยากที่สุด
 
-ออปชันเสริม:
-```bash
-docker compose --profile local-ai up -d      # โมเดลในเครื่อง (Ollama)
-docker compose --profile monitoring up -d    # Prometheus + Grafana (:3001)
-```
+ทุกกล่องในแผนภาพขึ้นด้วย `docker compose up -d` คำสั่งเดียว ไม่มี profile เสริมแล้ว
+
+| กล่องในแผนภาพ | บริการ | เปิดดู |
+|---|---|---|
+| 1 Web App | `main_app` (09), `web_app` (01) | http://localhost:3000 · http://localhost:3001 (login `admin` / `admin1234`) |
+| 2 API / Backend | `api_backend` (02) + Postgres | http://localhost:8000/docs |
+| 3 AI Router / Agent | `ai_router` (03) | http://localhost:8100/docs |
+| 4 General AI | Gemini — ใส่คีย์ที่ `GEMINI_API_KEY` ใน `.env` | |
+| 4 University RAG | `rag_llm` (07) | http://localhost:8700/docs |
+| 4 Local AI Model | `local_ai` (Ollama, `qwen2.5:0.5b` ดึงให้เองครั้งแรก) | http://localhost:11434/api/tags |
+| 5 Retrieval / Vector DB | BM25 ใน 07 + `qdrant` | http://localhost:6333/dashboard |
+| 7 Response / Log | `feedback` (08) | http://localhost:8800/docs |
+| Monitoring & Analytics | `prometheus`, `grafana` | http://localhost:9090 · http://localhost:3002 |
+
+Router (03) เลือก AI ให้ตามประเภทคำถาม: เรื่องระเบียบ/หลักสูตร/ตาราง → University RAG เสมอ
+คุยทั่วไป → Gemini ถ้ามีคีย์ ไม่มีคีย์ → Local AI ในเครื่อง
+และใช้ Local AI จัดประเภทคำถามตอนกฎ keyword ไม่มั่นใจ
 
 ---
 

@@ -6,8 +6,7 @@
 # ขึ้นครบตามแผนภาพสถาปัตยกรรม: หน้าเว็บ, API, AI Router, บริการข้อมูล,
 # เครื่องมือจัดตาราง, RAG, ระบบเก็บสถิติ, ฐานข้อมูล, Vector DB และ Monitoring
 #
-# โปรไฟล์เสริม (ไม่ขึ้นโดยค่าตั้งต้น)
-#   --profile local-ai      โมเดลในเครื่องผ่าน Ollama (image ใหญ่ ต้องดึงโมเดลเอง)
+# Local AI Model (Ollama) ขึ้นโดยค่าตั้งต้นและดึงโมเดลเองครั้งแรก (~400 MB)
 #
 # หน้าเว็บมีสองตัว: main_app (09) ที่ :3000 เป็นตัวที่ใช้งานได้ครบ
 # ส่วน web_app (01) ที่ :3001 เป็นหน้าเว็บที่คุยกับ api_backend (02) ตามสถาปัตยกรรมเต็ม
@@ -108,6 +107,13 @@ services:
       ADAPTER_07: ${ADAPTER_07:-http}
       ADAPTER_08: ${ADAPTER_08:-http}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      # 02 เรียก 07 สร้างคำตอบแบบรอทีเดียว ระหว่างรอไม่มี event ไหลออกไป
+      # ถ้าตอบด้วยโมเดลในเครื่อง (CPU) อาจใช้เกิน 30 วินาทีที่เป็นค่าตั้งต้น
+      # สร้างบัญชีเดโมตอนเริ่ม (admin / admin1234) ถ้าไม่ตั้ง หน้าเว็บ 01 จะ login ไม่ได้เลย
+      # เพราะตาราง students ว่าง — ใช้เพื่อสาธิตเท่านั้น ห้ามเปิดแบบนี้บนเครื่องที่ออกอินเทอร์เน็ต
+      SEED_DEMO: ${SEED_DEMO:-true}
+      TIMEOUT_CHAT_IDLE_SECONDS: ${TIMEOUT_CHAT_IDLE_SECONDS:-120}
+      TIMEOUT_CHAT_TOTAL_SECONDS: ${TIMEOUT_CHAT_TOTAL_SECONDS:-180}
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_started}
@@ -120,10 +126,14 @@ services:
     ports: ["8100:8100"]
     environment:
       <<: *common-env
-      LLM_PROVIDER: ${LLM_PROVIDER}
-      LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      # ใส่คีย์ที่ GEMINI_API_KEY ใน .env ที่เดียว ใช้ได้ทั้ง 03, 07 และ 09
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gemini-2.0-flash}
+      # กล่อง Local AI Model ในแผนภาพ — จัดประเภทคำถามตอน keyword ไม่มั่นใจ
       LOCAL_MODEL_URL: http://local_ai:11434
+      LOCAL_MODEL: ${LOCAL_MODEL:-qwen2.5:0.5b}
       COURSE_DATA_URL: http://course_data:8400
       DATA_INTEGRATION_URL: http://data_integration:8500
       SCHEDULE_ENGINE_URL: http://schedule_engine:8600
@@ -193,9 +203,17 @@ services:
     ports: ["8700:8700"]
     environment:
       <<: *common-env
-      LLM_PROVIDER: ${LLM_PROVIDER:-rule_based}
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
       LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gemini-2.0-flash}
+      # กล่อง Vector DB ในแผนภาพ — เวกเตอร์ TF-IDF เก็บและค้นใน Qdrant
+      # Qdrant ล่ม = ค้นในหน่วยความจำแทนอัตโนมัติ ผลเท่ากันทุกตำแหน่ง
+      QDRANT_URL: http://qdrant:6333
+      # กล่อง Local AI Model — ตอบคำถามทั่วไปเมื่อไม่มีคีย์ Gemini
+      LOCAL_MODEL_URL: http://local_ai:11434
+      LOCAL_MODEL: ${LOCAL_MODEL:-qwen2.5:0.5b}
+      LOCAL_LLM_TIMEOUT: "110"
       KNOWLEDGE_DIR: /app/data/knowledge
       SEED_DIR: /app/data/seed
       # 07 เรียก 05 และ 06 ต่อ ระบุให้ชัดแทนการพึ่งค่าตั้งต้นในโค้ด
@@ -249,11 +267,9 @@ services:
     volumes: [redisdata:/data]
     networks: [rmutt-net]
 
-  # ยังไม่มีใครใช้: โมดูล 07 ค้นแบบ in-memory (BM25 + TF-IDF) จึงไม่ต้องมี vector DB
-  # เปิดเมื่อคลังความรู้โตจนต้องใช้ embedding จริง: docker compose --profile vector up -d
   # ช่อง Vector DB ในแผนภาพ (Retrieval / Knowledge)
-  # ตอนนี้ 07 ค้นด้วย TF-IDF ในหน่วยความจำ ยังไม่ได้เรียก Qdrant
-  # ยกขึ้นไว้ให้ครบตามแผนภาพและพร้อมต่อเมื่อคลังโตจนต้องใช้ embedding จริง
+  # 07 อัปโหลดเวกเตอร์ของทั้ง 69 ส่วนเอกสารขึ้นมาตอนเริ่ม แล้วค้นขาเวกเตอร์ที่นี่
+  # ดู collection ได้ที่ http://localhost:6333/dashboard
   qdrant:
     image: qdrant/qdrant:latest
     container_name: rmutt_qdrant
@@ -261,21 +277,35 @@ services:
     volumes: [qdrantdata:/qdrant/storage]
     networks: [rmutt-net]
 
-  # ---------- Optional: โมเดลในเครื่อง ----------
-  # ช่อง Local AI Model ในแผนภาพ — 03 เรียกผ่าน LOCAL_MODEL_URL
-  #
-  # ยังอยู่หลัง profile โดยตั้งใจ: image ~1.5 GB และตัว Ollama เปล่า ๆ ยังไม่มีโมเดล
-  # ต้องดึงโมเดลเองอีกหลาย GB ถ้าเปิดโดยค่าตั้งต้น `docker compose up` ครั้งแรก
-  # จะดาวน์โหลดนานมากจนดูเหมือนค้าง
-  #
-  #   docker compose --profile local-ai up -d local_ai
-  #   docker compose exec local_ai ollama pull llama3.2:3b
+  # ---------- Local AI Model (กล่อง 4 ในแผนภาพ) ----------
+  # Ollama รันโมเดลในเครื่อง ไม่ต้องมีคีย์ ไม่ส่งข้อมูลออกนอกเครื่อง
+  # qwen2.5:0.5b ขนาด ~400 MB อ่านไทยได้ รันบน CPU ได้ ไม่ต้องมี GPU
+  # เปลี่ยนโมเดลได้ที่ LOCAL_MODEL ใน .env
   local_ai:
     image: ollama/ollama:latest
     container_name: rmutt_local_ai
-    profiles: [local-ai]
     ports: ["11434:11434"]
     volumes: [ollama:/root/.ollama]
+    environment:
+      # เก็บโมเดลไว้ในหน่วยความจำ ไม่งั้นทุกคำถามต้องโหลดใหม่ ช้ามากบน CPU
+      OLLAMA_KEEP_ALIVE: 24h
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [rmutt-net]
+
+  # ดึงโมเดลครั้งเดียวแล้วจบ (ครั้งถัดไปมีใน volume แล้ว ใช้เวลาไม่ถึงวินาที)
+  local_ai_pull:
+    image: ollama/ollama:latest
+    container_name: rmutt_local_ai_pull
+    entrypoint: ["ollama", "pull", "${LOCAL_MODEL:-qwen2.5:0.5b}"]
+    environment:
+      OLLAMA_HOST: http://local_ai:11434
+    depends_on:
+      local_ai: {condition: service_healthy}
+    restart: "no"
     networks: [rmutt-net]
 
   # ---------- Optional: Monitoring ----------
@@ -295,7 +325,48 @@ services:
     ports: ["3002:3000"]
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
-    volumes: [grafanadata:/var/lib/grafana]
+      # เปิดดู dashboard ได้โดยไม่ต้อง login (อ่านอย่างเดียว) — แก้ไขยังต้อง login admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/rmutt-overview.json
+    volumes:
+      - grafanadata:/var/lib/grafana
+      # ต่อ Prometheus และสร้าง dashboard ให้ตั้งแต่ขึ้นครั้งแรก ไม่ต้องกดตั้งค่าเอง
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+    networks: [rmutt-net]
+
+  # ---------- ลิงก์สาธารณะ (ไม่ขึ้นโดยค่าตั้งต้น) ----------
+  # Cloudflare Quick Tunnel: ได้ลิงก์ https://xxxx.trycloudflare.com ฟรี ไม่ต้องสมัคร
+  # ลิงก์ใช้ได้เฉพาะตอนเครื่องนี้เปิดอยู่ และเปลี่ยนใหม่ทุกครั้งที่สั่งขึ้น
+  #
+  #   docker compose --profile public up -d
+  #   docker compose logs tunnel_main tunnel_web tunnel_grafana | grep trycloudflare
+  #
+  # ก่อนเปิดต้องเปลี่ยนรหัส admin ของ Grafana และปิด SEED_DEMO ถ้าไม่ได้ตั้งใจให้คนนอก login ได้
+  tunnel_main:
+    image: cloudflare/cloudflared:latest
+    container_name: rmutt_tunnel_main
+    profiles: [public]
+    command: tunnel --no-autoupdate --url http://main_app:3000
+    depends_on: [main_app]
+    networks: [rmutt-net]
+
+  tunnel_web:
+    image: cloudflare/cloudflared:latest
+    container_name: rmutt_tunnel_web
+    profiles: [public]
+    command: tunnel --no-autoupdate --url http://web_app:80
+    depends_on: [web_app]
+    networks: [rmutt-net]
+
+  tunnel_grafana:
+    image: cloudflare/cloudflared:latest
+    container_name: rmutt_tunnel_grafana
+    profiles: [public]
+    command: tunnel --no-autoupdate --url http://grafana:3000
+    depends_on: [grafana]
     networks: [rmutt-net]
 
 volumes:

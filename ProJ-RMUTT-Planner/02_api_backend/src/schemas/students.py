@@ -11,7 +11,7 @@ class StudentProfile(BaseModel):
     program_id: str
     program_name: str
     year_level: int
-    gpax: float
+    gpax: float | None = None
     credits_earned: int
     credits_remaining: int
 

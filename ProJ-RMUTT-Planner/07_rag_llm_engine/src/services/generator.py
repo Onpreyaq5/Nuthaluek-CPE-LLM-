@@ -11,10 +11,20 @@
 from __future__ import annotations
 
 from ..config import DISCLAIMER, NOT_FOUND_MESSAGE, settings
+from ..core.metrics import RETRIEVAL_TOP_SCORE
+from ..llm.client import general_answer
 from ..llm.client import generate as llm_generate
 from ..models.schemas import GenerateRequest, GenerateResponse, Source
 from .coverage import find_gap
 from .knowledge import knowledge_base
+from .tool_answer import answer_from_tools
+
+# ช่อง AI ในกล่อง 4 ของแผนภาพ — โมดูล 03 เป็นคนเลือกแล้วส่งมาใน context["ai_target"]
+AI_UNIVERSITY_RAG = "university_rag"
+AI_GENERAL = "general_ai"
+AI_LOCAL = "local_ai"
+
+GENERAL_NOTE = "คำตอบนี้มาจากความรู้ทั่วไปของโมเดล ไม่ได้อ้างอิงเอกสารของมหาวิทยาลัย"
 
 
 def _to_sources(chunks) -> list[Source]:
@@ -28,6 +38,37 @@ def _to_sources(chunks) -> list[Source]:
 
 
 async def answer(req: GenerateRequest) -> GenerateResponse:
+    """เลือกทางตาม AI ที่ 03 เลือกไว้ ไม่ระบุ = University RAG (พฤติกรรมเดิมทุกประการ)"""
+    target = str(req.context.get("ai_target") or AI_UNIVERSITY_RAG)
+
+    if target in (AI_GENERAL, AI_LOCAL):
+        history = req.context.get("history")
+        text, provider = await general_answer(
+            req.question, history if isinstance(history, list) else None
+        )
+        return GenerateResponse(
+            answer=text,
+            sources=[],
+            # ไม่ได้อ้างเอกสาร จึงไม่นับว่า grounded ผู้ใช้ต้องเห็นความต่างนี้
+            grounded=False,
+            provider=provider,
+            disclaimer=GENERAL_NOTE,
+        )
+
+    # คำถามตารางชน/จัดแผน/ค้นวิชา: 03 เรียกเครื่องมือมาแล้ว สรุปจากผลจริงของเครื่องมือ
+    # ห้ามให้โมเดลคำนวณเวลาหรือหน่วยกิตเอง
+    from_tools = answer_from_tools(req.context.get("tool_results"))
+    if from_tools is not None:
+        text, sources = from_tools
+        return GenerateResponse(
+            answer=text, sources=sources, grounded=True,
+            provider="tools", disclaimer=DISCLAIMER,
+        )
+
+    return await _answer_from_documents(req)
+
+
+async def _answer_from_documents(req: GenerateRequest) -> GenerateResponse:
     # ── ด่านที่ 0: รู้ตัวว่าไม่มีข้อมูลเรื่องนี้ ────────────────
     # การค้นคืนวัดได้แค่ "เอกสารเกี่ยวข้องไหม" ไม่ได้วัดว่า "มีคำตอบไหม"
     # เรื่องที่คลังไม่มีข้อมูลตั้งแต่แรก ต้องบอกตรง ๆ ไม่ใช่ยกเอกสารใกล้เคียงมาให้
@@ -41,7 +82,10 @@ async def answer(req: GenerateRequest) -> GenerateResponse:
             disclaimer=DISCLAIMER,
         )
 
-    student = req.context.get("student") or {}
+    # 03 ส่งข้อมูลนักศึกษามาในชื่อ "profile" (context_manager.py) ส่วนผู้เรียกตรงใช้ "student"
+    student = req.context.get("student") or req.context.get("profile") or {}
+    if not isinstance(student, dict):
+        student = {}
     effective_year = student.get("curriculum_year") or student.get("effective_year")
     program_id = student.get("program_id")
 
@@ -53,6 +97,7 @@ async def answer(req: GenerateRequest) -> GenerateResponse:
     )
 
     top_score = chunks[0].score if chunks else 0.0
+    RETRIEVAL_TOP_SCORE.observe(top_score)
     # ── ด่านที่ 1: ไม่มีหลักฐานพอ -> ไม่ตอบ ────────────────────
     if not chunks or top_score < settings.min_score:
         return GenerateResponse(

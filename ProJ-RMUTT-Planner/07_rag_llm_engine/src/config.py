@@ -46,9 +46,24 @@ class Settings:
 
     # ── LLM ─────────────────────────────────────────────────────
     llm_provider: str = os.getenv("LLM_PROVIDER", "rule_based")  # rule_based|gemini|openai|anthropic
-    llm_api_key: str = os.getenv("LLM_API_KEY", "")
+    # รับคีย์ได้ทั้งสองชื่อ: LLM_API_KEY เป็นชื่อกลางของโมดูล ส่วน GEMINI_API_KEY คือชื่อที่ .env ใช้กับ 09
+    # ผู้ใช้จึงใส่คีย์ Gemini ที่เดียวแล้วใช้ได้ทั้งระบบ
+    llm_api_key: str = os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY", "")
     llm_model: str = os.getenv("LLM_MODEL", "")
     llm_timeout: int = _int("LLM_TIMEOUT", 30)
+
+    # ── Local AI Model (Ollama) — ช่อง Local AI Model ในแผนภาพ ─────────
+    # ใช้กับงานทั่วไปเมื่อไม่มีคีย์ Gemini เท่านั้น ไม่ใช้ตอบเรื่องระเบียบ
+    # เพราะโมเดลเล็กในเครื่องแต่งรายละเอียดผิดได้ง่าย ส่วนนั้นยังยึดเอกสารเหมือนเดิม
+    local_model_url: str = os.getenv("LOCAL_MODEL_URL", "")
+    local_model: str = os.getenv("LOCAL_MODEL", "qwen2.5:0.5b")
+    local_timeout: int = _int("LOCAL_LLM_TIMEOUT", 120)
+    local_max_tokens: int = _int("LOCAL_MAX_TOKENS", 256)
+
+    # ── Vector DB (Qdrant) — ช่อง Vector DB ในแผนภาพ ─────────────────
+    # เว้นว่าง = ค้นเวกเตอร์ในหน่วยความจำอย่างเดียว (CI และเครื่องที่ไม่มี Docker)
+    qdrant_url: str = os.getenv("QDRANT_URL", "")
+    qdrant_collection: str = os.getenv("QDRANT_COLLECTION", "rmutt_knowledge")
 
     # ── บริการอื่นในระบบ ────────────────────────────────────────
     data_integration_url: str = os.getenv("DATA_INTEGRATION_URL", "http://data_integration:8500")
@@ -63,6 +78,10 @@ class Settings:
     def llm_enabled(self) -> bool:
         """เรียก LLM จริงได้ก็ต่อเมื่อเลือก provider และมี API key"""
         return self.llm_provider != "rule_based" and bool(self.llm_api_key)
+
+    @property
+    def local_enabled(self) -> bool:
+        return bool(self.local_model_url)
 
 
 settings = Settings()

@@ -43,7 +43,8 @@ def _rule_based(chunks: list[dict]) -> str:
     lines = ["จากเอกสารของมหาวิทยาลัยที่เกี่ยวข้องกับคำถามนี้:", ""]
     for i, c in enumerate(chunks, start=1):
         where = c["title"] + (f" — {c['section']}" if c.get("section") else "")
-        text = c["text"].strip()
+        # เอกสารต้นฉบับเป็น Markdown ถ้าไม่ลบ ** ผู้ใช้จะเห็นเครื่องหมายดิบในคำตอบ
+        text = c["text"].strip().replace("**", "")
         if len(text) > 600:
             text = text[:600].rsplit("\n", 1)[0] + " ..."
         lines += [f"[{i}] {where}", text, ""]

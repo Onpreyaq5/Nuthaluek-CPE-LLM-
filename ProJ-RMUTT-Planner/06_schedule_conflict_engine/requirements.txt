@@ -4,3 +4,6 @@ pydantic>=2.6.0
 ortools>=9.8.0
 httpx>=0.27.0
 pytest>=8.0.0
+
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ)
+prometheus-fastapi-instrumentator>=7.0

@@ -96,7 +96,8 @@ export default function Profile() {
             <div>
               <span>{uiCopy.profile010}</span>
               <strong>
-                {stats.gpax.toFixed(2)}
+                {/* 02 ส่ง null เมื่อยังไม่มีเกรด — เรียก toFixed กับ null หน้านี้จะพังทั้งหน้า */}
+                {stats.gpax != null ? stats.gpax.toFixed(2) : "—"}
                 <small>GPAX</small>
               </strong>
             </div>

@@ -13,6 +13,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from ..config import settings
+from ..core.metrics import ANSWERS, VECTOR_BACKEND
 from ..models.schemas import (
     ExplainPlanRequest,
     ExplainPlanResponse,
@@ -39,6 +40,9 @@ def health() -> dict:
         "documents": len(knowledge_base.documents),
         "files": knowledge_base.files,
         "llm_provider": settings.llm_provider if settings.llm_enabled else "rule_based",
+        # ช่องในแผนภาพ: Vector DB กับ Local AI Model ต่อติดจริงไหม
+        "vector_backend": knowledge_base.vector_backend,
+        "local_model": settings.local_model if settings.local_enabled else None,
         "coverage": coverage_summary(),
     }
 
@@ -64,8 +68,13 @@ def knowledge_search(req: KnowledgeSearchRequest) -> KnowledgeSearchResponse:
 
 @router.post("/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest) -> GenerateResponse:
-    """ตอบคำถามโดยอิงเอกสาร พร้อมแนบแหล่งอ้างอิง"""
-    return await answer(req)
+    """ตอบคำถาม — ทางที่ใช้ขึ้นกับ context["ai_target"] ที่โมดูล 03 เลือกมา"""
+    res = await answer(req)
+    ANSWERS.labels(
+        str(req.context.get("ai_target") or "university_rag"), res.provider, str(res.grounded).lower()
+    ).inc()
+    VECTOR_BACKEND.set(1 if knowledge_base.vector_backend == "qdrant" else 0)
+    return res
 
 
 @router.post("/explain/plan", response_model=ExplainPlanResponse)

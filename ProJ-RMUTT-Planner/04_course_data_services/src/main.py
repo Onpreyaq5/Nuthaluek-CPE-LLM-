@@ -1,4 +1,5 @@
 """04_course_data_services — service skeleton"""
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi import FastAPI, Query
 from typing import Optional
 from pydantic import BaseModel
@@ -6,6 +7,9 @@ from pydantic import BaseModel
 from .store import course_store
 
 app = FastAPI(title="04_course_data_services")
+
+# /metrics ให้ Prometheus (ช่อง Monitoring ในแผนภาพ)
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 @app.get("/health")
 def health():

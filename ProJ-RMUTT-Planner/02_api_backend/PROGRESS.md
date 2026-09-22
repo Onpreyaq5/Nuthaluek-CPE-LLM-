@@ -724,3 +724,15 @@ conflict จริงในนั้น) และ `test_auto_plan_forwards_no_c
 แผนโดยไม่รู้ว่าชนหรือไม่) แต่เป็น behavior change ที่ควรแจ้งทีม 01 ไว้
 
 **ยังไม่ได้ commit/push** — รอ confirm ตามรูปแบบเดิมของงานชุดนี้ (ไฟล์ทั้งหมดยัง uncommitted ใน working copy)
+
+
+---
+
+## อัปเดต: ต่อ 07 จริงแล้ว (AnswerGenerator)
+
+`get_answer_generator()` คืน `HttpAnswerGenerator` (`src/adapters/http/answer_generator.py`) เมื่อ
+`ADAPTER_07=http` — เรียก `07 POST /generate` ด้วย `{question, context}` โดย context คือก้อนที่ 03 ส่งมากับ
+`context_ready` (มี `ai_target` ที่ 03 เลือก: university_rag / general_ai / local_ai) แปลงคำตอบเป็น
+`token` ทีละย่อหน้า + `sources` ตาม public schema · ไม่ retry และใช้ timeout เท่า `chat_idle`
+(compose ตั้ง 120 วินาที เผื่อโมเดลในเครื่องบน CPU) · `ADAPTER_07=mock` ยังคืน `NotReadyAnswerGenerator`
+เหมือนเดิม ไม่มีคำตอบปลอม · compose ตั้ง `SEED_DEMO=true` ให้ login หน้าเว็บ 01 ได้

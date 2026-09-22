@@ -29,7 +29,9 @@ class StudentContext(BaseModel):
     year_level: int
     credits_earned: int
     credits_remaining: int
-    gpax: float
+    # 05 ส่ง null ให้นักศึกษาที่ยังไม่มีเกรดเลย (ไม่มีเกรด = ยังคำนวณ GPAX ไม่ได้ ไม่ใช่ 0.00)
+    # ถ้าบังคับเป็น float แชตทั้งเส้นจะพังเป็น 500 ตั้งแต่ขั้นดึงข้อมูลนักศึกษา
+    gpax: float | None = None
     completed_course_codes: list[str] = Field(default_factory=list)
     preferences: StudentPreferences
 

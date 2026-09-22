@@ -159,9 +159,10 @@ def reciprocal_rank_fusion(
 
 
 class HybridRetriever:
-    def __init__(self, rrf_k: int = 60) -> None:
+    def __init__(self, rrf_k: int = 60, vector: VectorIndex | None = None) -> None:
         self.bm25 = BM25Index()
-        self.vector = VectorIndex()
+        # ส่ง QdrantVectorIndex เข้ามาเพื่อให้ขาเวกเตอร์ไปค้นใน Qdrant (ดู core/qdrant_index.py)
+        self.vector = vector or VectorIndex()
         self.docs: list[Document] = []
         self.rrf_k = rrf_k
 

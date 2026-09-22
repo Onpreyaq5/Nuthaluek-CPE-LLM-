@@ -68,11 +68,20 @@ def load_documents(knowledge_dir: Path) -> list[Document]:
     return docs
 
 
+def _vector_index():
+    """ตั้ง QDRANT_URL = ใช้ Qdrant เป็น Vector DB, ไม่ตั้ง = ค้นในหน่วยความจำ"""
+    if settings.qdrant_url:
+        from ..core.qdrant_index import QdrantVectorIndex
+
+        return QdrantVectorIndex(settings.qdrant_url, settings.qdrant_collection)
+    return None
+
+
 class KnowledgeBase:
-    """คลังความรู้ในหน่วยความจำ — โหลดครั้งเดียวตอน service เริ่มทำงาน"""
+    """คลังความรู้ — BM25 อยู่ในหน่วยความจำ ขาเวกเตอร์อยู่ใน Qdrant ถ้าตั้งค่าไว้"""
 
     def __init__(self) -> None:
-        self.retriever = HybridRetriever(rrf_k=settings.rrf_k)
+        self.retriever = HybridRetriever(rrf_k=settings.rrf_k, vector=_vector_index())
         self.documents: list[Document] = []
         self.files: list[str] = []
 
@@ -86,6 +95,11 @@ class KnowledgeBase:
     @property
     def ready(self) -> bool:
         return bool(self.documents)
+
+    @property
+    def vector_backend(self) -> str:
+        """qdrant | memory — บอกว่าตอนนี้ขาเวกเตอร์ค้นจากที่ไหนจริง"""
+        return getattr(self.retriever.vector, "backend", "memory")
 
     def search(
         self,
