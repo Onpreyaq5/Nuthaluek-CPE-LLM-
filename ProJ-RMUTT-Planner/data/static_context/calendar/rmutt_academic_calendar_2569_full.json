@@ -1,0 +1,61 @@
+{
+  "academic_year": 2569,
+  "university": "มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี",
+  "terms": {
+    "1/2569": {
+      "registration": {
+        "group_2_year_4_plus": "2026-06-22 to 2026-06-23",
+        "group_3_year_2_3": "2026-06-24 to 2026-06-25",
+        "group_4_late_web": "2026-06-26 to 2026-06-27",
+        "add_drop_no_w": "2026-06-28 to 2026-07-04",
+        "payment": "2026-07-05 to 2026-07-09",
+        "late_registration_with_fine": "2026-07-10 to 2026-08-18"
+      },
+      "key_dates": {
+        "term_start_special": "2026-07-04",
+        "term_start_normal": "2026-07-06",
+        "midterm_exam": "2026-08-29 to 2026-09-06",
+        "withdrawal_w_period": "2026-07-05 to 2026-09-21",
+        "final_exam": "2026-10-26 to 2026-11-08",
+        "term_end": "2026-11-08",
+        "grade_submission_deadline": "2026-11-16"
+      },
+      "graduation": {
+        "normal_request": "2026-07-07 to 2026-08-05",
+        "late_request": "2026-08-06 to 2026-09-04",
+        "english_exit_exam_deadline": "2026-11-16"
+      }
+    },
+    "2/2569": {
+      "registration": {
+        "group_1_year_1": "2026-11-16 to 2026-11-17",
+        "group_2_year_4_plus": "2026-11-18 to 2026-11-19",
+        "group_3_year_2_3": "2026-11-20 to 2026-11-21",
+        "group_4_late_web": "2026-11-22 to 2026-11-23",
+        "add_drop_no_w": "2026-11-24 to 2026-11-28",
+        "payment": "2026-11-29 to 2026-12-03",
+        "late_registration_with_fine": "2026-12-04 to 2027-01-12"
+      },
+      "key_dates": {
+        "term_start_special": "2026-11-21",
+        "term_start_normal": "2026-11-23",
+        "midterm_exam": "2027-01-16 to 2027-01-24",
+        "withdrawal_w_period": "2026-11-29 to 2027-02-08",
+        "final_exam": "2027-03-15 to 2027-03-28",
+        "term_end": "2027-03-28",
+        "grade_submission_deadline": "2027-04-05"
+      }
+    },
+    "summer/2569": {
+      "key_dates": {
+        "registration_all": "2027-03-29 to 2027-04-04",
+        "payment": "2027-04-05 to 2027-04-09",
+        "term_start": "2027-04-05",
+        "midterm_exam": "2027-05-03 to 2027-05-09",
+        "withdrawal_w_period": "2027-04-05 to 2027-05-10",
+        "final_exam": "2027-06-07 to 2027-06-13",
+        "term_end": "2027-06-13"
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "ok": false,
+  "error": {
+    "code": "NOT_FOUND_404",
+    "message": "ไม่พบแผนนี้",
+    "details": { "plan_id": 999 }
+  },
+  "meta": { "request_id": "req_9n0o1p2r", "took_ms": 2.4 }
+}

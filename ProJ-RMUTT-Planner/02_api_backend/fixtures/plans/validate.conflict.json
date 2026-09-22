@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "data": {
+    "conflicts": [
+      {
+        "type": "TIME_OVERLAP",
+        "message": "เวลาเรียนของ CPE201-01 และ CPE301-01 ชนกัน",
+        "section_ids": ["CPE201-01", "CPE301-01"],
+        "details": {}
+      }
+    ],
+    "warnings": [],
+    "summary": { "total_credits": 6, "section_count": 2, "is_valid": false }
+  },
+  "meta": { "request_id": "req_58ce36caa576936c", "took_ms": 2.03 }
+}
