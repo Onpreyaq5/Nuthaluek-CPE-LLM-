@@ -27,12 +27,15 @@ def validate_tools_for_intent(
 
     # Guardrail 1: Schedule conflict MUST use the engine (no LLM guessing times)
     if intent == "SCHEDULE_CONFLICT":
-        if "check_conflicts" not in tool_names:
-            reason = (
-                "ไม่สามารถตรวจสอบตารางชนได้โดยไม่ผ่านระบบตรวจ "
-                "กรุณาระบุรหัสวิชาที่ต้องการตรวจสอบ"
-            )
+        conflict_call = next((tc for tc in tools_called if tc.tool == "check_conflicts"), None)
+        
+        if conflict_call is None:
+            reason = "ไม่สามารถตรวจสอบตารางชนได้โดยไม่ผ่านระบบตรวจ กรุณาระบุรหัสวิชาที่ต้องการตรวจสอบ"
             logger.warning("[guardrail] SCHEDULE_CONFLICT without check_conflicts call")
+            return False, reason
+        elif not conflict_call.success:
+            reason = "ระบบตรวจตารางชน (โมดูล 06) ไม่ตอบสนองในขณะนี้ ยังไม่สามารถยืนยันได้ว่าตารางชนหรือไม่ กรุณาลองใหม่อีกครั้ง"
+            logger.warning(f"[guardrail] SCHEDULE_CONFLICT check_conflicts failed: {conflict_call.error}")
             return False, reason
 
     # Guardrail 2: Regulation / curriculum answers MUST have RAG evidence
