@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+*.tsbuildinfo
+.sites-runtime/
+
+preview-dist
+.test-build
+playwright-report
+test-results
