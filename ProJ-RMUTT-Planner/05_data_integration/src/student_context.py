@@ -57,6 +57,17 @@ class CategoryProgress:
         return asdict(self)
 
 
+_PROGRAM_NAMES = {
+    "CPE-2563": "วิศวกรรมคอมพิวเตอร์",
+    "CPE-2564": "วิศวกรรมคอมพิวเตอร์",
+    "CPE-2565": "วิศวกรรมคอมพิวเตอร์",
+    "CPE-2566": "วิศวกรรมคอมพิวเตอร์",
+    "CPE-2567": "วิศวกรรมคอมพิวเตอร์",
+    "CPE-2568": "วิศวกรรมคอมพิวเตอร์",
+    "CPE-2569": "วิศวกรรมคอมพิวเตอร์",
+}
+
+
 @dataclass
 class StudentContext:
     profile: StudentProfile
@@ -72,14 +83,27 @@ class StudentContext:
     expected_grad_year: int = 2570
 
     def to_dict(self) -> dict[str, Any]:
+        day_names = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+        preferences_dict = self.preferences.to_dict()
+        preferences_dict["free_days"] = [
+            day_names[d] if isinstance(d, int) and 0 <= d <= 6 else str(d)
+            for d in self.preferences.free_days
+        ]
+
         return {
             "student_id": self.profile.student_id,
+            "id_hash": self.profile.student_id,
             "name_th": self.profile.name_th,
             "program_id": self.profile.program_id,
+            "program_name": _PROGRAM_NAMES.get(self.profile.program_id, self.profile.program_id),
             "entry_year": self.profile.entry_year,
             "student_year": self.profile.student_year,
+            "year_level": self.profile.student_year,
             "curriculum_year": self.profile.curriculum_year,
             "expected_grad_year": self.expected_grad_year,
+            "credits_earned": self.total_credits_earned,
+            "credits_remaining": self.remaining_total_credits,
+            "gpax": self.gpax,
             "academic_summary": {
                 "total_credits_earned": self.total_credits_earned,
                 "min_total_credits": self.min_total_credits,
@@ -89,10 +113,11 @@ class StudentContext:
                 "failed_courses_count": len(self.failed_courses),
             },
             "passed_courses": self.passed_courses,
+            "completed_course_codes": self.passed_courses,
             "failed_courses": self.failed_courses,
             "unlocked_courses": self.unlocked_courses,
             "category_progress": [c.to_dict() for c in self.category_progress],
-            "preferences": self.preferences.to_dict(),
+            "preferences": preferences_dict,
         }
 
 

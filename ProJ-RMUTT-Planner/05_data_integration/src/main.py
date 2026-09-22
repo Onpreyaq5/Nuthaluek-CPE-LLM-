@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from .degree_plan import build_candidates, build_plan_input
@@ -388,3 +388,57 @@ def search_courses(q: str = Query(..., min_length=1), limit: int = Query(5, ge=1
         "count": len(results),
         "results": results,
     }
+
+
+@app.get("/students/{student_id}/context")
+def get_student_context_for_02(student_id: str):
+    """Alias ของ /context/{id} สำหรับ 02_api_backend"""
+    return get_student_context(student_id)
+
+
+@app.get("/students/{student_id}/transcript")
+def get_student_transcript_for_02(student_id: str):
+    """สร้าง TranscriptResponse-shaped output ({courses, credits_by_category}) จาก context
+    ที่มีอยู่แล้วในหน่วยความจำ ตามสัญญาที่ 02's schemas/students.py::TranscriptResponse ต้องการ"""
+    norm_id = student_id.strip()
+    ctx = student_contexts.get(norm_id)
+    if not ctx:
+        raise HTTPException(status_code=404, detail=f"ไม่พบข้อมูลนักศึกษารหัส {norm_id}")
+    courses = [
+        {
+            "course_code": code,
+            "course_name_th": (course_index.courses_by_code.get(code).name_th
+                                if course_index.courses_by_code.get(code) else ""),
+            "credits": (course_index.courses_by_code.get(code).credits
+                        if course_index.courses_by_code.get(code) else 0),
+            "grade": "ผ่าน" if code in ctx.passed_courses else "ไม่ผ่าน",
+            "term": "1/2569",
+        }
+        for code in (ctx.passed_courses + ctx.failed_courses)
+    ]
+    credits_by_category = {c.category_id: c.passed_credits for c in ctx.category_progress}
+    return {"courses": courses, "credits_by_category": credits_by_category}
+
+
+def _build_import_result(audit) -> dict:
+    """คำนวณผลลัพธ์ shape เดียวกับ 02's schemas/students.py::ImportResult
+    ({imported_courses, retake_required, credits_remaining, warnings})"""
+    plan_input = build_plan_input(audit)
+    return {
+        "imported_courses": len(audit.all_courses()),
+        "retake_required": [course.code for _, course in audit.failed_courses()],
+        "credits_remaining": plan_input.remaining_total or 0,
+        "warnings": [],
+    }
+
+
+@app.post("/import/graduate-check")
+async def import_graduate_check_http(request: Request):
+    """นำเข้าผลการตรวจสอบจบผ่าน HTTP และบันทึกลง student_contexts"""
+    raw = await request.body()
+    audit = parse_graduate_check(raw)
+    ctx = build_student_context_from_audit(audit, prereq_dag=prereq_dag)
+    if audit.student_id:
+        student_contexts[audit.student_id] = ctx
+    return _build_import_result(audit)
+

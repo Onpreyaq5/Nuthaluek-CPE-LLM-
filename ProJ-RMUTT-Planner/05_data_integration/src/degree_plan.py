@@ -115,14 +115,22 @@ def build_plan_input(
     if search_rows:
         attach_open_sections(cands, search_rows)
         term = next((r.term for r in search_rows if r.term), None)
+    earned_credits = audit.total_passed_credits
+    if earned_credits is None:
+        top_cats = [c for c in audit.categories if c.depth == 1 and c.passed_credits is not None]
+        earned_credits = (
+            sum(c.passed_credits for c in top_cats) if top_cats
+            else sum(c.credits for c in audit.all_courses() if c.passed)
+        )
+
     remaining_total = None
-    if audit.min_total_credits is not None and audit.total_passed_credits is not None:
-        remaining_total = max(audit.min_total_credits - audit.total_passed_credits, 0)
+    if audit.min_total_credits is not None:
+        remaining_total = max(audit.min_total_credits - earned_credits, 0)
     return DegreePlanInput(
         student_id=audit.student_id,
         term=term,
         min_total_credits=audit.min_total_credits,
-        passed_credits=audit.total_passed_credits,
+        passed_credits=earned_credits,
         remaining_total=remaining_total,
         categories=audit.remaining_by_category(),
         candidates=cands,

@@ -62,10 +62,16 @@ def test_build_student_context_from_audit():
 
     d = ctx.to_dict()
     assert d["student_id"] == "116610462000-0"
+    assert d["id_hash"] == "116610462000-0"
+    assert d["program_name"] == "วิศวกรรมคอมพิวเตอร์"
     assert d["entry_year"] == 2566
+    assert d["student_year"] == d["year_level"]
+    assert d["credits_earned"] == 20
+    assert d["credits_remaining"] == 123
+    assert d["completed_course_codes"] == d["passed_courses"]
     assert d["academic_summary"]["total_credits_earned"] == 20
     assert d["academic_summary"]["min_total_credits"] == 143
     assert d["academic_summary"]["remaining_total_credits"] == 123
     assert d["preferences"]["no_early_class"] is True
-    assert d["preferences"]["free_days"] == [4]
+    assert d["preferences"]["free_days"] == ["FRI"]
     assert len(d["category_progress"]) > 0

@@ -1,9 +1,11 @@
-"""Unit tests for FastAPI endpoints in 05_data_integration"""
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 from src.main import app
 
 client = TestClient(app)
+FIX = Path(__file__).parent / "fixtures"
 
 
 def test_api_health():
@@ -98,3 +100,60 @@ def test_api_search_courses():
     data = res.json()
     assert data["count"] > 0
     assert "04000201-62" in [r["code"] for r in data["results"]]
+
+
+def test_api_get_context_shape_for_02_and_03():
+    res = client.get("/students/sample/context")
+    assert res.status_code == 200
+    data = res.json()
+    # Contract requirements for 02/03/06/07
+    assert "student_id" in data
+    assert "id_hash" in data
+    assert "program_id" in data
+    assert "program_name" in data
+    assert "curriculum_year" in data
+    assert "year_level" in data
+    assert "credits_earned" in data
+    assert "credits_remaining" in data
+    assert "gpax" in data
+    assert "completed_course_codes" in data
+    assert "preferences" in data
+    # Check free_days in MON..SUN format
+    if "free_days" in data["preferences"]:
+        assert all(isinstance(d, str) for d in data["preferences"]["free_days"])
+
+
+def test_api_get_transcript_for_02():
+    res = client.get("/students/sample/transcript")
+    assert res.status_code == 200
+    data = res.json()
+    assert "courses" in data
+    assert "credits_by_category" in data
+    assert isinstance(data["courses"], list)
+    assert isinstance(data["credits_by_category"], dict)
+
+    # 404 for unknown student
+    res_404 = client.get("/students/unknown_student_9999/transcript")
+    assert res_404.status_code == 404
+
+
+def test_api_import_graduate_check():
+    sample_file = FIX / "graduate_check_sample.html"
+    if not sample_file.exists():
+        pytest.skip("Fixture not found")
+
+    raw_html = sample_file.read_bytes()
+    res = client.post(
+        "/import/graduate-check",
+        content=raw_html,
+        headers={"Content-Type": "text/html"},
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["imported_courses"] > 0
+    # Must not report fake 0 remaining credits
+    assert data["credits_remaining"] != 0
+    assert data["credits_remaining"] == 123
+    assert isinstance(data["retake_required"], list)
+    assert isinstance(data["warnings"], list)
+
