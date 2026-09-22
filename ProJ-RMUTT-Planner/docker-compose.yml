@@ -55,13 +55,22 @@ services:
 
   # ---------- 01 Frontend ----------
   web_app:
-    build: ./01_web_app
+    build:
+      context: ./01_web_app
+      args:
+        # Vite ฝังค่านี้ตอน build ตั้งตอน runtime ไม่มีผล
+        # false = เรียก API จริงผ่าน nginx, true = ใช้ข้อมูลจำลองในเบราว์เซอร์
+        VITE_USE_MOCKS: "false"
     container_name: rmutt_web
-    # 3000 ถูก main_app (09) ใช้อยู่ ตัวนี้จึงมาที่ 3001
-    ports: ["3001:3000"]
+    # 01 เป็น Vite + nginx ซึ่ง nginx ฟังที่พอร์ต 80 ไม่ใช่ 3000
+    # ก่อนหน้านี้ map 3001:3000 ทำให้เปิดไม่ได้เลย (connection refused)
+    # 3000 ฝั่ง host เป็นของ main_app (09) ตัวนี้จึงมาที่ 3001
+    ports: ["3001:80"]
     environment:
       <<: *common-env
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      # nginx ใช้ตัวนี้ proxy /api/ ไปที่ 02
+      # ค่าตั้งต้นในภาพคือ 127.0.0.1:8000 ซึ่งชี้กลับมาที่ตัวเอง = proxy ไม่ติด
+      API_UPSTREAM: http://api_backend:8000
     depends_on: [api_backend]
     networks: [rmutt-net]
 

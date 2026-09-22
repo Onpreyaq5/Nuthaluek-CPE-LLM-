@@ -1,0 +1,2 @@
+# สคริปต์ shell ต้องเป็น LF เสมอ ไม่งั้น shebang พังเมื่อรันใน container
+*.sh text eol=lf

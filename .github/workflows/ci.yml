@@ -67,6 +67,9 @@ jobs:
       # โค้ดชี้ไป host ที่ไม่มีใน compose = เรียกข้ามบริการไม่ติด
       # build ผ่านปกติ จะรู้ตัวก็ต่อเมื่อรันจริงแล้วลองยิงเท่านั้น
       - run: python scripts/check_service_urls.py
+      # HEALTHCHECK ที่เรียก curl แต่ image ไม่มี curl จะทำให้ compose ค้างรอตลอดไป
+      # และไฟล์ .sh ที่เป็น CRLF จะพังตอน exec เท่านั้น build ผ่านปกติ
+      - run: python scripts/check_dockerfiles.py
 
   # ---- ต้อง build แล้วรันขึ้นจริง ไม่ใช่แค่ไฟล์ถูกรูปแบบ ----
   compose-up:

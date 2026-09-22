@@ -88,13 +88,22 @@ curl http://localhost:8000/health
 > หน้าเว็บมีสองตัว — `:3000` คือโมดูล 09 ที่ใช้งานได้ครบ (จัดตาราง ตรวจชน ถามระเบียบ)
 > และ `:3001` คือโมดูล 01 ที่คุยกับ `api_backend` ตามสถาปัตยกรรมเต็ม
 
-ตรวจก่อนรันจริงโดยไม่ต้องมี Docker:
+**ตรวจให้ครบจบในคำสั่งเดียว** (ต้องมี Docker):
+```bash
+bash scripts/verify_docker.sh
+```
+build ทุกบริการ → ยกขึ้น → รอจนพร้อม → เช็คทุก container ว่า running →
+ยิง endpoint จริงของทั้ง 14 บริการ → พิสูจน์ว่าเรียกข้ามบริการได้จริง
+ไม่ผ่านตรงไหนจะพิมพ์ log ของตัวนั้นให้เลย
+
+**ตรวจโดยไม่ต้องมี Docker** (ใช้ใน CI ด้วย):
 ```bash
 pip install pyyaml
-python scripts/check_compose.py
+python scripts/check_compose.py        # YAML, ไฟล์ที่ COPY, พอร์ตชน, depends_on ค้าง
+python scripts/check_service_urls.py   # โค้ดชี้ไป host ที่ไม่มีใน compose ไหม
+python scripts/check_dockerfiles.py    # HEALTHCHECK ไม่มี curl, .sh เป็น CRLF, พอร์ตไม่ตรง
 ```
-ตรวจว่า YAML ถูกต้อง ไฟล์ที่ Dockerfile สั่ง COPY มีครบ พอร์ตไม่ชนกัน
-และ `depends_on` ไม่ชี้ไปหาบริการที่ไม่มี healthcheck (ซึ่งจะทำให้ compose ค้างรอตลอดไป)
+สามตัวนี้ดักปัญหาที่ `docker build` ผ่านแต่พังตอนรัน ซึ่งเป็นประเภทที่หาสาเหตุยากที่สุด
 
 ออปชันเสริม:
 ```bash
