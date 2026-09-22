@@ -4,13 +4,12 @@
 #   เปิดเว็บที่ http://localhost:3000
 #
 # โปรไฟล์เสริม (ไม่ขึ้นโดยค่าตั้งต้น)
-#   --profile wip           โมดูลที่โค้ดจริงยังอยู่บน branch ของเจ้าของ (01)
 #   --profile monitoring    Prometheus + Grafana
 #   --profile local-ai      โมเดลในเครื่องผ่าน Ollama
 #   --profile vector        Qdrant
 #
-# ทำไม 01 ไม่ขึ้นโดยค่าตั้งต้น: บน main ยังไม่มี package.json ทำให้ docker build พังทั้งชุด
-# โค้ดจริงอยู่บน branch feat/web-app — merge เข้ามาแล้วค่อยเอา profiles ออก
+# หน้าเว็บมีสองตัว: main_app (09) ที่ :3000 เป็นตัวที่ใช้งานได้ครบ
+# ส่วน web_app (01) ที่ :3001 เป็นหน้าเว็บที่คุยกับ api_backend (02) ตามสถาปัตยกรรมเต็ม
 
 name: rmutt-planner
 
@@ -53,11 +52,11 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
     networks: [rmutt-net]
 
-  # ---------- 01 Frontend (โค้ดจริงอยู่บน branch feat/web-app) ----------
+  # ---------- 01 Frontend ----------
   web_app:
     build: ./01_web_app
     container_name: rmutt_web
-    profiles: [wip]
+    # 3000 ถูก main_app (09) ใช้อยู่ ตัวนี้จึงมาที่ 3001
     ports: ["3001:3000"]
     environment:
       <<: *common-env
