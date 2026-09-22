@@ -94,15 +94,20 @@ jobs:
 
       - name: ยิงของจริง
         run: |
-          set -e
-          echo "--- หน้าเว็บ ---"
-          curl -fsS http://localhost:3000/ | head -c 200; echo
-          echo "--- /api/courses ผ่าน rewrite ของ Next ---"
-          curl -fsS "http://localhost:3000/api/courses?term=1/2569" | head -c 200; echo
-          echo "--- ตรวจตารางชนจริง ---"
-          curl -fsS -X POST http://localhost:3000/api/validate             -H 'Content-Type: application/json'             -d '{"term":"1/2569","section_ids":["04100201-66-01"]}' | head -c 250; echo
-          echo "--- RAG ของโมดูล 07 ---"
-          curl -fsS http://localhost:8700/health | head -c 200; echo
+          set -euo pipefail
+          # ห้ามต่อ | head ตรง ๆ เพราะ exit code ของ pipeline จะกลายเป็นของ head (0 เสมอ)
+          # แล้ว curl พังก็ไม่มีใครรู้ CI จะเขียวทั้งที่ระบบตอบ 404 (เคยพลาดมาแล้ว)
+          check() {
+            local name="$1" expect="$2"; shift 2
+            echo "--- $name ---"
+            curl -fsS --max-time 20 "$@" -o /tmp/resp.txt
+            head -c 220 /tmp/resp.txt; echo
+            grep -q "$expect" /tmp/resp.txt               || { echo "::error::$name ตอบมาแต่ไม่มี '$expect' ในคำตอบ"; exit 1; }
+          }
+          check "หน้าเว็บ" "<!DOCTYPE html" http://localhost:3000/
+          check "/api/courses ผ่าน rewrite ของ Next" '"course_code"'             "http://localhost:3000/api/courses?term=1/2569"
+          check "ตรวจตารางชนจริง" '"conflicts"'             -X POST http://localhost:3000/api/validate             -H 'Content-Type: application/json'             -d '{"term":"1/2569","section_ids":["04100201-66-01"]}'
+          check "RAG ของโมดูล 07" '"documents"' http://localhost:8700/health
 
       - name: เก็บ log เมื่อพัง
         if: failure()

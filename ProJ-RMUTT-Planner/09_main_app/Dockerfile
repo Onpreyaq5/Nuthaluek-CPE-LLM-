@@ -7,7 +7,11 @@ RUN npm ci
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
+# Next ประเมิน rewrites() ตอน build แล้วฝังผลลงใน routes-manifest.json
+# ตั้งค่านี้ตอน runtime อย่างเดียวไม่มีผล /api/* จะ 404 ทั้งหมด (เคยพลาดมาแล้ว)
+# ค่าตั้งต้นเป็นชื่อบริการใน docker-compose ซึ่งคงที่อยู่แล้ว
+ARG API_PROXY_URL=http://main_api:8009
+ENV NEXT_TELEMETRY_DISABLED=1 API_PROXY_URL=$API_PROXY_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

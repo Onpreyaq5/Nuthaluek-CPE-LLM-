@@ -23,12 +23,15 @@ services:
   # เป็นตัวที่ผู้ใช้เปิดใช้งานจริง รวมตรรกะตรวจตารางชนและ RAG ไว้ในตัว
   # จึงไม่ต้องรอให้โมดูล 01-08 เสร็จครบก่อนถึงจะมีของให้ดู
   main_app:
-    build: ./09_main_app
+    build:
+      context: ./09_main_app
+      args:
+        # ต้องส่งตอน build ไม่ใช่แค่ตอน runtime เพราะ Next ฝัง rewrite ลง build ไปแล้ว
+        API_PROXY_URL: http://main_api:8009
     container_name: rmutt_main_app
     ports: ["3000:3000"]
     environment:
       <<: *common-env
-      # ชี้ /api/* ไปที่ container ฝั่ง Python (ดู next.config.mjs)
       API_PROXY_URL: http://main_api:8009
     depends_on:
       main_api: {condition: service_healthy}
