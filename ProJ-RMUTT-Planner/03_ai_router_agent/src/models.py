@@ -4,9 +4,8 @@ Input  : RouterRequest  (from Module 02 API/Backend)
 Output : RouterResponse (to Module 07 RAG/LLM Engine)
 """
 from __future__ import annotations
-from typing import Any, List, Optional, ClassVar
+from typing import Any, List, Optional, ClassVar, Literal
 from pydantic import BaseModel, Field
-
 
 # ──────────────────────────────────────────────────────────────
 #  Inbound (from Module 02)
@@ -17,14 +16,21 @@ class Message(BaseModel):
     role: str                   # "user" | "assistant" | "tool"
     content: str
 
+class StudentPreferences(BaseModel):
+    free_days: List[Literal["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]] = Field(default_factory=list)
+    no_early_class: bool = False
+    max_credits: Optional[int] = None
 
 class RouterRequest(BaseModel):
     """Payload that Module 02 (API/Backend) sends to the router."""
-    student_id: str
-    message: str
+    request_id: Optional[str] = None
+    student_id: str             # synthetic_hash_only
     session_id: str
+    message: str
     history: List[Message] = Field(default_factory=list)
     plan_draft: Optional[dict] = None   # draft plan if user is mid-session
+    term: Optional[str] = None
+    preferences: StudentPreferences = Field(default_factory=StudentPreferences)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -97,6 +103,6 @@ class RouterResponse(BaseModel):
 # ──────────────────────────────────────────────────────────────
 
 class SSEEvent(BaseModel):
-    """One Server-Sent Event (type: token | tool_start | tool_end | sources | done | error)."""
+    """One Server-Sent Event (type: clarify | refusal | context_ready | done | error | ...)."""
     type: str
     data: Any

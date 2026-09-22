@@ -329,3 +329,23 @@ SLOT_QUESTIONS: dict[str, str] = {
     "course_codes": "ขอรหัสวิชาที่ต้องการตรวจสอบหน่อยได้ไหมครับ? (เช่น CPE101)",
     "term":         "ต้องการจัดตารางเทอมไหนครับ? (เช่น 1/2569)",
 }
+
+def resolve_term(extracted_term: str | None, req_term: str | None) -> tuple[str | None, int | None]:
+    """
+    Resolve term fallback:
+    1. If message specifies term, use it.
+    2. Else use req.term.
+    Returns (resolved_term, academic_year)
+    """
+    term = extracted_term or req_term
+    if not term:
+        return None, None
+    
+    # Try to extract year from term (e.g. "1/2569" -> 2569)
+    try:
+        if "/" in term:
+            parts = term.split("/")
+            return term, int(parts[-1])
+        return term, int(re.search(r'\d{4}', term).group())
+    except Exception:
+        return term, None
