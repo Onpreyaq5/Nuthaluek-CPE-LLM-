@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     llm_model: str = "gemini-2.0-flash"
 
     # Internal service URLs (Docker Compose hostnames)
-    local_model_url: str = "http://local_ai:8300"               # cheap classify
+    local_model_url: str = "http://local_ai:11434"              # Ollama ฟังที่ 11434 ไม่ใช่ 8300
     course_data_url: str = "http://course_data:8400"            # module 04
     data_integration_url: str = "http://data_integration:8500"  # module 05
     schedule_engine_url: str = "http://schedule_engine:8600"    # module 06

@@ -3,10 +3,11 @@
 #   docker compose up -d --build        ยกระบบที่ใช้งานได้จริงขึ้นทั้งหมด
 #   เปิดเว็บที่ http://localhost:3000
 #
+# ขึ้นครบตามแผนภาพสถาปัตยกรรม: หน้าเว็บ, API, AI Router, บริการข้อมูล,
+# เครื่องมือจัดตาราง, RAG, ระบบเก็บสถิติ, ฐานข้อมูล, Vector DB และ Monitoring
+#
 # โปรไฟล์เสริม (ไม่ขึ้นโดยค่าตั้งต้น)
-#   --profile monitoring    Prometheus + Grafana
-#   --profile local-ai      โมเดลในเครื่องผ่าน Ollama
-#   --profile vector        Qdrant
+#   --profile local-ai      โมเดลในเครื่องผ่าน Ollama (image ใหญ่ ต้องดึงโมเดลเอง)
 #
 # หน้าเว็บมีสองตัว: main_app (09) ที่ :3000 เป็นตัวที่ใช้งานได้ครบ
 # ส่วน web_app (01) ที่ :3001 เป็นหน้าเว็บที่คุยกับ api_backend (02) ตามสถาปัตยกรรมเต็ม
@@ -162,7 +163,12 @@ services:
     ports: ["8600:8600"]
     environment:
       <<: *common-env
+      # ขาดตัวนี้ 06 จะเรียก 04 ไม่ติด เพราะค่าตั้งต้นในโค้ดชี้ไป host ที่ไม่มีใน compose
+      # และจะรู้ตัวก็ต่อเมื่อรันจริงแล้วลองยิงเท่านั้น build ผ่านปกติ
+      COURSE_DATA_URL: http://course_data:8400
       DATA_INTEGRATION_URL: http://data_integration:8500
+      CORS_ORIGINS: http://localhost:3000,http://localhost:3001
+      HTTP_TIMEOUT_SECONDS: "10"
       REDIS_URL: redis://redis:6379/2
       MAX_SOLVER_SECONDS: 10
       MAX_PLAN_CANDIDATES: 5
@@ -183,6 +189,9 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       KNOWLEDGE_DIR: /app/data/knowledge
       SEED_DIR: /app/data/seed
+      # 07 เรียก 05 และ 06 ต่อ ระบุให้ชัดแทนการพึ่งค่าตั้งต้นในโค้ด
+      DATA_INTEGRATION_URL: http://data_integration:8500
+      SCHEDULE_ENGINE_URL: http://schedule_engine:8600
       MIN_SCORE: ${MIN_SCORE:-0.21}
       DEFAULT_MIN_CREDITS: 9
       DEFAULT_MAX_CREDITS: 21
@@ -233,15 +242,25 @@ services:
 
   # ยังไม่มีใครใช้: โมดูล 07 ค้นแบบ in-memory (BM25 + TF-IDF) จึงไม่ต้องมี vector DB
   # เปิดเมื่อคลังความรู้โตจนต้องใช้ embedding จริง: docker compose --profile vector up -d
+  # ช่อง Vector DB ในแผนภาพ (Retrieval / Knowledge)
+  # ตอนนี้ 07 ค้นด้วย TF-IDF ในหน่วยความจำ ยังไม่ได้เรียก Qdrant
+  # ยกขึ้นไว้ให้ครบตามแผนภาพและพร้อมต่อเมื่อคลังโตจนต้องใช้ embedding จริง
   qdrant:
     image: qdrant/qdrant:latest
     container_name: rmutt_qdrant
-    profiles: [vector]
     ports: ["6333:6333"]
     volumes: [qdrantdata:/qdrant/storage]
     networks: [rmutt-net]
 
   # ---------- Optional: โมเดลในเครื่อง ----------
+  # ช่อง Local AI Model ในแผนภาพ — 03 เรียกผ่าน LOCAL_MODEL_URL
+  #
+  # ยังอยู่หลัง profile โดยตั้งใจ: image ~1.5 GB และตัว Ollama เปล่า ๆ ยังไม่มีโมเดล
+  # ต้องดึงโมเดลเองอีกหลาย GB ถ้าเปิดโดยค่าตั้งต้น `docker compose up` ครั้งแรก
+  # จะดาวน์โหลดนานมากจนดูเหมือนค้าง
+  #
+  #   docker compose --profile local-ai up -d local_ai
+  #   docker compose exec local_ai ollama pull llama3.2:3b
   local_ai:
     image: ollama/ollama:latest
     container_name: rmutt_local_ai
@@ -251,10 +270,10 @@ services:
     networks: [rmutt-net]
 
   # ---------- Optional: Monitoring ----------
+  # ช่อง Monitoring & Analytics ในแผนภาพ
   prometheus:
     image: prom/prometheus:latest
     container_name: rmutt_prometheus
-    profiles: [monitoring]
     ports: ["9090:9090"]
     volumes:
       - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -263,8 +282,8 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: rmutt_grafana
-    profiles: [monitoring]
-    ports: ["3001:3000"]
+    # 3001 เป็นของ web_app (01) แล้ว ย้ายมา 3002 ไม่งั้นพอร์ตชนกันตอนขึ้นพร้อมกัน
+    ports: ["3002:3000"]
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
     volumes: [grafanadata:/var/lib/grafana]

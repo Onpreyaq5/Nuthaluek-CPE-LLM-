@@ -55,11 +55,11 @@ class Settings(BaseSettings):
     )
 
     # URL ของโมดูล 04-08 เมื่อ ADAPTER_xx=http — PLACEHOLDER: ยังไม่มีสัญญาจริงจากทีม (ดูสรุปท้าย Prompt 3)
-    COURSE_CATALOG_URL: str = "http://course_catalog:8400"
-    STUDENT_DATA_URL: str = "http://student_data:8500"
-    PLAN_ENGINE_URL: str = "http://plan_engine:8600"
-    EXPLAINER_URL: str = "http://explainer:8700"
-    LOG_SINK_URL: str = "http://log_sink:8800"
+    COURSE_CATALOG_URL: str = "http://course_data:8400"
+    STUDENT_DATA_URL: str = "http://data_integration:8500"
+    PLAN_ENGINE_URL: str = "http://schedule_engine:8600"
+    EXPLAINER_URL: str = "http://rag_llm:8700"
+    LOG_SINK_URL: str = "http://feedback:8800"
 
     # inprocess loader (ADAPTER_04/05=inprocess): ชื่อโฟลเดอร์โมดูลที่วางไว้ข้างๆ 02_api_backend ใต้ MODULES_ROOT
     # MODULE_04_DIR เป็น PLACEHOLDER เพราะยังไม่ทราบชื่อโฟลเดอร์จริงของโมดูล 04 (ยังไม่มีใน GitHub)

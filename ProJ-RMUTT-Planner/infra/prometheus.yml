@@ -12,3 +12,10 @@ scrape_configs:
           - schedule_engine:8600
           - rag_llm:8700
           - feedback:8800
+          # 09 เป็นตัวที่ผู้ใช้เปิดใช้งานจริง ต้องเฝ้าดูด้วย
+          - main_api:8009
+
+  - job_name: infrastructure
+    static_configs:
+      - targets:
+          - qdrant:6333

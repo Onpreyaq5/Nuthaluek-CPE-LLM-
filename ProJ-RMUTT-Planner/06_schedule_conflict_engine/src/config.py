@@ -16,7 +16,7 @@ class Settings(BaseModel):
         default=os.getenv("DATA_INTEGRATION_URL", "http://data_integration:8500")
     )
     course_data_url: str = Field(
-        default=os.getenv("COURSE_DATA_URL", "http://course_data_services:8400")
+        default=os.getenv("COURSE_DATA_URL", "http://course_data:8400")
     )
 
     # HTTP client timeouts

@@ -64,6 +64,9 @@ jobs:
         with: { python-version: "3.11" }
       - run: pip install pyyaml
       - run: python scripts/check_compose.py
+      # โค้ดชี้ไป host ที่ไม่มีใน compose = เรียกข้ามบริการไม่ติด
+      # build ผ่านปกติ จะรู้ตัวก็ต่อเมื่อรันจริงแล้วลองยิงเท่านั้น
+      - run: python scripts/check_service_urls.py
 
   # ---- ต้อง build แล้วรันขึ้นจริง ไม่ใช่แค่ไฟล์ถูกรูปแบบ ----
   compose-up:
