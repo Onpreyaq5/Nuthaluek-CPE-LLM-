@@ -1,14 +1,35 @@
 # สำรองงานทั้งหมด — RMUTT Study Planner
 
-โฟลเดอร์นี้รวมเอกสารส่งงานและสรุปผลงานของทุกคนไว้ที่เดียว
-ไฟล์ทั้งหมดสร้างจากข้อมูลในรีโปนี้เอง ตรวจย้อนได้ทุกตัวเลข
+ระบบวางแผนการเรียน มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี
 
-- คอมมิตทั้งหมด **82** ครั้ง (รวม merge 8 ครั้ง)
-- ผู้ร่วมพัฒนา **8** คน
-- สาขาที่ใช้พัฒนา **15** สาขา
-- ช่วงเวลาทำงาน **15 กรกฎาคม 2569 – 23 กันยายน 2569**
+## เปิดใช้งานระบบจริง
 
-สร้างใหม่เมื่อประวัติเปลี่ยน: `python ProJ-RMUTT-Planner/scripts/build_backup.py`
+| เปิดอะไร | ลิงก์ |
+|---|---|
+| แอปหลัก (09) — จัดตาราง ตรวจตารางชน ถามระเบียบ ไม่ต้องเข้าสู่ระบบ | https://scientific-trips-recognize-sight.trycloudflare.com |
+| หน้าเว็บ CampusMate (01) — ระบบเต็ม เข้าสู่ระบบ admin / admin1234 | https://eclipse-formatting-retired-montgomery.trycloudflare.com |
+| หน้าเว็บ CampusMate (01) — ชุดเดิม | https://broadband-potter-primary-guestbook.trycloudflare.com |
+| Grafana — กราฟเฝ้าดูระบบ เปิดดูได้โดยไม่ต้องเข้าสู่ระบบ | https://lane-liberty-increasing-hotel.trycloudflare.com |
+| เอกสารทั้งหมดในรูปแบบเว็บ (GitHub Pages) | https://onpreyaq5.github.io/Nuthaluek-CPE-LLM-/ |
+
+> ลิงก์ `trycloudflare.com` เป็นลิงก์ชั่วคราว ใช้ได้เฉพาะตอนเครื่องที่รัน Docker เปิดอยู่
+> และเปลี่ยนใหม่ทุกครั้งที่สั่งขึ้น ถ้าเปิดไม่ได้ให้รันระบบเองตามหัวข้อด้านล่าง
+
+## รันระบบเองด้วย Docker
+
+```bash
+cd ProJ-RMUTT-Planner
+cp .env.example .env
+docker compose up -d --build        # เปิด http://localhost:3000
+bash scripts/verify_docker.sh       # ตรวจทุกบริการว่าทำงานจริง
+```
+
+หน้าเว็บ CampusMate ตัวเต็มพร้อมทุกบริการที่เรียกใช้:
+
+```bash
+docker compose -f deploy/webapp/docker-compose.yml --env-file .env up -d --build
+python deploy/webapp/verify.py      # เปิด http://localhost:4001
+```
 
 ## ไฟล์ในโฟลเดอร์นี้
 
@@ -17,83 +38,21 @@
 | `01_สถาปัตยกรรมระบบทั้งหมด.pdf` | ภาพรวม 9 โมดูล Use Case มายด์แมป ลำดับการทำงาน |
 | `02_สไลด์บทที่7-RAG-LLM.pdf` | สไลด์ 16:9 เรื่องการค้นคืนเอกสารและ LLM |
 | `03_เดโมเปิดในเบราว์เซอร์ได้เลย.html` | ไฟล์เดียวจบ ดับเบิลคลิกใช้งานได้ ไม่ต้องติดตั้งอะไร |
-| `ประวัติการพัฒนา.html` | ตารางเต็ม คอมมิตทุกครั้ง แยกตามคนและเดือน |
-| `ประวัติการพัฒนา.pdf` | ไฟล์เดียวกัน สำหรับพิมพ์หรือแนบส่ง |
+| `ประวัติการพัฒนา.html` · `.pdf` | ผลงานรายคน ใครทำโมดูลไหน และคอมมิตทุกรายการ |
+| `โปรเจกต์ทั้งหมด.zip` | สำเนาโค้ดทั้งโปรเจกต์ ไม่มี node_modules ไม่มีคีย์ |
+| `ประวัติ-git-ทั้งหมด.bundle` | ประวัติ git ครบทุกคอมมิตทุกสาขา |
 
-## ผลงานรายบุคคล
+## กู้คืนจากไฟล์สำรอง
 
-| ผู้พัฒนา | คอมมิต | บรรทัดที่เพิ่ม | บรรทัดที่ลบ | ไฟล์ที่แก้ | ช่วงเวลาที่ทำงาน |
-|---|---:|---:|---:|---:|---|
-| Onpreyaq5 | 39 | +61,397 | -13,485 | 293 | 2026-08-07 – 2026-09-23 |
-| Nuthaluek kokotsomrong | 14 | +9,667 | -1,086 | 52 | 2026-07-15 – 2026-09-23 |
-| fffalafair | 5 | +14,284 | -12,879 | 186 | 2026-09-20 – 2026-09-22 |
-| Phanlop Boonluea | 5 | +14,879 | -514 | 211 | 2026-09-21 – 2026-09-22 |
-| cheewakorn | 5 | +4,552 | -725 | 37 | 2026-09-21 – 2026-09-22 |
-| Marisa Pimpralab | 3 | +2,159 | -237 | 35 | 2026-09-20 – 2026-09-22 |
-| DevnameJay | 2 | +2,628 | -20 | 15 | 2026-09-20 – 2026-09-22 |
-| Saran Thanyawikai | 1 | +18,358 | -15 | 53 | 2026-09-22 – 2026-09-22 |
-
-> นับเฉพาะคอมมิตที่ไม่ใช่ merge · จำนวนบรรทัดรวมไฟล์ที่เครื่องมือสร้างให้ด้วย
-> จึงควรดูประกอบกับจำนวนคอมมิตและโมดูลที่รับผิดชอบ
-
-## ใครทำโมดูลไหน
-
-**Onpreyaq5** — 09 แอปรวม (94), 07 RAG + LLM (89), ใบงาน LAB (89), 02 API / Backend (26), 03 AI Router / Agent (23)
-
-**Nuthaluek kokotsomrong** — 09 แอปรวม (39), หน้าเว็บเอกสาร (7), 07 RAG + LLM (3), เอกสารประกอบ (2), สคริปต์ตรวจสอบ (1)
-
-**fffalafair** — 02 API / Backend (393)
-
-**Phanlop Boonluea** — 02 API / Backend (182), 03 AI Router / Agent (18), 04 ข้อมูลรายวิชา (4), เอกสารประกอบ (1), 09 แอปรวม (1)
-
-**cheewakorn** — 06 ตรวจตารางชน / จัดตาราง (50)
-
-**Marisa Pimpralab** — 08 สถิติและความเห็น (47)
-
-**DevnameJay** — 05 ข้อมูลนักศึกษา (19)
-
-**Saran Thanyawikai** — 01 หน้าเว็บผู้ใช้ (53)
-
-## ความเคลื่อนไหวรายเดือน
-
-| เดือน | คอมมิต | ผู้พัฒนา |
-|---|---:|---|
-| กรกฎาคม 2569 | 3 | Nuthaluek kokotsomrong (3) |
-| สิงหาคม 2569 | 3 | Onpreyaq5 (3) |
-| กันยายน 2569 | 68 | Onpreyaq5 (36), Nuthaluek kokotsomrong (11), fffalafair (5), Phanlop Boonluea (5), cheewakorn (5), Marisa Pimpralab (3), DevnameJay (2), Saran Thanyawikai (1) |
-
-## สาขาที่ใช้พัฒนา
-
-- `develop`
-- `docs/architecture-page`
-- `docs/onboarding`
-- `feat/api-backend`
-- `feat/data-integration`
-- `feat/docker-runnable`
-- `feat/feedback`
-- `feat/gemini-proxy-and-pdf`
-- `feat/github-pages-demo`
-- `feat/rag-in-browser`
-- `feat/schedule-enging`
-- `feat/web-app`
-- `fix/09-security-ux-audit`
-- `main`
-- `merge/all-modules`
-
-## การรวมงานเข้าสาขาหลัก
-
-| วันที่ | ผู้รวม | รายละเอียด |
-|---|---|---|
-| 2026-09-23 | Onpreyaq5 | merge feat/web-app |
-| 2026-09-23 | Onpreyaq5 | merge feat/data-integration |
-| 2026-09-23 | Onpreyaq5 | merge feat/schedule-enging |
-| 2026-09-23 | Onpreyaq5 | merge feat/api-backend |
-| 2026-09-23 | Onpreyaq5 | merge develop |
-| 2026-09-23 | Onpreyaq5 | merge feat/feedback |
-| 2026-09-23 | Marisa Pimpralab | Merge branch 'main' into feat/feedback |
-| 2026-09-22 | Marisa Pimpralab | Merge branch 'develop' into feat/feedback |
+```bash
+git clone ประวัติ-git-ทั้งหมด.bundle rmutt-planner   # ได้ประวัติครบทุกคน
+unzip โปรเจกต์ทั้งหมด.zip                              # หรือเอาแค่ไฟล์
+```
 
 ---
+
+สร้างไฟล์ในโฟลเดอร์นี้ใหม่: `python ProJ-RMUTT-Planner/scripts/build_backup.py`
+(83 คอมมิต · 8 คน · 15 สาขา · 15 กรกฎาคม 2569 – 23 กันยายน 2569)
 
 เอกสารระเบียบ หลักสูตร ปฏิทินการศึกษา และตารางสอนในระบบนี้
 **เป็นข้อมูลจำลองสำหรับต้นแบบ** ไม่ใช่ข้อมูลจริงของมหาวิทยาลัย

@@ -8,6 +8,10 @@
   2. เขียน backup_project/README.md (เปิดอ่านได้ทันทีบนหน้า GitHub)
   3. เขียน backup_project/ประวัติการพัฒนา.html (ตารางเต็ม เปิดในเบราว์เซอร์)
   4. คัดลอกเอกสารและเดโมจาก docs/ มาไว้ในโฟลเดอร์เดียวกัน
+  5. เก็บสำเนาโปรเจกต์ทั้งก้อนและประวัติ git เป็นไฟล์เดียว (zip + bundle)
+
+เก็บเป็นไฟล์บีบอัดแทนการคัดลอกไฟล์ทีละอัน เพราะถ้าคัดลอกตรง ๆ จะมีโค้ดสองชุด
+ในรีโปเดียวกัน คนเปิดมาจะไม่รู้ว่าชุดไหนคือของจริง และทุกครั้งที่แก้โค้ดต้องตามแก้สองที่
 
 ตัวเลขทุกตัวมาจาก git log ไม่ได้พิมพ์ทับเอง รันซ้ำเมื่อไหร่ก็ได้ผลตรงกับประวัติล่าสุดเสมอ
 """
@@ -22,6 +26,23 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]      # รากรีโป
 OUT = ROOT / "backup_project"
 SEP = "\x1f"
+
+# ลิงก์เปิดใช้งานระบบ — แก้ตรงนี้เวลาลิงก์เปลี่ยน แล้วรันสคริปต์ใหม่
+#
+# ลิงก์ trycloudflare เป็นลิงก์ชั่วคราว ใช้ได้เฉพาะตอนเครื่องที่รัน Docker เปิดอยู่
+# และเปลี่ยนใหม่ทุกครั้งที่สั่ง tunnel ขึ้น  ดูลิงก์ล่าสุดด้วย
+#   docker compose --profile public logs tunnel_main | grep trycloudflare
+PAGES_URL = "https://onpreyaq5.github.io/Nuthaluek-CPE-LLM-/"
+LINKS = [
+    ("แอปหลัก (09) — จัดตาราง ตรวจตารางชน ถามระเบียบ ไม่ต้องเข้าสู่ระบบ",
+     "https://scientific-trips-recognize-sight.trycloudflare.com"),
+    ("หน้าเว็บ CampusMate (01) — ระบบเต็ม เข้าสู่ระบบ admin / admin1234",
+     "https://eclipse-formatting-retired-montgomery.trycloudflare.com"),
+    ("หน้าเว็บ CampusMate (01) — ชุดเดิม",
+     "https://broadband-potter-primary-guestbook.trycloudflare.com"),
+    ("Grafana — กราฟเฝ้าดูระบบ เปิดดูได้โดยไม่ต้องเข้าสู่ระบบ",
+     "https://lane-liberty-increasing-hotel.trycloudflare.com"),
+]
 
 # เอกสารที่คัดลอกมาเก็บไว้ในโฟลเดอร์สำรอง
 COPIES = {
@@ -140,22 +161,56 @@ def main() -> None:
         if s.exists():
             shutil.copy2(s, OUT / dst)
 
+    # สำเนาโปรเจกต์ทั้งก้อน (เฉพาะไฟล์ที่ git เก็บ จึงไม่มี node_modules และไม่มี .env)
+    zip_path = OUT / "โปรเจกต์ทั้งหมด.zip"
+    zip_path.write_bytes(subprocess.run(
+        ["git", "-C", str(ROOT), "archive", "--format=zip", "HEAD", "ProJ-RMUTT-Planner"],
+        capture_output=True, check=True).stdout)
+
+    # ประวัติ git ทั้งหมด: clone จากไฟล์นี้แล้วได้ทุกคอมมิตทุกสาขาครบ
+    subprocess.run(["git", "-C", str(ROOT), "bundle", "create",
+                    str(OUT / "ประวัติ-git-ทั้งหมด.bundle"), "--all"],
+                   capture_output=True, check=True)
+
     total = len(commits) + len(merges)
     span = f"{th_date(commits[0]['date'])} – {th_date(commits[-1]['date'])}"
 
     # ── README.md ────────────────────────────────────────────
+    # ตั้งใจไม่ใส่ตารางประวัติลงหน้านี้ ให้หน้านี้เป็นทางเข้าใช้งานล้วน ๆ
+    # ใครอยากดูประวัติเปิดไฟล์ ประวัติการพัฒนา.html หรือ .pdf ได้
     lines = [
         "# สำรองงานทั้งหมด — RMUTT Study Planner",
         "",
-        "โฟลเดอร์นี้รวมเอกสารส่งงานและสรุปผลงานของทุกคนไว้ที่เดียว",
-        "ไฟล์ทั้งหมดสร้างจากข้อมูลในรีโปนี้เอง ตรวจย้อนได้ทุกตัวเลข",
+        "ระบบวางแผนการเรียน มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี",
         "",
-        f"- คอมมิตทั้งหมด **{total}** ครั้ง (รวม merge {len(merges)} ครั้ง)",
-        f"- ผู้ร่วมพัฒนา **{len(ranked)}** คน",
-        f"- สาขาที่ใช้พัฒนา **{len(branches)}** สาขา",
-        f"- ช่วงเวลาทำงาน **{span}**",
+        "## เปิดใช้งานระบบจริง",
         "",
-        "สร้างใหม่เมื่อประวัติเปลี่ยน: `python ProJ-RMUTT-Planner/scripts/build_backup.py`",
+        "| เปิดอะไร | ลิงก์ |",
+        "|---|---|",
+    ]
+    for label, url in LINKS:
+        lines.append(f"| {label} | {url} |")
+    lines += [
+        f"| เอกสารทั้งหมดในรูปแบบเว็บ (GitHub Pages) | {PAGES_URL} |",
+        "",
+        "> ลิงก์ `trycloudflare.com` เป็นลิงก์ชั่วคราว ใช้ได้เฉพาะตอนเครื่องที่รัน Docker เปิดอยู่",
+        "> และเปลี่ยนใหม่ทุกครั้งที่สั่งขึ้น ถ้าเปิดไม่ได้ให้รันระบบเองตามหัวข้อด้านล่าง",
+        "",
+        "## รันระบบเองด้วย Docker",
+        "",
+        "```bash",
+        "cd ProJ-RMUTT-Planner",
+        "cp .env.example .env",
+        "docker compose up -d --build        # เปิด http://localhost:3000",
+        "bash scripts/verify_docker.sh       # ตรวจทุกบริการว่าทำงานจริง",
+        "```",
+        "",
+        "หน้าเว็บ CampusMate ตัวเต็มพร้อมทุกบริการที่เรียกใช้:",
+        "",
+        "```bash",
+        "docker compose -f deploy/webapp/docker-compose.yml --env-file .env up -d --build",
+        "python deploy/webapp/verify.py      # เปิด http://localhost:4001",
+        "```",
         "",
         "## ไฟล์ในโฟลเดอร์นี้",
         "",
@@ -164,48 +219,26 @@ def main() -> None:
         "| `01_สถาปัตยกรรมระบบทั้งหมด.pdf` | ภาพรวม 9 โมดูล Use Case มายด์แมป ลำดับการทำงาน |",
         "| `02_สไลด์บทที่7-RAG-LLM.pdf` | สไลด์ 16:9 เรื่องการค้นคืนเอกสารและ LLM |",
         "| `03_เดโมเปิดในเบราว์เซอร์ได้เลย.html` | ไฟล์เดียวจบ ดับเบิลคลิกใช้งานได้ ไม่ต้องติดตั้งอะไร |",
-        "| `ประวัติการพัฒนา.html` | ตารางเต็ม คอมมิตทุกครั้ง แยกตามคนและเดือน |",
-        "| `ประวัติการพัฒนา.pdf` | ไฟล์เดียวกัน สำหรับพิมพ์หรือแนบส่ง |",
+        "| `ประวัติการพัฒนา.html` · `.pdf` | ผลงานรายคน ใครทำโมดูลไหน และคอมมิตทุกรายการ |",
+        "| `โปรเจกต์ทั้งหมด.zip` | สำเนาโค้ดทั้งโปรเจกต์ ไม่มี node_modules ไม่มีคีย์ |",
+        "| `ประวัติ-git-ทั้งหมด.bundle` | ประวัติ git ครบทุกคอมมิตทุกสาขา |",
         "",
-        "## ผลงานรายบุคคล",
+        "## กู้คืนจากไฟล์สำรอง",
         "",
-        "| ผู้พัฒนา | คอมมิต | บรรทัดที่เพิ่ม | บรรทัดที่ลบ | ไฟล์ที่แก้ | ช่วงเวลาที่ทำงาน |",
-        "|---|---:|---:|---:|---:|---|",
+        "```bash",
+        "git clone ประวัติ-git-ทั้งหมด.bundle rmutt-planner   # ได้ประวัติครบทุกคน",
+        "unzip โปรเจกต์ทั้งหมด.zip                              # หรือเอาแค่ไฟล์",
+        "```",
+        "",
+        "---",
+        "",
+        f"สร้างไฟล์ในโฟลเดอร์นี้ใหม่: `python ProJ-RMUTT-Planner/scripts/build_backup.py`",
+        f"({total} คอมมิต · {len(ranked)} คน · {len(branches)} สาขา · {span})",
+        "",
+        "เอกสารระเบียบ หลักสูตร ปฏิทินการศึกษา และตารางสอนในระบบนี้",
+        "**เป็นข้อมูลจำลองสำหรับต้นแบบ** ไม่ใช่ข้อมูลจริงของมหาวิทยาลัย",
+        "",
     ]
-    for a, s in ranked:
-        lines.append(f"| {a} | {s['n']} | +{s['add']:,} | -{s['del']:,} | {len(s['files']):,} | "
-                     f"{s['first'][:10]} – {s['last'][:10]} |")
-    lines += [
-        "",
-        "> นับเฉพาะคอมมิตที่ไม่ใช่ merge · จำนวนบรรทัดรวมไฟล์ที่เครื่องมือสร้างให้ด้วย",
-        "> จึงควรดูประกอบกับจำนวนคอมมิตและโมดูลที่รับผิดชอบ",
-        "",
-        "## ใครทำโมดูลไหน",
-        "",
-    ]
-    for a, s in ranked:
-        tops = [f"{MODULES[m]} ({n})" for m, n in s["modules"].most_common(5)]
-        lines.append(f"**{a}** — {', '.join(tops) if tops else 'ไม่มีข้อมูลไฟล์'}")
-        lines.append("")
-
-    lines += ["## ความเคลื่อนไหวรายเดือน", "",
-              "| เดือน | คอมมิต | ผู้พัฒนา |", "|---|---:|---|"]
-    for ym, counter in sorted(months.items()):
-        y, m = ym.split("-")
-        who = ", ".join(f"{n} ({k})" for n, k in counter.most_common())
-        lines.append(f"| {TH_MONTH[m]} {int(y) + 543} | {sum(counter.values())} | {who} |")
-
-    lines += ["", "## สาขาที่ใช้พัฒนา", ""]
-    lines += [f"- `{b}`" for b in branches]
-
-    lines += ["", "## การรวมงานเข้าสาขาหลัก", "",
-              "| วันที่ | ผู้รวม | รายละเอียด |", "|---|---|---|"]
-    for m in merges:
-        lines.append(f"| {m['date']} | {m['author']} | {m['subject']} |")
-
-    lines += ["", "---", "",
-              "เอกสารระเบียบ หลักสูตร ปฏิทินการศึกษา และตารางสอนในระบบนี้",
-              "**เป็นข้อมูลจำลองสำหรับต้นแบบ** ไม่ใช่ข้อมูลจริงของมหาวิทยาลัย", ""]
     (OUT / "README.md").write_text("\n".join(lines), encoding="utf-8")
 
     # ── ประวัติการพัฒนา.html ──────────────────────────────────
