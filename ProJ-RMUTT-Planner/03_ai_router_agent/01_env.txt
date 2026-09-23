@@ -14,7 +14,7 @@ PACKAGES
 ENV VARS
   LLM_PROVIDER=gemini|openai|anthropic
   LLM_API_KEY=<secret>            # ห้าม commit
-  LLM_MODEL=<เช่น gemini-2.0-flash / gpt-4.1-mini>
+  LLM_MODEL=<เช่น gemini-flash-lite-latest / gpt-4.1-mini>
   LOCAL_MODEL_URL=http://local_ai:8300     # โมเดล classify ในเครื่อง
   SCHEDULE_ENGINE_URL=http://schedule_engine:8600
   RAG_LLM_URL=http://rag_llm:8700

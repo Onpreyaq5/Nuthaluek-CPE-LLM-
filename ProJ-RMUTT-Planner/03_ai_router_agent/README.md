@@ -292,7 +292,7 @@ data: {"latency_ms":215}
 |---|---|---|
 | `LLM_PROVIDER` | `gemini` | `gemini` / `openai` / `anthropic` |
 | `LLM_API_KEY` | — | API key (ห้าม commit) |
-| `LLM_MODEL` | `gemini-2.0-flash` | ชื่อโมเดลที่ใช้ classify |
+| `LLM_MODEL` | `gemini-flash-lite-latest` | ชื่อโมเดลที่ใช้ classify |
 | `LOCAL_MODEL_URL` | `http://local_ai:8300` | โมเดลในเครื่อง |
 | `COURSE_DATA_URL` | `http://course_data:8400` | Module 04 |
 | `DATA_INTEGRATION_URL` | `http://data_integration:8500` | Module 05 |

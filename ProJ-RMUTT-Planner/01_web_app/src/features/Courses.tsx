@@ -93,7 +93,7 @@ export default function Courses() {
     [day, setDay] = useState(""),
     [teacher, setTeacher] = useState(""),
     [cursorStack, setCursorStack] = useState<(string | null)[]>([null]),
-    [expanded, setExpanded] = useState<string | null>("CPE201");
+    [expanded, setExpanded] = useState<string | null>(null);
   const page = cursorStack.length;
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(q), 250);
@@ -102,11 +102,13 @@ export default function Courses() {
   const cursor = cursorStack[cursorStack.length - 1];
   const query = useApiPage<Course>(
     ["courses", debounced, day, teacher, cursor],
+    // ส่งเฉพาะตัวกรองที่เลือก: 02 ตรวจ day เป็น MON..SUN ส่ง day= ว่างไปจะได้ 422
+    // (เดิมหน้านี้พังตั้งแต่เปิด เพราะค่าเริ่มต้นของ day คือ "" = ทุกวัน)
     `/courses?${new URLSearchParams({
-      q: debounced,
-      day,
-      teacher,
       term: "1/2569",
+      ...(debounced ? { q: debounced } : {}),
+      ...(day ? { day } : {}),
+      ...(teacher ? { teacher } : {}),
       ...(cursor ? { cursor } : {}),
     })}`,
   );

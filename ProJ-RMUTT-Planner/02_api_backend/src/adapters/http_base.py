@@ -5,8 +5,38 @@ from typing import Any
 import httpx
 
 from src.core.config import TimeoutPolicy
-from src.core.errors import Upstream502Error
+from src.core.errors import NotFound404Error, Upstream502Error, Validation422Error
 from src.core.middleware import get_request_id
+
+
+def _upstream_message(response: httpx.Response) -> str:
+    """ดึงข้อความ error ของโมดูลปลายทาง (FastAPI ใช้ {"detail": str | {message}})"""
+    try:
+        body = response.json()
+    except ValueError:
+        return response.text[:200]
+    detail = body.get("detail", body) if isinstance(body, dict) else body
+    if isinstance(detail, dict):
+        return str(detail.get("message") or detail.get("code") or detail)
+    if isinstance(detail, list) and detail and isinstance(detail[0], dict):
+        return str(detail[0].get("msg") or detail[0])
+    return str(detail)
+
+
+def raise_for_upstream(response: httpx.Response, module: str) -> None:
+    """โมดูลปลายทางตอบ 4xx = ห้ามเอาไปแปลงเป็นข้อมูลปกติ
+
+    ก่อนหน้านี้ adapter ส่ง body ของ error ({"detail": ...}) เข้า model_validate ตรง ๆ
+    ได้ ValidationError กลายเป็น 500 "เกิดข้อผิดพลาดที่ไม่คาดคิด" ผู้ใช้ไม่รู้ว่าผิดตรงไหน
+    (เจอจริง: ตรวจตารางชนทุกครั้ง และหน้า transcript ของคนที่ยังไม่นำเข้า)
+    """
+    if response.status_code < 400:
+        return
+    message = _upstream_message(response)
+    details = {"module": module, "upstream_status": response.status_code}
+    if response.status_code == 404:
+        raise NotFound404Error(message, details=details)
+    raise Validation422Error(message, details=details)
 
 
 class HttpAdapterClient:

@@ -1,4 +1,5 @@
 import { copy as uiCopy } from "@/i18n/th";
+import { RichText } from "@/components/RichText";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -529,7 +530,7 @@ export function PlanDetail() {
           <Loading />
         ) : (
           <>
-            <p>{explain.data?.explanation}</p>
+            <RichText text={explain.data?.explanation || ""} />
             <SourceCards sources={explain.data?.sources || []} />
           </>
         )}

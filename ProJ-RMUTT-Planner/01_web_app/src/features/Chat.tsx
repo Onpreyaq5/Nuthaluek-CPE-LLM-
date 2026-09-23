@@ -1,4 +1,5 @@
 import { copy as uiCopy } from "@/i18n/th";
+import { RichText } from "@/components/RichText";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -55,9 +56,7 @@ function MessageCard({
         </div>
         <div className="answer-card">
           <div className="answer-copy">
-            {message.content.split("\n\n").map((p, i) => (
-              <p key={i}>{p}</p>
-            ))}
+            <RichText text={message.content} />
             {message.status !== "complete" && message.id > 0 && (
               <span className="partial-status">
                 {th.status[message.status]}

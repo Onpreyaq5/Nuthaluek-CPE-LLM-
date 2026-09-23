@@ -30,7 +30,7 @@ class InprocessStudentData:
             "ใช้ ADAPTER_05=mock หรือ http แทน"
         )
 
-    async def import_graduate_check(self, raw: bytes) -> ImportResult:
+    async def import_graduate_check(self, raw: bytes, student_id: str | None = None) -> ImportResult:
         import importlib
 
         # load_module_package() โหลดแค่แพ็กเกจ mod05 เฉยๆ ไม่ทำให้ mod05.graduate_check/degree_plan

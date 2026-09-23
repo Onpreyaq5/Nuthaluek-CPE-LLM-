@@ -35,6 +35,6 @@ class MockStudentData:
         )
         return TranscriptResponse.model_validate(payload["data"])
 
-    async def import_graduate_check(self, raw: bytes) -> ImportResult:
+    async def import_graduate_check(self, raw: bytes, student_id: str | None = None) -> ImportResult:
         payload = json.loads((_FIXTURES_DIR / "students" / "import.success.json").read_text(encoding="utf-8"))
         return ImportResult.model_validate(payload["data"])

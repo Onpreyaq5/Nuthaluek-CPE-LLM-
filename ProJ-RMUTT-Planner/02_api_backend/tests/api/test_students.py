@@ -17,7 +17,7 @@ class _FailingStudentData:
     async def get_transcript(self, student_id: str):
         raise Upstream502Error("โมดูลข้อมูลนักศึกษา (05) ไม่ตอบสนอง", details={"module": "05"})
 
-    async def import_graduate_check(self, raw: bytes):
+    async def import_graduate_check(self, raw: bytes, student_id: str | None = None):
         raise Upstream502Error("โมดูลข้อมูลนักศึกษา (05) ไม่ตอบสนอง", details={"module": "05"})
 
 

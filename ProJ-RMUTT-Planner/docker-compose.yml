@@ -107,11 +107,11 @@ services:
       ADAPTER_07: ${ADAPTER_07:-http}
       ADAPTER_08: ${ADAPTER_08:-http}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
-      # 02 เรียก 07 สร้างคำตอบแบบรอทีเดียว ระหว่างรอไม่มี event ไหลออกไป
-      # ถ้าตอบด้วยโมเดลในเครื่อง (CPU) อาจใช้เกิน 30 วินาทีที่เป็นค่าตั้งต้น
       # สร้างบัญชีเดโมตอนเริ่ม (admin / admin1234) ถ้าไม่ตั้ง หน้าเว็บ 01 จะ login ไม่ได้เลย
       # เพราะตาราง students ว่าง — ใช้เพื่อสาธิตเท่านั้น ห้ามเปิดแบบนี้บนเครื่องที่ออกอินเทอร์เน็ต
       SEED_DEMO: ${SEED_DEMO:-true}
+      # 02 เรียก 07 สร้างคำตอบแบบรอทีเดียว ระหว่างรอไม่มี event ไหลออกไป
+      # ถ้าตอบด้วยโมเดลในเครื่อง (CPU) อาจใช้เกิน 30 วินาทีที่เป็นค่าตั้งต้น
       TIMEOUT_CHAT_IDLE_SECONDS: ${TIMEOUT_CHAT_IDLE_SECONDS:-120}
       TIMEOUT_CHAT_TOTAL_SECONDS: ${TIMEOUT_CHAT_TOTAL_SECONDS:-180}
     depends_on:
@@ -130,7 +130,7 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       # ใส่คีย์ที่ GEMINI_API_KEY ใน .env ที่เดียว ใช้ได้ทั้ง 03, 07 และ 09
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-gemini-2.0-flash}
+      LLM_MODEL: ${LLM_MODEL:-gemini-flash-lite-latest}
       # กล่อง Local AI Model ในแผนภาพ — จัดประเภทคำถามตอน keyword ไม่มั่นใจ
       LOCAL_MODEL_URL: http://local_ai:11434
       LOCAL_MODEL: ${LOCAL_MODEL:-qwen2.5:0.5b}
@@ -152,8 +152,12 @@ services:
       RAW_DATA_DIR: /data/raw
       ALLOW_SCRAPING: "false"
       SYNC_CRON: ${SYNC_CRON:-0 3 * * *}
+      # ตารางสอนจริงชุดเดียวกับที่ 07 และ 09 ใช้ ถ้าไม่ตั้ง 04 จะใช้ข้อมูลตัวอย่าง 2 วิชา
+      # แล้ว 06 จะหากลุ่มเรียนที่ 02 ส่งมาไม่เจอ ตรวจตารางชนพังทุกครั้ง
+      SEED_DIR: /data/seed
     volumes:
       - ./data:/data
+      - ./09_main_app/data/seed:/data/seed:ro
     depends_on:
       postgres: {condition: service_healthy}
     networks: [rmutt-net]
@@ -206,7 +210,7 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
       LLM_API_KEY: ${LLM_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      LLM_MODEL: ${LLM_MODEL:-gemini-2.0-flash}
+      LLM_MODEL: ${LLM_MODEL:-gemini-flash-lite-latest}
       # กล่อง Vector DB ในแผนภาพ — เวกเตอร์ TF-IDF เก็บและค้นใน Qdrant
       # Qdrant ล่ม = ค้นในหน่วยความจำแทนอัตโนมัติ ผลเท่ากันทุกตำแหน่ง
       QDRANT_URL: http://qdrant:6333

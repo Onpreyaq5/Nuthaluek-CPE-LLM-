@@ -4,7 +4,7 @@ from src.core.config import get_settings
 from src.schemas.plans import PlanValidateResponse
 from src.schemas.students import ExplainResponse
 
-from ..http_base import HttpAdapterClient
+from ..http_base import HttpAdapterClient, raise_for_upstream
 from ..interfaces import StudentContext
 
 # ปลายทางของ 07 ยังไม่มีสัญญาจริง — PLACEHOLDER
@@ -41,4 +41,5 @@ class HttpExplainer:
             )
         finally:
             await client.aclose()
+        raise_for_upstream(response, "07")
         return ExplainResponse.model_validate(response.json())

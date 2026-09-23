@@ -34,7 +34,7 @@ def api_key() -> str:
 
 
 def model_name() -> str:
-    return os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    return os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest").strip()
 
 
 def _rule_based(chunks: list[dict]) -> str:
@@ -67,14 +67,17 @@ def _build_prompt(question: str, chunks: list[dict], context: dict) -> str:
 
 
 def _call_gemini(prompt: str) -> str:
+    # คีย์อยู่ใน header ไม่ใช่ ?key= : URL ติดไปกับข้อความ error และ log ได้ คีย์จะหลุด
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{model_name()}:generateContent?key={api_key()}")
+           f"{model_name()}:generateContent")
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800},
     }).encode()
-    req = urllib.request.Request(url, data=body,
-                                 headers={"Content-Type": "application/json"}, method="POST")
+    req = urllib.request.Request(url, data=body, method="POST", headers={
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key(),
+    })
     with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
         data = json.load(r)
     return data["candidates"][0]["content"]["parts"][0]["text"].strip()

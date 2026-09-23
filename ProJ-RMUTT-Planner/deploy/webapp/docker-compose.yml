@@ -1,0 +1,278 @@
+# RMUTT Study Planner — หน้าเว็บ 01 ตัวเต็ม (Docker project แยก)
+#
+# ยกหน้าเว็บ 01 (CampusMate) พร้อมทุกบริการที่มันเรียกใช้ ต่อข้อมูลจริงครบทุกหน้า:
+#   แชต AI (02 -> 03 -> 07 + Gemini/Local AI), ค้นรายวิชา, จัดตาราง/ตรวจตารางชน (04 -> 06),
+#   จัดตารางอัตโนมัติ, บันทึกแผน, โปรไฟล์ + นำเข้าผลการเรียน (05), feedback (08)
+#
+# แยกจากชุดหลัก (docker-compose.yml ที่รากโปรเจกต์) ทั้งชื่อ project, network และ volume
+# รันพร้อมกันได้โดยไม่ชนกัน เปิดพอร์ตออกนอก container แค่หน้าเว็บกับ Grafana
+#
+#   cd ProJ-RMUTT-Planner
+#   docker compose -f deploy/webapp/docker-compose.yml --env-file .env up -d --build
+#   เปิด http://localhost:4001   (login admin / admin1234)
+#
+#   ลิงก์สาธารณะ:
+#   docker compose -f deploy/webapp/docker-compose.yml --env-file .env --profile public up -d
+#   docker compose -f deploy/webapp/docker-compose.yml logs tunnel | grep trycloudflare
+#
+# คีย์ Gemini: ใส่ที่ GEMINI_API_KEY ใน .env หรือเก็บไว้ไฟล์แยกแล้วส่งเพิ่มอีก --env-file
+
+name: rmutt-webapp
+
+x-common-env: &common-env
+  TZ: Asia/Bangkok
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+services:
+  # ---------- 1 Web App ----------
+  web_app:
+    build:
+      context: ../../01_web_app
+      args:
+        VITE_USE_MOCKS: "false"
+    ports: ["4001:80"]
+    environment:
+      <<: *common-env
+      API_UPSTREAM: http://api_backend:8000
+    depends_on:
+      api_backend: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- 2 API / Backend ----------
+  api_backend:
+    build: ../../02_api_backend
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      AI_ROUTER_URL: http://ai_router:8100
+      COURSE_CATALOG_URL: http://course_data:8400
+      STUDENT_DATA_URL: http://data_integration:8500
+      PLAN_ENGINE_URL: http://schedule_engine:8600
+      EXPLAINER_URL: http://rag_llm:8700
+      LOG_SINK_URL: http://feedback:8800
+      # หน้าเว็บเรียก /api ผ่าน nginx ของตัวเอง (same-origin) จึงไม่ต้องเปิด CORS กว้าง
+      CORS_ORIGINS: http://localhost:4001
+      # http = คุยกับโมดูลจริงทุกตัว ไม่มีข้อมูลปลอมใน 02
+      ADAPTER_04: http
+      ADAPTER_05: http
+      ADAPTER_06: http
+      ADAPTER_07: http
+      ADAPTER_08: http
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      # บัญชีเดโม admin / admin1234 — ปิด (false) ถ้าไม่ต้องการให้คนมีลิงก์ login ได้
+      SEED_DEMO: ${SEED_DEMO:-true}
+      TIMEOUT_CHAT_IDLE_SECONDS: ${TIMEOUT_CHAT_IDLE_SECONDS:-120}
+      TIMEOUT_CHAT_TOTAL_SECONDS: ${TIMEOUT_CHAT_TOTAL_SECONDS:-180}
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    healthcheck:
+      # image ของ 02 ไม่มี curl (python:slim) ใช้ Python ที่มีอยู่แล้วแทน
+      # ถ้าใช้ curl healthcheck จะล้มตลอด หน้าเว็บที่รอ 02 healthy จะไม่ขึ้นเลย
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=4)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- 3 AI Router / Agent ----------
+  ai_router:
+    build: ../../03_ai_router_agent
+    environment:
+      <<: *common-env
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gemini-flash-lite-latest}
+      LOCAL_MODEL_URL: http://local_ai:11434
+      LOCAL_MODEL: ${LOCAL_MODEL:-qwen2.5:0.5b}
+      COURSE_DATA_URL: http://course_data:8400
+      DATA_INTEGRATION_URL: http://data_integration:8500
+      SCHEDULE_ENGINE_URL: http://schedule_engine:8600
+      RAG_LLM_URL: http://rag_llm:8700
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- ข้อมูลรายวิชา (ตารางสอนจริงชุดเดียวกับ 07/09) ----------
+  course_data:
+    build: ../../04_course_data_services
+    environment:
+      <<: *common-env
+      SEED_DIR: /data/seed
+    volumes:
+      - ../../09_main_app/data/seed:/data/seed:ro
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- ข้อมูลนักศึกษา / นำเข้าผลการเรียน ----------
+  data_integration:
+    build: ../../05_data_integration
+    environment:
+      <<: *common-env
+      SLOT_MINUTES: 30
+      DAY_START: "08:00"
+      DAY_END: "21:00"
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- ตรวจตารางชน / จัดตารางอัตโนมัติ ----------
+  schedule_engine:
+    build: ../../06_schedule_conflict_engine
+    environment:
+      <<: *common-env
+      COURSE_DATA_URL: http://course_data:8400
+      DATA_INTEGRATION_URL: http://data_integration:8500
+      HTTP_TIMEOUT_SECONDS: "10"
+      MAX_SOLVER_SECONDS: 10
+      MAX_PLAN_CANDIDATES: 5
+      DEFAULT_MIN_CREDITS: 9
+      DEFAULT_MAX_CREDITS: 21
+      SUMMER_MAX_CREDITS: 9
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- 4-6 University RAG + LLM Generation ----------
+  rag_llm:
+    build: ../../07_rag_llm_engine
+    environment:
+      <<: *common-env
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gemini-flash-lite-latest}
+      QDRANT_URL: http://qdrant:6333
+      LOCAL_MODEL_URL: http://local_ai:11434
+      LOCAL_MODEL: ${LOCAL_MODEL:-qwen2.5:0.5b}
+      LOCAL_LLM_TIMEOUT: "110"
+      KNOWLEDGE_DIR: /app/data/knowledge
+      SEED_DIR: /app/data/seed
+      DATA_INTEGRATION_URL: http://data_integration:8500
+      SCHEDULE_ENGINE_URL: http://schedule_engine:8600
+      MIN_SCORE: ${MIN_SCORE:-0.21}
+    depends_on: [qdrant]
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- 7 Response / Log / Feedback ----------
+  feedback:
+    build: ../../08_recommendation_feedback
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/3
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- User Data / Context ----------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: Asia/Bangkok
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../../infra/db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks: [net]
+
+  redis:
+    image: redis:7-alpine
+    volumes: [redisdata:/data]
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- Knowledge Base / Vector DB ----------
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes: [qdrantdata:/qdrant/storage]
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- 4 Local AI Model ----------
+  local_ai:
+    image: ollama/ollama:latest
+    volumes: [ollama:/root/.ollama]
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks: [net]
+
+  local_ai_pull:
+    image: ollama/ollama:latest
+    entrypoint: ["ollama", "pull", "${LOCAL_MODEL:-qwen2.5:0.5b}"]
+    environment:
+      OLLAMA_HOST: http://local_ai:11434
+    depends_on:
+      local_ai: {condition: service_healthy}
+    restart: "no"
+    networks: [net]
+
+  # ---------- Monitoring & Analytics ----------
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    restart: unless-stopped
+    networks: [net]
+
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["4002:3000"]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/rmutt-overview.json
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ../../infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+    restart: unless-stopped
+    networks: [net]
+
+  # ---------- ลิงก์สาธารณะ (ไม่ขึ้นโดยค่าตั้งต้น) ----------
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: [public]
+    command: tunnel --no-autoupdate --url http://web_app:80
+    depends_on:
+      web_app: {condition: service_healthy}
+    restart: unless-stopped
+    networks: [net]
+
+volumes:
+  pgdata:
+  redisdata:
+  qdrantdata:
+  ollama:
+  grafanadata:
+
+networks:
+  net:
+    driver: bridge

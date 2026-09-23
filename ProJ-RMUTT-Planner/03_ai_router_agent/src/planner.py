@@ -151,8 +151,15 @@ async def run_planner(
     rag_result = accumulated_context.get("search_knowledge")
     if rag_result:
         chunks = rag_result.get("chunks", [])
+        # chunk ของ 07 ใช้ title / section / doc_id (ไม่มี field "source")
+        # เดิมอ่าน c["source"] หน้าเว็บจึงได้แหล่งอ้างอิงชื่อว่างทุกอัน
         sources = [
-            {"title": c.get("source", ""), "page": c.get("page")}
+            {
+                "title": c.get("title") or c.get("source", ""),
+                "section": c.get("section") or None,
+                "document_id": c.get("doc_id"),
+                "page": c.get("page"),
+            }
             for c in chunks
         ]
         sse_events.append(SSEEvent(type="sources", data={"sources": sources}))

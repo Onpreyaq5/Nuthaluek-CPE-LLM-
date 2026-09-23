@@ -5,7 +5,7 @@ from src.schemas.chat import StudentPreferences
 from src.schemas.plans import PlanValidateResponse
 from src.schemas.students import GeneratedPlan
 
-from ..http_base import HttpAdapterClient
+from ..http_base import HttpAdapterClient, raise_for_upstream
 from ..interfaces import StudentContext
 
 # ปลายทางของ 06 ยังไม่มีสัญญาจริง — PLACEHOLDER
@@ -33,6 +33,7 @@ class HttpPlanEngine:
             )
         finally:
             await client.aclose()
+        raise_for_upstream(response, "06")
         return PlanValidateResponse.model_validate(response.json())
 
     async def generate(
@@ -61,5 +62,6 @@ class HttpPlanEngine:
             )
         finally:
             await client.aclose()
+        raise_for_upstream(response, "06")
         items = response.json().get("plans", [])
         return [GeneratedPlan.model_validate(item) for item in items]

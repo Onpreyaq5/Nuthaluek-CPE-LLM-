@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # LLM Provider: gemini | openai | anthropic | groq
     llm_provider: str = "gemini"
     llm_api_key: str = ""
-    llm_model: str = "gemini-2.0-flash"
+    llm_model: str = "gemini-flash-lite-latest"
 
     # Local AI Model (Ollama) — ช่อง Local AI ในแผนภาพ
     # ใช้จัดประเภทคำถามตอน keyword ไม่มั่นใจ เมื่อไม่มีคีย์ของ provider ภายนอก

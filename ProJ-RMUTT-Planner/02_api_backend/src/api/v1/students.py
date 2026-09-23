@@ -51,5 +51,5 @@ async def import_transcript(
     if len(raw) > _MAX_IMPORT_FILE_BYTES:
         raise Payload413Error(_IMPORT_TOO_LARGE_MESSAGE)
 
-    data = await students_service.import_graduate_check(student_data, raw)
+    data = await students_service.import_graduate_check(student_data, raw, student_id=user.student_id)
     return success_envelope(data.model_dump())

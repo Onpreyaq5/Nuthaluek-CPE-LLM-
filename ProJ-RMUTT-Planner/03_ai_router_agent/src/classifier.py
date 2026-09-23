@@ -47,6 +47,8 @@ _KEYWORD_RULES: dict[str, list[str]] = {
     "CURRICULUM_RULE": [
         "หน่วยกิต", "จบได้ไหม", "บังคับก่อน", "prereq", "prerequisite",
         "เหลืออีกกี่หน่วย", "โครงสร้างหลักสูตร", "วิชาบังคับ", "วิชาเลือก",
+        "ต้องผ่าน", "มาก่อน", "เรียนก่อน", "คือวิชาอะไร", "เรียนอะไร", "คำอธิบายรายวิชา",
+        "ต้องเรียน", "เรียนวิชาอะไร", "แผนการเรียน",
     ],
     "REGULATION_QA": [
         "ระเบียบ", "ประกาศ", "ถอน", "drop", "withdraw",
@@ -72,7 +74,16 @@ def _normalize_text(text: str) -> str:
 
 _TERM_RE = re.compile(r"(\d)[/\\](\d{4})")        # "1/2569"
 _YEAR_RE = re.compile(r"ปี(?:การศึกษา)?\s*(\d{4})")
-_COURSE_RE = re.compile(r"\b([A-Za-z]{2,4}\d{3})\b")
+# รหัสวิชา/กลุ่มเรียนที่ต้องจับได้ (เรียงจากยาวไปสั้น ให้รหัสกลุ่มเรียนชนะรหัสวิชา)
+#   04100203-66-01   รหัสกลุ่มเรียนจริงของ มทร.ธัญบุรี (วิชา 8 หลัก - ปีหลักสูตร - หมู่)
+#   04100203-66      รหัสวิชาจริง
+#   C0407131         รหัสแบบเก่าในหน้าตรวจสอบจบ
+#   CPE101 / CPE101-01  รูปแบบสมมติที่ใช้ในเอกสารตัวอย่าง
+# เดิมจับได้แค่ CPE101 ถามด้วยรหัสจริงจึงไม่มีรหัสวิชาใน slot เลย
+# ตรวจตารางชนในแชตไม่ได้ และคำถามรายวิชาหลุดไปให้ General AI ตอบ
+_COURSE_RE = re.compile(
+    r"(?<![\w-])(\d{8}-\d{2}(?:-\d{2})?|C\d{7}|[A-Za-z]{2,4}\d{3}(?:-\d{2})?)(?![\w-])"
+)
 _DAY_MAP = {
     "จันทร์": "MON", "อังคาร": "TUE", "พุธ": "WED",
     "พฤหัส": "THU", "ศุกร์": "FRI", "เสาร์": "SAT", "อาทิตย์": "SUN",
@@ -270,14 +281,22 @@ def _call_remote(user_prompt: str) -> str:
     provider = settings.llm_provider.lower()
 
     if provider == "gemini":
-        import google.generativeai as genai
-        genai.configure(api_key=settings.llm_api_key)
-        model = genai.GenerativeModel(
-            settings.llm_model,
-            system_instruction=_LLM_SYSTEM_PROMPT,
-        )
-        resp = model.generate_content(user_prompt)
-        return resp.text
+        # เรียก REST ตรงแทน SDK google.generativeai (เลิกพัฒนาแล้ว และไม่มี timeout)
+        # SDK เดิมค้างนานตอน Gemini ตอบ 503 จน 02 ตัดว่า 03 ไม่ตอบ (502) — เจอจริงตอนทดสอบ
+        # timeout สั้นกว่า chat_start ของ 02 เสมอ ล้ม = classify() ถอยไปใช้ผลจาก keyword
+        with httpx.Client(timeout=settings.local_classify_timeout_s) as client:
+            r = client.post(
+                "https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{settings.llm_model}:generateContent",
+                headers={"x-goog-api-key": settings.llm_api_key},
+                json={
+                    "systemInstruction": {"parts": [{"text": _LLM_SYSTEM_PROMPT}]},
+                    "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+                    "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
+                },
+            )
+            r.raise_for_status()
+            return r.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     elif provider == "openai":
         from openai import OpenAI
@@ -342,6 +361,14 @@ def classify(message: str, history: list | None = None) -> ClassificationResult:
             "[classifier] llm: intent=%s conf=%.2f",
             result.intent, result.confidence,
         )
+
+    # กันพลาด: คำถามที่มีรหัสวิชาเป็นเรื่องของมหาวิทยาลัยเสมอ ห้ามปล่อยให้ General AI ตอบจากความจำ
+    # (เจอจริง: "วิชา 04100203-66 ต้องผ่านวิชาอะไรมาก่อน" ไปตกที่ GENERAL_CHAT)
+    if result.intent == "GENERAL_CHAT" and result.slots.course_codes:
+        result = result.model_copy(update={
+            "intent": "CURRICULUM_RULE",
+            "reasoning": f"{result.reasoning} | มีรหัสวิชา -> ตอบจากเอกสารหลักสูตร",
+        })
 
     return result
 

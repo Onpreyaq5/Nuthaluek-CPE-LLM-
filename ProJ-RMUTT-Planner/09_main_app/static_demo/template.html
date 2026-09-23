@@ -1608,9 +1608,9 @@ const getKey = () => { try { return localStorage.getItem(KEY_STORE) || ""; } cat
 
 async function callGemini(prompt, key){
   const url = "https://generativelanguage.googleapis.com/v1beta/models/" +
-              "gemini-2.0-flash:generateContent?key=" + encodeURIComponent(key);
+              "gemini-flash-lite-latest:generateContent";
   const r = await fetch(url, {
-    method: "POST", headers: {"Content-Type": "application/json"},
+    method: "POST", headers: {"Content-Type": "application/json", "x-goog-api-key": key},
     body: JSON.stringify({contents:[{parts:[{text: prompt}]}],
                           generationConfig:{temperature: 0.2, maxOutputTokens: 800}}),
     signal: AbortSignal.timeout(25000),

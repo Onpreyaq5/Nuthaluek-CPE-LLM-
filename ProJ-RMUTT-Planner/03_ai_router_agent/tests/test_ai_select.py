@@ -59,3 +59,21 @@ def test_no_key_and_no_local_model_uses_keyword(monkeypatch):
     monkeypatch.setattr(settings, "local_model_url", "")
     result = classifier._llm_classify("สวัสดี", [])
     assert result.source == "keyword"
+
+
+@pytest.mark.parametrize("message,codes", [
+    ("วิชา 04100203-66 ต้องผ่านวิชาอะไรมาก่อน", ["04100203-66"]),
+    ("04100201-66-01 กับ 04100202-66-02 ชนไหม", ["04100201-66-01", "04100202-66-02"]),
+    ("ติด C0407131 ต้องทำยังไง", ["C0407131"]),
+    ("CPE101 กับ CPE102 ชนไหม", ["CPE101", "CPE102"]),
+])
+def test_real_rmutt_codes_are_extracted(message, codes):
+    assert sorted(classifier._extract_slots(message).course_codes) == sorted(codes)
+
+
+def test_question_with_course_code_never_goes_to_general_ai(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", "")
+    monkeypatch.setattr(settings, "local_model_url", "")
+    result = classifier.classify("04100203-66 นี่ยังไงเหรอ")
+    assert result.intent != "GENERAL_CHAT"
+    assert select_ai(result.intent) == UNIVERSITY_RAG

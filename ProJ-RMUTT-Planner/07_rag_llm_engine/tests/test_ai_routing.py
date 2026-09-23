@@ -102,3 +102,24 @@ def test_qdrant_down_falls_back_to_memory_with_same_results():
     a = [(d.doc_id, round(s, 6)) for d, s in memory.search(q, top_k=6)]
     b = [(d.doc_id, round(s, 6)) for d, s in fallback.search(q, top_k=6)]
     assert a == b
+
+
+def test_general_ai_busy_says_so_instead_of_weak_local_answer(monkeypatch):
+    """มีคีย์ Gemini แต่ Gemini ล่ม: ตอบว่าไม่ว่าง ไม่ถอยไปโมเดลในเครื่องที่ช้าและตอบวน"""
+    from src.llm import client
+
+    monkeypatch.setattr(settings, "llm_provider", "gemini")
+    monkeypatch.setattr(settings, "llm_api_key", "k")
+    monkeypatch.setattr(settings, "local_model_url", "http://local_ai:11434")
+
+    async def down(prompt: str) -> str:
+        raise RuntimeError("503")
+
+    async def boom(prompt: str) -> str:  # pragma: no cover
+        raise AssertionError("must not fall back to the local model when a key is configured")
+
+    monkeypatch.setitem(client._PROVIDERS, "gemini", down)
+    monkeypatch.setattr("src.llm.client.call_local", boom)
+    res = _run(GenerateRequest(question="สวัสดี", context={"ai_target": "general_ai"}))
+    assert res.answer == client.GENERAL_BUSY
+    assert res.provider == "gemini_unavailable"

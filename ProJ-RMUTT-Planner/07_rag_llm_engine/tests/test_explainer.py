@@ -171,3 +171,25 @@ def test_section_ids_payload_from_module_02_accepted():
     ))
     assert res.verdict == "unknown"
     assert "2 รายการ" in res.explanation
+
+
+def test_accepts_conflicts_in_backend_shape():
+    """02 ส่งต่อผลของ 06 เป็น {type, message, details} และ code / message_th ว่าง"""
+    from src.models.schemas import ExplainPlanRequest
+    from src.services.explainer import explain_plan
+
+    req = ExplainPlanRequest(
+        term="1/2569",
+        section_ids=["01000101-62-02", "04100101-66-03"],
+        conflicts=[{
+            "type": "time_clash", "code": "", "message_th": "",
+            "message": "เวลาเรียนวิชา 01000101-62-02 ชนกับ 04100101-66-03 วันพฤหัสบดี เวลา 13:00-16:00",
+            "section_ids": ["01000101-62-02", "04100101-66-03"],
+            "details": {"day": "THU", "start_min": 780, "end_min": 960},
+        }],
+        warnings=[],
+    )
+    res = explain_plan(req)
+    assert "ชนกับ 04100101-66-03" in res.explanation
+    assert "****" not in res.explanation
+    assert res.verdict != "ok"

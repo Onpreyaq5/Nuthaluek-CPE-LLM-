@@ -76,17 +76,32 @@ def _rule_based_answer(question: str, chunks: list[Chunk]) -> str:
 
 
 # ── โหมด provider จริง ──────────────────────────────────────────
+# Gemini ตอบ 429/503 ตอนคนใช้เยอะ และแต่ละครั้งกว่าจะตอบ 503 ก็ใช้ 8-10 วินาที (วัดจริง)
+# ลองซ้ำรุ่นเดิมจึงเสียเวลาเปล่า ลองรุ่นสำรองรุ่นละครั้งแทน
+# ถ้ายังไม่ได้ ผู้เรียกถอยไปโหมดยกข้อความจากเอกสาร ผู้ใช้ยังได้คำตอบเสมอ
+GEMINI_FALLBACK_MODELS = ("gemini-flash-lite-latest", "gemini-flash-latest")
+
+
 async def _call_gemini(prompt: str) -> str:
-    model = settings.llm_model or "gemini-2.0-flash"
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        f"?key={settings.llm_api_key}"
-    )
+    primary = settings.llm_model or "gemini-flash-lite-latest"
+    models = [primary] + [m for m in GEMINI_FALLBACK_MODELS if m != primary]
+    # ส่งคีย์ใน header ไม่ใช่ ?key= ใน URL: เวลาเรียกล้ม httpx ใส่ URL ลงข้อความ error
+    # แล้ว log.error ด้านล่างจะพิมพ์คีย์ลง log ของ container ทั้งดุ้น (เจอจริงตอนทดสอบ)
+    headers = {"x-goog-api-key": settings.llm_api_key}
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
+    last: Exception | None = None
     async with httpx.AsyncClient(timeout=settings.llm_timeout) as client:
-        r = await client.post(url, json={"contents": [{"parts": [{"text": prompt}]}]})
-        r.raise_for_status()
-        data = r.json()
-    return data["candidates"][0]["content"]["parts"][0]["text"]
+        for model in models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            try:
+                r = await client.post(url, headers=headers, json=body)
+                r.raise_for_status()
+                data = r.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+            except (httpx.HTTPError, KeyError, IndexError) as exc:
+                last = exc
+                log.warning("Gemini รุ่น %s ใช้ไม่ได้ตอนนี้ (%s) ลองรุ่นถัดไป", model, type(exc).__name__)
+    raise last or RuntimeError("gemini: no model answered")
 
 
 async def _call_openai(prompt: str) -> str:
@@ -148,10 +163,15 @@ async def call_local(prompt: str) -> str:
 
 # ── General AI (ช่อง General AI ในแผนภาพ) ───────────────────────
 GENERAL_SYSTEM_PROMPT = """คุณคือผู้ช่วย AI ของระบบวางแผนการเรียน มหาวิทยาลัยเทคโนโลยีราชมงคลธัญบุรี
-ตอบเป็นภาษาไทย กระชับ สุภาพ
-ช่วยได้เรื่องความรู้ทั่วไป การเขียน การสรุป และอธิบายแนวคิด
-ถ้าคำถามเป็นเรื่องระเบียบ หลักสูตร ค่าธรรมเนียม หรือกำหนดการของมหาวิทยาลัย ห้ามตอบจากความจำ
-ให้บอกว่าถามเรื่องนั้นโดยตรงแล้วระบบจะค้นจากเอกสารของมหาวิทยาลัยให้"""
+ตอบเป็นภาษาไทย กระชับ สุภาพ ไม่เกิน 8 บรรทัด
+ช่วยได้เรื่องความรู้ทั่วไป การเขียน การสรุป เทคนิคการเรียน และอธิบายแนวคิด
+
+กติกาที่ห้ามละเมิด
+1. ถ้าคำถามเป็นเรื่องระเบียบ หลักสูตร รายวิชา ค่าธรรมเนียม หรือกำหนดการของมหาวิทยาลัย ห้ามตอบจากความจำ
+   ให้บอกว่าถามเรื่องนั้นโดยตรงแล้วระบบจะค้นจากเอกสารของมหาวิทยาลัยให้
+2. ห้ามตั้งชื่อหรือแนะนำร้าน สถานที่ บริษัท บุคคล ราคา เวลาเปิดปิด เบอร์โทร หรือที่อยู่ที่เฉพาะเจาะจง
+   เพราะคุณตรวจสอบไม่ได้ว่ามีอยู่จริงหรือยังเปิดอยู่ ให้แนะนำวิธีหาข้อมูลแทน เช่น Google Maps หรือถามรุ่นพี่
+3. ถ้าไม่แน่ใจ ให้บอกตรง ๆ ว่าไม่แน่ใจ ดีกว่าตอบให้ดูเหมือนรู้"""
 
 GENERAL_UNAVAILABLE = (
     "ตอนนี้ยังไม่ได้เปิดใช้โมเดลสำหรับคำถามทั่วไป "
@@ -175,8 +195,22 @@ def _general_prompt(question: str, history: list[dict] | None) -> str:
     )
 
 
+GENERAL_BUSY = (
+    "ตอนนี้บริการ AI สำหรับคำถามทั่วไปมีผู้ใช้หนาแน่น ยังตอบไม่ได้ ลองถามใหม่อีกครั้งในอีกสักครู่ "
+    "ส่วนคำถามเรื่องระเบียบ หลักสูตร และตารางเรียน ใช้งานได้ตามปกติ"
+)
+
+
 async def general_answer(question: str, history: list[dict] | None = None) -> tuple[str, str]:
-    """คืน (คำตอบ, provider) — Gemini ก่อน ถ้าไม่มีคีย์หรือเรียกไม่ติดใช้โมเดลในเครื่อง"""
+    """คืน (คำตอบ, provider)
+
+    มีคีย์ Gemini -> ใช้ Gemini; ถ้า Gemini ไม่ว่างตอบตรง ๆ ว่าไม่ว่าง
+    ไม่มีคีย์ -> ใช้โมเดลในเครื่อง (ช่อง Local AI Model)
+
+    ทำไมไม่ถอยจาก Gemini ไปโมเดลในเครื่อง: วัดจริงแล้วโมเดล 0.5B บน CPU ใช้ 30+ วินาที
+    และตอบวนซ้ำไม่มีประโยชน์ ผู้ใช้ที่เคยได้คำตอบดีจาก Gemini จะเห็นคุณภาพตกฮวบ
+    บอกว่าไม่ว่างแล้วให้ลองใหม่ ซื่อตรงและเร็วกว่า
+    """
     prompt = _general_prompt(question, history)
     if settings.llm_enabled:
         caller = _PROVIDERS.get(settings.llm_provider)
@@ -184,7 +218,8 @@ async def general_answer(question: str, history: list[dict] | None = None) -> tu
             try:
                 return (await caller(prompt)).strip(), settings.llm_provider
             except Exception as exc:  # noqa: BLE001
-                log.error("General AI (%s) ล้ม ลองโมเดลในเครื่องต่อ: %s", settings.llm_provider, exc)
+                log.error("General AI (%s) ไม่ว่าง: %s", settings.llm_provider, exc)
+                return GENERAL_BUSY, f"{settings.llm_provider}_unavailable"
     if settings.local_enabled:
         try:
             text = await call_local(prompt)

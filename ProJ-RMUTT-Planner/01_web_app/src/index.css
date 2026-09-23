@@ -2578,3 +2578,10 @@ small {
     transition: none !important;
   }
 }
+
+/* ข้อความจาก AI (RichText): ย่อหน้า รายการ และตัวหนา */
+.rich-text p { margin: 0 0 0.6em; }
+.rich-text p:last-child, .rich-text ul:last-child { margin-bottom: 0; }
+.rich-text ul { margin: 0 0 0.6em; padding-left: 1.25em; list-style: disc; }
+.rich-text li { margin: 0.15em 0; }
+.rich-text strong { font-weight: 700; }

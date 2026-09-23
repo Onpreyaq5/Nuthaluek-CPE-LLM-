@@ -36,6 +36,8 @@ def ensure_html_content(raw: bytes) -> None:
         raise Validation422Error(_INVALID_HTML_MESSAGE)
 
 
-async def import_graduate_check(student_data: StudentData, raw: bytes) -> ImportResult:
+async def import_graduate_check(
+    student_data: StudentData, raw: bytes, student_id: str | None = None
+) -> ImportResult:
     ensure_html_content(raw)
-    return await student_data.import_graduate_check(raw)
+    return await student_data.import_graduate_check(raw, student_id=student_id)

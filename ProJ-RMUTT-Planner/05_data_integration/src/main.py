@@ -441,8 +441,14 @@ async def import_graduate_check_http(request: Request):
     """นำเข้าผลการตรวจสอบจบผ่าน HTTP และบันทึกลง student_contexts"""
     raw = await request.body()
     audit = parse_graduate_check(raw)
+    # 02 ส่งรหัสของคนที่ login มาเสมอ ใช้ตัวนั้นก่อน: ไฟล์บางแบบไม่มีรหัสนักศึกษา
+    # เดิมเก็บตามรหัสในไฟล์อย่างเดียว ไฟล์ไม่มีรหัส = นำเข้าแล้วหายไปเฉย ๆ โปรไฟล์ไม่เปลี่ยน
+    owner = (request.query_params.get("student_id") or "").strip() or audit.student_id
+    if owner and not audit.student_id:
+        audit.student_id = owner
     ctx = build_student_context_from_audit(audit, prereq_dag=prereq_dag)
-    if audit.student_id:
-        student_contexts[audit.student_id] = ctx
+    if owner:
+        ctx.profile.student_id = owner
+        student_contexts[owner] = ctx
     return _build_import_result(audit)
 

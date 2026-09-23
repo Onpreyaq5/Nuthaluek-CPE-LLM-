@@ -6,7 +6,7 @@ pydantic-settings>=2.3.0
 httpx>=0.27.0
 
 # LLM providers (ติดตั้งตาม LLM_PROVIDER ที่ใช้จริง)
-google-generativeai>=0.7.0
+# Gemini เรียกผ่าน REST ด้วย httpx แล้ว (classifier.py) ไม่ต้องใช้ google-generativeai ที่เลิกพัฒนา
 openai>=1.30.0
 
 # Token counting + context window

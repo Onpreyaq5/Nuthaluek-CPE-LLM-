@@ -50,7 +50,8 @@ class Settings:
     # ผู้ใช้จึงใส่คีย์ Gemini ที่เดียวแล้วใช้ได้ทั้งระบบ
     llm_api_key: str = os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY", "")
     llm_model: str = os.getenv("LLM_MODEL", "")
-    llm_timeout: int = _int("LLM_TIMEOUT", 30)
+    # Gemini ปกติตอบใน 1-3 วินาที ตอนโหลดหนักเคยค้างถึง 30 วินาทีแล้วค่อยล้ม ตัดเร็วแล้วลองรุ่นถัดไปดีกว่า
+    llm_timeout: int = _int("LLM_TIMEOUT", 15)
 
     # ── Local AI Model (Ollama) — ช่อง Local AI Model ในแผนภาพ ─────────
     # ใช้กับงานทั่วไปเมื่อไม่มีคีย์ Gemini เท่านั้น ไม่ใช้ตอบเรื่องระเบียบ
