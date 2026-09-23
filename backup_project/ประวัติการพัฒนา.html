@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ประวัติการพัฒนา — RMUTT Study Planner</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+ :root{--ink:#101828;--ink2:#475467;--line:#DCE3EE;--brand:#1D4ED8;
+       --ok:#0B7F5B;--bad:#B3324A;--soft:#F2F5FA}
+ *{box-sizing:border-box}
+ body{margin:0 auto;padding:32px 40px;max-width:1100px;color:var(--ink);line-height:1.6;
+      font-family:"IBM Plex Sans Thai",system-ui,sans-serif}
+ h1{font-size:30px;margin:0 0 4px}
+ h2{font-size:20px;margin:34px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+ .sub{color:var(--ink2);margin-bottom:22px}
+ .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+ .card{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+ .card b{display:block;font-size:26px;color:var(--brand);font-variant-numeric:tabular-nums}
+ .card span{font-size:13px;color:var(--ink2)}
+ table{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+ th{text-align:left;font-size:12px;color:var(--ink2);background:var(--soft);
+     padding:8px 10px;border-bottom:1px solid var(--line);font-weight:600}
+ td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+ .num{text-align:right;font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+ .add{color:var(--ok)} .del{color:var(--bad)}
+ .date{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink2);white-space:nowrap}
+ .sha{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--brand)}
+ .name{font-weight:600;white-space:nowrap} .small{font-size:12.5px;color:var(--ink2)}
+ .bar{height:9px;background:var(--brand);border-radius:99px;min-width:3px}
+ .tags span{display:inline-block;background:var(--soft);border:1px solid var(--line);
+   border-radius:99px;padding:3px 11px;font-size:12.5px;margin:3px 4px 0 0;
+   font-family:"IBM Plex Mono",monospace}
+ @media print{@page{size:A4;margin:14mm} body{padding:0}
+   h2{break-after:avoid} tr{break-inside:avoid}}
+</style></head><body>
+<h1>ประวัติการพัฒนา</h1>
+<div class=sub>ระบบวางแผนการเรียน มทร.ธัญบุรี — RMUTT Study Planner<br>
+ทุกตัวเลขดึงจากประวัติ git โดยตรง ตรวจย้อนได้ด้วย <code>git log</code></div>
+<div class=cards>
+ <div class=card><b>81</b><span>คอมมิตทั้งหมด</span></div>
+ <div class=card><b>8</b><span>ผู้ร่วมพัฒนา</span></div>
+ <div class=card><b>15</b><span>สาขา</span></div>
+ <div class=card><b>8</b><span>การรวมงาน</span></div>
+</div>
+<h2>ผลงานรายบุคคล</h2>
+<table><tr><th>ผู้พัฒนา</th><th class=num>คอมมิต</th><th class=num>เพิ่ม</th><th class=num>ลบ</th>
+<th class=num>ไฟล์</th><th>โมดูลหลักที่รับผิดชอบ</th><th>ช่วงเวลา</th></tr>
+<tr><td class=name>Onpreyaq5</td><td class=num>38</td><td class='num add'>+58,942</td><td class='num del'>-13,485</td><td class=num>287</td><td class=small>09 แอปรวม, 07 RAG + LLM, ใบงาน LAB</td><td class=date>2026-08-07 – 2026-09-23</td></tr>
+<tr><td class=name>Nuthaluek kokotsomrong</td><td class=num>14</td><td class='num add'>+9,667</td><td class='num del'>-1,086</td><td class=num>52</td><td class=small>09 แอปรวม, หน้าเว็บเอกสาร, 07 RAG + LLM</td><td class=date>2026-07-15 – 2026-09-23</td></tr>
+<tr><td class=name>fffalafair</td><td class=num>5</td><td class='num add'>+14,284</td><td class='num del'>-12,879</td><td class=num>186</td><td class=small>02 API / Backend</td><td class=date>2026-09-20 – 2026-09-22</td></tr>
+<tr><td class=name>Phanlop Boonluea</td><td class=num>5</td><td class='num add'>+14,879</td><td class='num del'>-514</td><td class=num>211</td><td class=small>02 API / Backend, 03 AI Router / Agent, 04 ข้อมูลรายวิชา</td><td class=date>2026-09-21 – 2026-09-22</td></tr>
+<tr><td class=name>cheewakorn</td><td class=num>5</td><td class='num add'>+4,552</td><td class='num del'>-725</td><td class=num>37</td><td class=small>06 ตรวจตารางชน / จัดตาราง</td><td class=date>2026-09-21 – 2026-09-22</td></tr>
+<tr><td class=name>Marisa Pimpralab</td><td class=num>3</td><td class='num add'>+2,159</td><td class='num del'>-237</td><td class=num>35</td><td class=small>08 สถิติและความเห็น</td><td class=date>2026-09-20 – 2026-09-22</td></tr>
+<tr><td class=name>DevnameJay</td><td class=num>2</td><td class='num add'>+2,628</td><td class='num del'>-20</td><td class=num>15</td><td class=small>05 ข้อมูลนักศึกษา</td><td class=date>2026-09-20 – 2026-09-22</td></tr>
+<tr><td class=name>Saran Thanyawikai</td><td class=num>1</td><td class='num add'>+18,358</td><td class='num del'>-15</td><td class=num>53</td><td class=small>01 หน้าเว็บผู้ใช้</td><td class=date>2026-09-22 – 2026-09-22</td></tr></table>
+<h2>ความเคลื่อนไหวรายเดือน</h2>
+<table><tr><th>เดือน</th><th class=num>คอมมิต</th><th style="width:24%"></th><th>ผู้พัฒนา</th></tr>
+<tr><td class=date>กรกฎาคม 2569</td><td class=num>3</td><td><div class=bar style='width:4%'></div></td><td class=small>Nuthaluek kokotsomrong (3)</td></tr>
+<tr><td class=date>สิงหาคม 2569</td><td class=num>3</td><td><div class=bar style='width:4%'></div></td><td class=small>Onpreyaq5 (3)</td></tr>
+<tr><td class=date>กันยายน 2569</td><td class=num>67</td><td><div class=bar style='width:100%'></div></td><td class=small>Onpreyaq5 (35), Nuthaluek kokotsomrong (11), fffalafair (5), Phanlop Boonluea (5), cheewakorn (5), Marisa Pimpralab (3), DevnameJay (2), Saran Thanyawikai (1)</td></tr></table>
+<h2>สาขาที่ใช้พัฒนา</h2>
+<div class=tags><span>develop</span><span>docs/architecture-page</span><span>docs/onboarding</span><span>feat/api-backend</span><span>feat/data-integration</span><span>feat/docker-runnable</span><span>feat/feedback</span><span>feat/gemini-proxy-and-pdf</span><span>feat/github-pages-demo</span><span>feat/rag-in-browser</span><span>feat/schedule-enging</span><span>feat/web-app</span><span>fix/09-security-ux-audit</span><span>main</span><span>merge/all-modules</span></div>
+<h2>การรวมงานเข้าสาขาหลัก</h2>
+<table><tr><th>วันที่</th><th>ผู้รวม</th><th>รายละเอียด</th></tr><tr><td class=date>2026-09-23</td><td class=name>Onpreyaq5</td><td>merge feat/web-app</td></tr>
+<tr><td class=date>2026-09-23</td><td class=name>Onpreyaq5</td><td>merge feat/data-integration</td></tr>
+<tr><td class=date>2026-09-23</td><td class=name>Onpreyaq5</td><td>merge feat/schedule-enging</td></tr>
+<tr><td class=date>2026-09-23</td><td class=name>Onpreyaq5</td><td>merge feat/api-backend</td></tr>
+<tr><td class=date>2026-09-23</td><td class=name>Onpreyaq5</td><td>merge develop</td></tr>
+<tr><td class=date>2026-09-23</td><td class=name>Onpreyaq5</td><td>merge feat/feedback</td></tr>
+<tr><td class=date>2026-09-23</td><td class=name>Marisa Pimpralab</td><td>Merge branch &#x27;main&#x27; into feat/feedback</td></tr>
+<tr><td class=date>2026-09-22</td><td class=name>Marisa Pimpralab</td><td>Merge branch &#x27;develop&#x27; into feat/feedback</td></tr></table>
+<h2>บันทึกคอมมิตทั้งหมด</h2>
+<table><tr><th>วันที่และเวลา</th><th>รหัส</th><th>ผู้พัฒนา</th><th>รายละเอียด</th></tr>
+<tr><td class=date>2026-09-23 09:26</td><td class=sha>f6b5155</td><td class=name>Onpreyaq5</td><td>[infra] หน้าเว็บ 01 ต่อข้อมูลจริงครบทุกหน้า + Docker project แยก (deploy/webapp)</td></tr>
+<tr><td class=date>2026-09-23 04:29</td><td class=sha>0cd2272</td><td class=name>Onpreyaq5</td><td>[infra] ต่อทุกกล่องและทุกลูกศรในแผนภาพให้ทำงานจริงใน Docker</td></tr>
+<tr><td class=date>2026-09-23 02:19</td><td class=sha>f3705ad</td><td class=name>Onpreyaq5</td><td>[infra] แก้ web_app เปิดไม่ได้ + สคริปต์ตรวจ Docker ให้จบในคำสั่งเดียว</td></tr>
+<tr><td class=date>2026-09-23 02:15</td><td class=sha>e108929</td><td class=name>Onpreyaq5</td><td>[infra] แก้จุดที่เรียกข้ามบริการไม่ติด + ยกทุกกล่องในแผนภาพขึ้นให้ครบ</td></tr>
+<tr><td class=date>2026-09-23 01:31</td><td class=sha>ef00e82</td><td class=name>Onpreyaq5</td><td>[docs] สไลด์บทที่ 7 สำหรับนำเสนอ (16:9 พร้อมทำ PDF)</td></tr>
+<tr><td class=date>2026-09-23 01:07</td><td class=sha>18daa81</td><td class=name>Onpreyaq5</td><td>[docs] อัปเดตเอกสารสถาปัตยกรรมหลังรวมงานทุกคนเข้า main</td></tr>
+<tr><td class=date>2026-09-23 00:57</td><td class=sha>a791eef</td><td class=name>Onpreyaq5</td><td>[ci] กระตุ้นให้ workflow ทำงาน</td></tr>
+<tr><td class=date>2026-09-23 00:42</td><td class=sha>572e02b</td><td class=name>Onpreyaq5</td><td>[infra] เปิดใช้ 01 และให้ CI build ทุกบริการหลัง merge</td></tr>
+<tr><td class=date>2026-09-23 00:22</td><td class=sha>38e21ce</td><td class=name>Nuthaluek kokotsomrong</td><td>[infra] ทำให้ docker compose up รันได้จริง (#12)</td></tr>
+<tr><td class=date>2026-09-23 00:20</td><td class=sha>2c244fa</td><td class=name>Onpreyaq5</td><td>[infra] แก้ /api/* ตอบ 404 ใน container + ทำให้ CI ฟ้องเมื่อพังจริง</td></tr>
+<tr><td class=date>2026-09-23 00:17</td><td class=sha>baa9d0e</td><td class=name>Onpreyaq5</td><td>[infra] แก้ build พังใน CI: public/ เป็นโฟลเดอร์ว่าง git จึงไม่เก็บ</td></tr>
+<tr><td class=date>2026-09-23 00:14</td><td class=sha>cc0f26b</td><td class=name>Onpreyaq5</td><td>[ci] เพิ่ม job ที่ build และรัน container จริง แล้วยิง endpoint ทดสอบ</td></tr>
+<tr><td class=date>2026-09-23 00:11</td><td class=sha>2774404</td><td class=name>Onpreyaq5</td><td>[infra] ทำให้ docker compose up รันได้จริง</td></tr>
+<tr><td class=date>2026-09-22 23:57</td><td class=sha>6b3493e</td><td class=name>Nuthaluek kokotsomrong</td><td>[09] ต่อ Gemini แบบผู้ใช้ไม่เห็นคีย์ + PDF สถาปัตยกรรม (#11)</td></tr>
+<tr><td class=date>2026-09-22 23:55</td><td class=sha>5adf342</td><td class=name>Onpreyaq5</td><td>[09] ต่อ Gemini แบบผู้ใช้ไม่เห็นคีย์ + PDF สถาปัตยกรรม</td></tr>
+<tr><td class=date>2026-09-22 23:36</td><td class=sha>d34e214</td><td class=name>Nuthaluek kokotsomrong</td><td>[09] เอา RAG ขึ้นเว็บจริง + แสดงผล golden set ในหน้าเว็บ (#10)</td></tr>
+<tr><td class=date>2026-09-22 23:34</td><td class=sha>ad0786f</td><td class=name>Onpreyaq5</td><td>[09] เอา RAG ขึ้นเว็บจริง + แสดงผล golden set ให้เห็นในหน้าเว็บ</td></tr>
+<tr><td class=date>2026-09-22 23:26</td><td class=sha>590abf4</td><td class=name>Nuthaluek kokotsomrong</td><td>[docs] หน้าสถาปัตยกรรมระบบแบบอ่านเข้าใจง่าย (#9)</td></tr>
+<tr><td class=date>2026-09-22 23:24</td><td class=sha>51049ff</td><td class=name>Onpreyaq5</td><td>[docs] หน้าสถาปัตยกรรมระบบแบบอ่านเข้าใจง่าย</td></tr>
+<tr><td class=date>2026-09-22 23:10</td><td class=sha>8a67acd</td><td class=name>Nuthaluek kokotsomrong</td><td>[09] หน้าเดโมไฟล์เดียวบน GitHub Pages (#8)</td></tr>
+<tr><td class=date>2026-09-22 23:09</td><td class=sha>04ad5b4</td><td class=name>Onpreyaq5</td><td>[09] เพิ่มหน้าเดโมไฟล์เดียวสำหรับ GitHub Pages</td></tr>
+<tr><td class=date>2026-09-22 22:34</td><td class=sha>800979b</td><td class=name>Nuthaluek kokotsomrong</td><td>[09] ปิดช่องโหว่และแก้บั๊กจากการไล่ทั้งระบบ + รองรับมือถือ (#7)</td></tr>
+<tr><td class=date>2026-09-22 22:32</td><td class=sha>1a17bd4</td><td class=name>Onpreyaq5</td><td>[09] ปิดช่องโหว่และแก้บั๊กที่เจอจากการไล่ทั้งระบบ + เทสมือถือ</td></tr>
+<tr><td class=date>2026-09-22 22:29</td><td class=sha>d42cf11</td><td class=name>Saran Thanyawikai</td><td>[01] เพิ่มแอป CampusMate (React + Vite) แก้ contract ให้ตรงกับ 02_api_backend จริง</td></tr>
+<tr><td class=date>2026-09-22 21:53</td><td class=sha>d2f517a</td><td class=name>Onpreyaq5</td><td>[09] เว็บแอปรวมระบบ ขึ้น Vercel ได้จริง</td></tr>
+<tr><td class=date>2026-09-22 19:11</td><td class=sha>e6f5bc0</td><td class=name>cheewakorn</td><td>[06] ปรับปรุง compatibility shims ด้วย computed_field และ CandidatePlan.sections เป็น string IDs</td></tr>
+<tr><td class=date>2026-09-22 15:07</td><td class=sha>926922d</td><td class=name>Phanlop Boonluea</td><td>Feat/ai router (#6)</td></tr>
+<tr><td class=date>2026-09-22 14:48</td><td class=sha>5902f57</td><td class=name>cheewakorn</td><td>[06] ปรับปรุงระบบ Contract และ Data Providers ให้เข้ากับโมดูล 02 และ 03</td></tr>
+<tr><td class=date>2026-09-22 14:23</td><td class=sha>e11495e</td><td class=name>fffalafair</td><td>[02] แก้ explain_plan ให้ตรวจตารางชน (06) ก่อนส่งให้ 07 อธิบาย</td></tr>
+<tr><td class=date>2026-09-22 13:57</td><td class=sha>27c673f</td><td class=name>Phanlop Boonluea</td><td>Feat/ai router (#5)</td></tr>
+<tr><td class=date>2026-09-22 13:09</td><td class=sha>5ad5361</td><td class=name>Onpreyaq5</td><td>[07] เติมข้อมูลวิศวะคอมให้ครบ + แก้บั๊กที่เจอจากการไล่ทั้งระบบ</td></tr>
+<tr><td class=date>2026-09-22 13:09</td><td class=sha>fd12bd1</td><td class=name>Onpreyaq5</td><td>[07] อัปเดต README ให้ตรงกับข้อมูลชุดเต็ม (ตารางสอน 2 เทอม, คำอธิบายรายวิชา 46 วิชา)</td></tr>
+<tr><td class=date>2026-09-22 13:02</td><td class=sha>d621047</td><td class=name>Onpreyaq5</td><td>[07] ทดสอบผู้ใช้รอบ 2: ให้ระบบรู้ขอบเขตตัวเอง และแมปคำศัพท์ผู้ใช้กับเอกสาร</td></tr>
+<tr><td class=date>2026-09-22 12:43</td><td class=sha>07e52df</td><td class=name>DevnameJay</td><td>[05] ปรับปรุง contract compatibility ให้เข้ากับ 02 และ 03 พร้อมแก้ fallback credits remaining</td></tr>
+<tr><td class=date>2026-09-22 12:28</td><td class=sha>90f241c</td><td class=name>Onpreyaq5</td><td>[07] แก้บั๊กที่เจอจากการทดสอบแบบผู้ใช้ — ข้อมูลที่ค้นได้ไม่ตรงกับที่ส่งกลับ</td></tr>
+<tr><td class=date>2026-09-22 10:55</td><td class=sha>3005ade</td><td class=name>Phanlop Boonluea</td><td>Feat/ai router (#4)</td></tr>
+<tr><td class=date>2026-09-22 00:43</td><td class=sha>b620edf</td><td class=name>Marisa Pimpralab</td><td>feat: add recommendation, feedback, and privacy service with API endpoints and tests</td></tr>
+<tr><td class=date>2026-09-22 00:10</td><td class=sha>8b4aaaf</td><td class=name>Onpreyaq5</td><td>[07] ทำ RAG + LLM engine พร้อมข้อมูลจำลองตารางเรียนวิศวะคอม</td></tr>
+<tr><td class=date>2026-09-21 20:18</td><td class=sha>9f1de73</td><td class=name>cheewakorn</td><td>[06] แก้ไขรายละเอียด</td></tr>
+<tr><td class=date>2026-09-21 20:14</td><td class=sha>c59ce40</td><td class=name>cheewakorn</td><td>[06] ปรับปรุงเอกสาร README.md เชิงวิชาการและแก้ไขข้อมูลผู้รับผิดชอบระบบ</td></tr>
+<tr><td class=date>2026-09-21 20:05</td><td class=sha>90a66ec</td><td class=name>cheewakorn</td><td>[06] พัฒนาระบบตรวจตารางชน (C1-C6, W1-W5), CP-SAT Auto Planner, Plan Repair และชุดทดสอบ 27 เคส</td></tr>
+<tr><td class=date>2026-09-21 18:33</td><td class=sha>5eef3b9</td><td class=name>fffalafair</td><td>[02] แยก router (03) กับตัวสร้างคำตอบ (07): message_id จริง, term/preferences, internal event</td></tr>
+<tr><td class=date>2026-09-21 16:13</td><td class=sha>6ab1e3a</td><td class=name>fffalafair</td><td>[02] แก้ adapter แชตให้ตรงกับ 03: URL, path, payload, SSE event</td></tr>
+<tr><td class=date>2026-09-21 11:06</td><td class=sha>cdecf79</td><td class=name>Onpreyaq5</td><td>[team] เติมชื่อเจ้าของโมดูลจากคนที่ commit จริง + เฟิสรับ 01 กับ 06 เพิ่ม</td></tr>
+<tr><td class=date>2026-09-21 11:03</td><td class=sha>54e9c2c</td><td class=name>Phanlop Boonluea</td><td>Feat/api backend (#3)</td></tr>
+<tr><td class=date>2026-09-21 11:01</td><td class=sha>4584dda</td><td class=name>Phanlop Boonluea</td><td>Feat/ai router (#2)</td></tr>
+<tr><td class=date>2026-09-20 21:20</td><td class=sha>538c0c8</td><td class=name>Marisa Pimpralab</td><td>docs: add README for recommendation feedback module</td></tr>
+<tr><td class=date>2026-09-20 21:12</td><td class=sha>cc80645</td><td class=name>Marisa Pimpralab</td><td>feat: implement recommendation and feedback service with API routes and data privacy logic</td></tr>
+<tr><td class=date>2026-09-20 18:29</td><td class=sha>2401f2e</td><td class=name>DevnameJay</td><td>[05] พัฒนาระบบ Data Integration, Bitmask, Prereq DAG และ Student Context ครบทุกขั้นตอน</td></tr>
+<tr><td class=date>2026-09-20 17:35</td><td class=sha>3cd7365</td><td class=name>fffalafair</td><td>[02] เอา API backend ออกจาก main (ย้ายไปทำงานต่อบน feat/api-backend)</td></tr>
+<tr><td class=date>2026-09-20 16:15</td><td class=sha>25fa8c2</td><td class=name>fffalafair</td><td>[02] API backend: auth, courses, plans, chat SSE, import, feedback + tests</td></tr>
+<tr><td class=date>2026-09-20 15:30</td><td class=sha>de159d4</td><td class=name>Nuthaluek kokotsomrong</td><td>[docs] อัปเดตโครงสร้างทีมและพื้นที่รวมแอปหลัก</td></tr>
+<tr><td class=date>2026-09-20 15:28</td><td class=sha>a692d13</td><td class=name>Nuthaluek kokotsomrong</td><td>[team] ระบุเจ้าของโฟลเดอร์และหน้าที่รวมระบบของเฟิส</td></tr>
+<tr><td class=date>2026-09-20 15:27</td><td class=sha>eca72c8</td><td class=name>Nuthaluek kokotsomrong</td><td>[team] เปลี่ยนคู่มือเป็นทำงานตรงบน main แยกตามโฟลเดอร์</td></tr>
+<tr><td class=date>2026-09-20 15:26</td><td class=sha>7af113c</td><td class=name>Nuthaluek kokotsomrong</td><td>Create README for main app integration guidelines[team] เพิ่มพื้นที่รวมแอปหลักสำหรับเฟิส</td></tr>
+<tr><td class=date>2026-09-19 01:07</td><td class=sha>af4d734</td><td class=name>Nuthaluek kokotsomrong</td><td>[docs] เพิ่มคู่มือเริ่มงานวันแรก (06_onboarding.md) (#1)</td></tr>
+<tr><td class=date>2026-09-19 01:06</td><td class=sha>4cd1733</td><td class=name>Onpreyaq5</td><td>[docs] เพิ่มคู่มือเริ่มงานวันแรก (06_onboarding.md)</td></tr>
+<tr><td class=date>2026-09-19 01:04</td><td class=sha>6a7b175</td><td class=name>Onpreyaq5</td><td>[ci] รันทุก PR ไม่กรอง path เพื่อให้ required status check รายงานเสมอ</td></tr>
+<tr><td class=date>2026-09-18 23:38</td><td class=sha>d643341</td><td class=name>Onpreyaq5</td><td>[05] ลบรหัส/ชื่อนักศึกษาจริงออกจาก docstring (CI secrets guard จับได้)</td></tr>
+<tr><td class=date>2026-09-18 23:36</td><td class=sha>fcb029d</td><td class=name>Onpreyaq5</td><td>[team] เตรียม repo ให้ทำงานขนานกันได้: CONTRIBUTING, CI, PR/Issue template, pytest 04/05</td></tr>
+<tr><td class=date>2026-09-18 23:31</td><td class=sha>ac41ec4</td><td class=name>Onpreyaq5</td><td>[06] เพิ่ม SUMMER_MAX_CREDITS (ยังไม่ยืนยัน) และระบุว่ากฎรอพินิจไม่ทำ</td></tr>
+<tr><td class=date>2026-09-18 23:29</td><td class=sha>6d629f2</td><td class=name>Onpreyaq5</td><td>[06] แก้เพดานหน่วยกิตต่อเทอมเป็น 21 ตามระเบียบ มทร.ธัญบุรี</td></tr>
+<tr><td class=date>2026-09-18 23:26</td><td class=sha>cd14737</td><td class=name>Onpreyaq5</td><td>เพิ่ม ProJ-RMUTT-Planner: โครงโปรเจกต์กลุ่ม ระบบวางแผนการเรียน + ตรวจตารางชน (Docker 8 โมดูล)</td></tr>
+<tr><td class=date>2026-09-16 03:09</td><td class=sha>c4a1d66</td><td class=name>Onpreyaq5</td><td>ปรับ UX/UI เป็นธีม minimal แบบ Higgsfield</td></tr>
+<tr><td class=date>2026-09-13 20:30</td><td class=sha>37537fc</td><td class=name>Onpreyaq5</td><td>เพิ่มทรานสิชั่นทั่วทั้งระบบ</td></tr>
+<tr><td class=date>2026-09-13 20:24</td><td class=sha>81d425e</td><td class=name>Onpreyaq5</td><td>ตั้งค่าเริ่มต้นหน้าประเมินผลเป็นชุดทดสอบเต็ม</td></tr>
+<tr><td class=date>2026-09-13 20:23</td><td class=sha>bb41578</td><td class=name>Onpreyaq5</td><td>LAB 3: TradeRAG - ระบบ RAG ความรู้การเทรด (DL-05)</td></tr>
+<tr><td class=date>2026-08-07 01:26</td><td class=sha>9e5bbc5</td><td class=name>Onpreyaq5</td><td>update</td></tr>
+<tr><td class=date>2026-08-07 01:22</td><td class=sha>ccddd7c</td><td class=name>Onpreyaq5</td><td>เพิ่ม LAB 2: แชทบอทเว็บการบริหารเงิน (ธีม Gemini, อิง DL-04)</td></tr>
+<tr><td class=date>2026-08-07 01:02</td><td class=sha>a1fbdcf</td><td class=name>Onpreyaq5</td><td>เพิ่ม LAB 1: แชทบอทเว็บความรู้รอบตัวเรื่องรถ + เตรียมโฟลเดอร์ LAB 2</td></tr>
+<tr><td class=date>2026-07-21 06:10</td><td class=sha>0b71864</td><td class=name>Nuthaluek kokotsomrong</td><td>สร้างโดยใช้ Colab</td></tr>
+<tr><td class=date>2026-07-21 05:39</td><td class=sha>fc9554c</td><td class=name>Nuthaluek kokotsomrong</td><td>สร้างโดยใช้ Colab</td></tr>
+<tr><td class=date>2026-07-15 09:08</td><td class=sha>0c5a8a9</td><td class=name>Nuthaluek kokotsomrong</td><td>Initial commit</td></tr></table>
+</body></html>
