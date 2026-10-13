@@ -287,7 +287,16 @@ function Shell() {
           <strong>{th.mascot}</strong>
           <p>{th.mascotHint}</p>
         </div>
-        <div className="profile">
+        <div
+          className="profile"
+          role="link"
+          tabIndex={0}
+          onClick={() => open("/profile")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") open("/profile");
+          }}
+          style={{ cursor: "pointer" }}
+        >
           <span className="profile-avatar">{uiCopy.app023}</span>
           <span>
             <strong>{user?.username}</strong>
@@ -299,7 +308,10 @@ function Shell() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSettings(true)}
+            onClick={(event) => {
+              event.stopPropagation();
+              setSettings(true);
+            }}
             aria-label={uiCopy.app025}
           >
             <Settings2 size={18} />
